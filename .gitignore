@@ -38,6 +38,9 @@ Thumbs.db
 logs/
 *.log
 
+# Cleanup backups
+.cleanup-backup/
+
 # Runtime data
 pids/
 *.pid

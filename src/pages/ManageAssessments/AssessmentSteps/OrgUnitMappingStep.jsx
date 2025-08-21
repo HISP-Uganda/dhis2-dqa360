@@ -49,6 +49,11 @@ const OrgUnitMappingStep = ({
         () => Array.isArray(localOrgUnits) ? localOrgUnits : [],
         [localOrgUnits]
     )
+
+    // Get already mapped target IDs to filter them out from available options
+    const mappedTargetIds = useMemo(() => {
+        return new Set((rows || []).map(r => r.target).filter(Boolean))
+    }, [rows])
     const localById = useMemo(() => new Map((localOptions || []).map(o => [String(o.id), o])), [localOptions])
     const selectedById = useMemo(() => new Map((selectedOrgUnits || []).map(o => [String(o.id), o])), [selectedOrgUnits])
 
@@ -382,14 +387,20 @@ const OrgUnitMappingStep = ({
                                                     validationText={hasDuplicate ? i18n.t('Duplicate target') : undefined}
                                                     error={hasDuplicate}
                                                 >
-                                                    {(localOptions || []).map(ou => (
-                                                        <SingleSelectOption
-                                                            key={ou.id}
-                                                            value={ou.id}
-                                                            // label includes parent + code so the built-in filter matches on them too
-                                                            label={optionLabel(ou)}
-                                                        />
-                                                    ))}
+                                                    {(localOptions || [])
+                                                        .filter(ou => 
+                                                            // Show if not already mapped to another source, OR if it's the current selection
+                                                            !mappedTargetIds.has(ou.id) || ou.id === r.target
+                                                        )
+                                                        .map(ou => (
+                                                            <SingleSelectOption
+                                                                key={ou.id}
+                                                                value={ou.id}
+                                                                // label includes parent + code so the built-in filter matches on them too
+                                                                label={optionLabel(ou)}
+                                                            />
+                                                        ))
+                                                    }
                                                 </SingleSelectField>
                                                 {targetOu && (
                                                     <div style={{ marginTop: 4 }}>{ouTiny(targetOu)}</div>
