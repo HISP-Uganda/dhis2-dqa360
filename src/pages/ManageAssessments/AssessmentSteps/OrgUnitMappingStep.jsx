@@ -4,15 +4,8 @@ import {
     Button,
     ButtonStrip,
     Card,
-    DataTable,
-    DataTableHead,
-    DataTableRow,
-    DataTableColumnHeader,
-    DataTableBody,
-    DataTableCell,
     InputField,
     NoticeBox,
-    Pagination,
     SingleSelectField,
     SingleSelectOption,
     Tag,
@@ -68,10 +61,8 @@ const OrgUnitMappingStep = ({
         setRows(next)
     }, [JSON.stringify(selectedOrgUnits), JSON.stringify(orgUnitMappings)])
 
-    // ---------- UI: search & pagination for the SOURCE list ----------
+    // ---------- UI: search for the SOURCE list ----------
     const [search, setSearch] = useState('')
-    const [page, setPage] = useState(1)
-    const pageSize = 20
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase()
@@ -89,13 +80,6 @@ const OrgUnitMappingStep = ({
             return hay.includes(q)
         })
     }, [rows, search, selectedById])
-
-    const totalPages = Math.max(1, Math.ceil((filtered || []).length / pageSize))
-    const pageRows = useMemo(() => {
-        const start = (page - 1) * pageSize
-        return (filtered || []).slice(start, start + pageSize)
-    }, [filtered, page, pageSize])
-    useEffect(() => { if (page > totalPages) setPage(totalPages) }, [totalPages, page])
 
     // ---------- suggestions (by name, then code, then identical id) ----------
     const suggestionFor = (src) => {
@@ -215,8 +199,8 @@ const OrgUnitMappingStep = ({
         <div style={{ padding: 0 }}>
             {/* Title row with status chips */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-                    {i18n.t('Org Unit Mapping')}
+                <h3 style={{ margin: '0 0 12px 0', fontSize: 18, fontWeight: 600 }}>
+                    {i18n.t('Organisation Unit Mapping')}
                 </h3>
                 <Tag neutral>{i18n.t('{{n}} required', { n: totalRequired })}</Tag>
                 <Tag positive>{i18n.t('{{n}} mapped', { n: mappedCount })}</Tag>
@@ -286,29 +270,22 @@ const OrgUnitMappingStep = ({
                 </NoticeBox>
             )}
 
-            {/* Top controls */}
-            <div style={{
-                display: 'flex',
-                gap: 12,
-                alignItems: 'flex-end',
-                justifyContent: 'space-between',
-                marginBottom: 12,
-                flexWrap: 'wrap'
-            }}>
-                <div style={{ minWidth: 260, flex: '1 1 320px' }}>
-                    <InputField
-                        label={i18n.t('Search source org units')}
-                        placeholder={i18n.t('Search by name, id, code, path, level...')}
-                        value={search}
-                        onChange={({ value }) => { setSearch(value); setPage(1) }}
-                        dense
-                    />
-                </div>
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+                <InputField
+                    label={i18n.t('Filter')}
+                    placeholder={i18n.t('Search by name, code, path, level...')}
+                    value={search}
+                    onChange={({ value }) => setSearch(value)}
+                    style={{ width: 360 }}
+                    dense
+                />
+                <div style={{ flex: 1 }} />
                 <ButtonStrip>
-                    <Button onClick={applyAllSuggestions} disabled={localOrgUnitsLoading}>
+                    <Button small onClick={applyAllSuggestions} disabled={localOrgUnitsLoading}>
                         {i18n.t('Apply all suggestions')}
                     </Button>
-                    <Button onClick={clearMappings} disabled={localOrgUnitsLoading}>
+                    <Button small onClick={clearMappings} disabled={localOrgUnitsLoading}>
                         {i18n.t('Clear mappings')}
                     </Button>
                     <Button primary onClick={saveRows} disabled={!canSave}>
@@ -335,28 +312,30 @@ const OrgUnitMappingStep = ({
             )}
 
             {/* Table */}
-            <Card>
-                <DataTable>
-                    <DataTableHead>
-                        <DataTableRow>
-                            <DataTableColumnHeader>{i18n.t('Source org unit')}</DataTableColumnHeader>
-                            <DataTableColumnHeader>{i18n.t('Target (local)')}</DataTableColumnHeader>
-                            <DataTableColumnHeader>{i18n.t('Suggestion')}</DataTableColumnHeader>
-                        </DataTableRow>
-                    </DataTableHead>
-                    <DataTableBody>
-                        {(pageRows || []).length === 0 ? (
-                            <DataTableRow>
-                                <DataTableCell colSpan="3">
-                                    <div style={{ padding: 14, color: '#6b7280' }}>
-                                        {search
-                                            ? i18n.t('No matches for your search.')
-                                            : i18n.t('No selected organisation units to map.')}
-                                    </div>
-                                </DataTableCell>
-                            </DataTableRow>
-                        ) : (
-                            pageRows.map(r => {
+            {(filtered || []).length === 0 ? (
+                <NoticeBox title={i18n.t('No organisation units to map')}>
+                    {search
+                        ? i18n.t('No matches for your search.')
+                        : i18n.t('No selected organisation units to map.')}
+                </NoticeBox>
+            ) : (
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                        <tr>
+                            <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>
+                                {i18n.t('Source Organisation Unit')}
+                            </th>
+                            <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>
+                                {i18n.t('Target (Local)')}
+                            </th>
+                            <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>
+                                {i18n.t('Suggestion')}
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {filtered.map(r => {
                                 const src = selectedById.get(r.source)
                                 const sug = suggestions.get(r.source)
                                 const sugOu = sug ? localById.get(String(sug)) : null
@@ -364,26 +343,29 @@ const OrgUnitMappingStep = ({
                                 const hasDuplicate = r.target && duplicateTargets.includes(r.target)
 
                                 return (
-                                    <DataTableRow key={r.source} draggable={false}>
+                                    <tr key={r.source}>
                                         {/* Source */}
-                                        <DataTableCell>
-                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <div style={{ fontWeight: 600 }}>{src?.name || r.source}</div>
-                                                <div style={{ fontSize: 12, color: '#6b7280' }}>{src?.id}</div>
-                                                {ouTiny(src)}
+                                        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                                            <div style={{ fontWeight: 600 }}>{src?.name || r.source}</div>
+                                            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                                                {src?.code ? `${i18n.t('Code')}: ${src.code} · ` : ''}
+                                                {src?.level != null ? `${i18n.t('Level')}: ${src.level} · ` : ''}
+                                                {src?.parent?.name ? `${i18n.t('Parent')}: ${src.parent.name}` : ''}
                                             </div>
-                                        </DataTableCell>
+                                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
+                                                {src?.id}
+                                            </div>
+                                        </td>
 
-                                        {/* Target select (filterable search inside dropdown) */}
-                                        <DataTableCell>
-                                            <div style={{ minWidth: 320, maxWidth: 560 }}>
+                                        {/* Target select */}
+                                        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                                            <div style={{ minWidth: 280, maxWidth: 400 }}>
                                                 <SingleSelectField
                                                     dense
-                                                    filterable         // <— shows search input inside the dropdown on focus
+                                                    filterable
                                                     selected={r.target}
                                                     onChange={({ selected }) => updateRow(r.source, selected)}
                                                     placeholder={i18n.t('Choose local org unit')}
-                                                    helpText={i18n.t('Type to search by name, id, code, or parent')}
                                                     validationText={hasDuplicate ? i18n.t('Duplicate target') : undefined}
                                                     error={hasDuplicate}
                                                 >
@@ -403,23 +385,35 @@ const OrgUnitMappingStep = ({
                                                     }
                                                 </SingleSelectField>
                                                 {targetOu && (
-                                                    <div style={{ marginTop: 4 }}>{ouTiny(targetOu)}</div>
+                                                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                                                        {targetOu.code ? `${i18n.t('Code')}: ${targetOu.code} · ` : ''}
+                                                        {targetOu.level != null ? `${i18n.t('Level')}: ${targetOu.level} · ` : ''}
+                                                        {targetOu.parent?.name ? `${i18n.t('Parent')}: ${targetOu.parent.name}` : ''}
+                                                    </div>
                                                 )}
                                             </div>
-                                        </DataTableCell>
+                                        </td>
 
                                         {/* Suggestion */}
-                                        <DataTableCell>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
                                             {sug ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    {badge(i18n.t('Suggested'), 'info')}
-                                                    <div style={{ fontSize: 13 }}>
-                                                        {sugOu ? optionLabel(sugOu) : sug}
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                        {badge(i18n.t('Suggested'), 'info')}
+                                                        {!r.target && (
+                                                            <Button small onClick={() => applySuggestion(r.source)}>
+                                                                {i18n.t('Apply')}
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                    {!r.target && (
-                                                        <Button small onClick={() => applySuggestion(r.source)}>
-                                                            {i18n.t('Apply')}
-                                                        </Button>
+                                                    <div style={{ fontSize: 12, color: '#4b5563' }}>
+                                                        {sugOu ? sugOu.name : sug}
+                                                    </div>
+                                                    {sugOu && (
+                                                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
+                                                            {sugOu.code ? `${i18n.t('Code')}: ${sugOu.code} · ` : ''}
+                                                            {sugOu.id}
+                                                        </div>
                                                     )}
                                                 </div>
                                             ) : (
@@ -427,29 +421,14 @@ const OrgUnitMappingStep = ({
                                                     {i18n.t('No suggestion')}
                                                 </span>
                                             )}
-                                        </DataTableCell>
-                                    </DataTableRow>
+                                        </td>
+                                    </tr>
                                 )
-                            })
-                        )}
-                    </DataTableBody>
-                </DataTable>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div style={{ padding: 12, borderTop: '1px solid #e5e7eb' }}>
-                        <Pagination
-                            page={page}
-                            pageCount={totalPages}
-                            pageSize={pageSize}
-                            total={filtered.length}
-                            onPageChange={setPage}
-                            onPageSizeChange={() => {}}
-                            hidePageSizeSelect
-                        />
-                    </div>
-                )}
-            </Card>
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Footer hint */}
             {unmappedCount > 0 && (
