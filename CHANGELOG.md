@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated multiple documentation files into single development guide
 - Improved repository structure and organization
 
+### Fixed
+- **OrgUnit Mapping Dropdown Filtering**: Selected and mapped org units now disappear from dropdown options to prevent duplicate mappings
+- **Missing ASSESSMENT_KEY_PREFIX Constant**: Fixed ReferenceError that prevented assessment loading from datastore
+
+### Removed
+- 38 unused files including test files, old versions, and debug components
+- Unused page directories (Corrections, Dashboards, DataEntry, Discrepancies, Notifications, QuickDatasetSetup)
+- Duplicate modal components and development utilities
+- Component directories (DHIS2DatasetObjects, DQActions, DataStoreMigration, UI)
+
 ## [1.0.0] - 2024-12-19
 
 ### Added
