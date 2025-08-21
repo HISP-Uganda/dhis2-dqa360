@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Consolidated multiple documentation files into single development guide
 - Improved repository structure and organization
+- **OrgUnit Mapping Step Styling**: Updated to match consistent table format used in other assessment steps
 
 ### Fixed
 - **OrgUnit Mapping Dropdown Filtering**: Selected and mapped org units now disappear from dropdown options to prevent duplicate mappings
