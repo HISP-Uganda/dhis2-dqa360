@@ -108,6 +108,7 @@ const generateSmsCode = (index) => {
 const DatasetPreparationPorted = ({
                                       assessmentId,
                                       assessmentName,
+                                      assessmentData,
                                       selectedDataElements = [],
                                       selectedOrgUnits = [],
                                       period,
@@ -1198,6 +1199,23 @@ const DatasetPreparationPorted = ({
                     }}
                     saveAssessmentPayload={async (payload) => {
                         try {
+                            const assessmentPayload = {
+                                id: assessmentId,
+                                name: assessmentName,
+                                datasets,
+                                dataElements: datasetDataElements,
+                                orgUnits: selectedOrgUnits,
+                                period,
+                                frequency,
+                                creationPayload: payload,
+                                lastModified: new Date().toISOString(),
+                            }
+                            
+                            // Add external connection info if available
+                            if (assessmentData?.externalConnection) {
+                                assessmentPayload.externalConnection = assessmentData.externalConnection
+                            }
+                            
                             await (async (assessmentData) => {
                                 try {
                                     await dhis2Service.saveAssessment(dataEngine, assessmentData)
@@ -1214,17 +1232,10 @@ const DatasetPreparationPorted = ({
                                         throw error
                                     }
                                 }
-                            })({
-                                id: assessmentId,
-                                name: assessmentName,
-                                datasets,
-                                dataElements: datasetDataElements,
-                                orgUnits: selectedOrgUnits,
-                                period,
-                                frequency,
-                                creationPayload: payload,
-                                lastModified: new Date().toISOString(),
-                            })
+                            })(assessmentPayload)
+                            
+                            // Return the payload with external connection info for the modal
+                            return assessmentPayload
                         } catch (_) {
                             // non-fatal in UI
                         }
@@ -1257,6 +1268,7 @@ const PreparationStep = ({
         <DatasetPreparationPorted
             assessmentId={assessmentId}
             assessmentName={assessmentName}
+            assessmentData={assessmentData}
             selectedDataElements={selectedDataElements}
             selectedOrgUnits={selectedOrgUnits}
             period={period}

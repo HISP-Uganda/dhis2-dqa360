@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-21T05:19:26.271Z\n"
-"PO-Revision-Date: 2025-08-21T05:19:26.272Z\n"
+"POT-Creation-Date: 2025-08-21T06:30:13.680Z\n"
+"PO-Revision-Date: 2025-08-21T06:30:13.681Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -203,85 +203,14 @@ msgstr "This feature is only available to DQA360 Administrators."
 msgid "Loading..."
 msgstr "Loading..."
 
-msgid "Loading DHIS2 dataset objects..."
-msgstr "Loading DHIS2 dataset objects..."
-
-msgid "No DQA Datasets Created"
-msgstr "No DQA Datasets Created"
-
-msgid ""
-"This assessment does not have the required 4 DQA datasets (Register, "
-"Summary, Reported, Corrected) created yet."
-msgstr ""
-"This assessment does not have the required 4 DQA datasets (Register, "
-"Summary, Reported, Corrected) created yet."
-
-msgid ""
-"To create the datasets, you need to complete the assessment setup through "
-"all required steps."
-msgstr ""
-"To create the datasets, you need to complete the assessment setup through "
-"all required steps."
-
-msgid "Complete Assessment Setup"
-msgstr "Complete Assessment Setup"
-
-msgid "DHIS2 Dataset Objects"
-msgstr "DHIS2 Dataset Objects"
-
-msgid "Load Objects"
-msgstr "Load Objects"
-
-msgid "Generate Import"
-msgstr "Generate Import"
-
-msgid "Dataset Summary"
-msgstr "Dataset Summary"
-
-msgid "Created Datasets"
-msgstr "Created Datasets"
-
-msgid "Type"
-msgstr "Type"
-
-msgid "Name"
-msgstr "Name"
-
-msgid "Code"
-msgstr "Code"
-
-msgid "Actions"
-msgstr "Actions"
-
-msgid "View"
-msgstr "View"
-
-msgid "DHIS2 Objects Summary"
-msgstr "DHIS2 Objects Summary"
-
-msgid "Copy Objects"
-msgstr "Copy Objects"
-
-msgid "Copy Object"
-msgstr "Copy Object"
-
-msgid "Close"
-msgstr "Close"
-
-msgid "DHIS2 Metadata Import Payload"
-msgstr "DHIS2 Metadata Import Payload"
-
-msgid "Copy Payload"
-msgstr "Copy Payload"
-
-msgid "Download JSON"
-msgstr "Download JSON"
-
 msgid "DQA Metadata Overview"
 msgstr "DQA Metadata Overview"
 
 msgid "Assessment Details"
 msgstr "Assessment Details"
+
+msgid "Name"
+msgstr "Name"
 
 msgid "Description"
 msgstr "Description"
@@ -367,24 +296,6 @@ msgstr "Create DQA Datasets"
 msgid "Complete & Continue"
 msgstr "Complete & Continue"
 
-msgid "Will use existing category combinations from selected data elements"
-msgstr "Will use existing category combinations from selected data elements"
-
-msgid "Reuse existing category metadata from selected data elements"
-msgstr "Reuse existing category metadata from selected data elements"
-
-msgid "Extracted Category Metadata"
-msgstr "Extracted Category Metadata"
-
-msgid "items"
-msgstr "items"
-
-msgid "No items found - will use DHIS2 defaults"
-msgstr "No items found - will use DHIS2 defaults"
-
-msgid "Category Metadata"
-msgstr "Category Metadata"
-
 msgid "Category Options"
 msgstr "Category Options"
 
@@ -399,6 +310,9 @@ msgstr "Reuse existing DQA metadata when possible"
 
 msgid "Existing DQA Metadata"
 msgstr "Existing DQA Metadata"
+
+msgid "items"
+msgstr "items"
 
 msgid "No existing items found"
 msgstr "No existing items found"
@@ -472,6 +386,9 @@ msgstr "Provide training on data entry standards"
 
 msgid "Set up automated data quality monitoring"
 msgstr "Set up automated data quality monitoring"
+
+msgid "Close"
+msgstr "Close"
 
 msgid "Export Report"
 msgstr "Export Report"
@@ -608,6 +525,12 @@ msgstr "Create All in DHIS2"
 
 msgid "Add Category Option"
 msgstr "Add Category Option"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Actions"
+msgstr "Actions"
 
 msgid "Created in DHIS2"
 msgstr "Created in DHIS2"
@@ -892,6 +815,9 @@ msgstr "Preview"
 msgid "Hide"
 msgstr "Hide"
 
+msgid "View"
+msgstr "View"
+
 msgid "Keyword"
 msgstr "Keyword"
 
@@ -1047,6 +973,9 @@ msgstr "No providers configured yet."
 
 msgid "Add your first provider"
 msgstr "Add your first provider"
+
+msgid "Type"
+msgstr "Type"
 
 msgid "Provider"
 msgstr "Provider"
@@ -1813,9 +1742,6 @@ msgstr "Baseline ID"
 msgid "Created Date"
 msgstr "Created Date"
 
-msgid "Discrepancies"
-msgstr "Discrepancies"
-
 msgid "Error loading form data"
 msgstr "Error loading form data"
 
@@ -2319,30 +2245,14 @@ msgstr "Enter dataset description"
 msgid "Save Dataset"
 msgstr "Save Dataset"
 
-msgid "Data Corrections"
-msgstr "Data Corrections"
-
-msgid "Manage and track data corrections submitted by facilities"
-msgstr "Manage and track data corrections submitted by facilities"
-
-msgid "Corrections Management"
-msgstr "Corrections Management"
-
-msgid "Feature Coming Soon"
-msgstr "Feature Coming Soon"
-
-msgid ""
-"Correction submission forms, verification workflows, and correction "
-"tracking will be available here"
-msgstr ""
-"Correction submission forms, verification workflows, and correction "
-"tracking will be available here"
-
 msgid "Compare Results"
 msgstr "Compare Results"
 
 msgid "Analytical comparison across datasets with tolerance profiles."
 msgstr "Analytical comparison across datasets with tolerance profiles."
+
+msgid "Discrepancies"
+msgstr "Discrepancies"
 
 msgid "List and triage discrepancies with deep links to data entry."
 msgstr "List and triage discrepancies with deep links to data entry."
@@ -2715,71 +2625,60 @@ msgstr "New assessment created for Q4 2024"
 msgid "Recent Activity"
 msgstr "Recent Activity"
 
-msgid "At-a-glance visuals with drill-downs"
-msgstr "At-a-glance visuals with drill-downs"
+msgid "Help & Documentation"
+msgstr "Help & Documentation"
 
-msgid "Facility Dashboard"
-msgstr "Facility Dashboard"
+msgid "Getting Started"
+msgstr "Getting Started"
 
-msgid "Trends & Time Series"
-msgstr "Trends & Time Series"
+msgid "Create and manage data quality assessments"
+msgstr "Create and manage data quality assessments"
 
-msgid "Discrepancy Heatmap"
-msgstr "Discrepancy Heatmap"
+msgid "Analyze data quality across different dimensions"
+msgstr "Analyze data quality across different dimensions"
 
-msgid "DQ Dimensions Dashboard"
-msgstr "DQ Dimensions Dashboard"
+msgid "Generate comprehensive reports"
+msgstr "Generate comprehensive reports"
 
-msgid "Success Criteria Dashboard"
-msgstr "Success Criteria Dashboard"
+msgid "Configure metadata and organizational units"
+msgstr "Configure metadata and organizational units"
 
-msgid "Exports & Sharing"
-msgstr "Exports & Sharing"
+msgid "Quick Navigation"
+msgstr "Quick Navigation"
 
-msgid "Visual summaries and exports"
-msgstr "Visual summaries and exports"
+msgid "Overview of your assessments and system status"
+msgstr "Overview of your assessments and system status"
 
-msgid "Data Entry"
-msgstr "Data Entry"
+msgid "View and manage existing assessments"
+msgstr "View and manage existing assessments"
 
-msgid "Enter register and summary data for comparison with DHIS2"
-msgstr "Enter register and summary data for comparison with DHIS2"
+msgid "Create new assessments with step-by-step wizard"
+msgstr "Create new assessments with step-by-step wizard"
 
-msgid "Register Data"
-msgstr "Register Data"
+msgid "Access and review assessment data"
+msgstr "Access and review assessment data"
 
-msgid "Summary Data"
-msgstr "Summary Data"
+msgid "Perform detailed data quality analysis"
+msgstr "Perform detailed data quality analysis"
 
-msgid "Register Data Entry"
-msgstr "Register Data Entry"
+msgid "Reports"
+msgstr "Reports"
 
-msgid "Enter data as recorded in facility registers"
-msgstr "Enter data as recorded in facility registers"
+msgid "Generate and export assessment reports"
+msgstr "Generate and export assessment reports"
 
-msgid "Register data entry forms will be available here"
-msgstr "Register data entry forms will be available here"
+msgid "Configure datasets, data elements, and organizational units"
+msgstr "Configure datasets, data elements, and organizational units"
 
-msgid "Summary Data Entry"
-msgstr "Summary Data Entry"
+msgid "Need More Help?"
+msgstr "Need More Help?"
 
-msgid "Enter data as recorded in facility summary reports"
-msgstr "Enter data as recorded in facility summary reports"
-
-msgid "Summary data entry forms will be available here"
-msgstr "Summary data entry forms will be available here"
-
-msgid "Data Quality Discrepancies"
-msgstr "Data Quality Discrepancies"
-
-msgid "Review and manage data quality issues identified during assessments"
-msgstr "Review and manage data quality issues identified during assessments"
-
-msgid "Discrepancy Management"
-msgstr "Discrepancy Management"
-
-msgid "Discrepancy detection and management tools will be available here"
-msgstr "Discrepancy detection and management tools will be available here"
+msgid ""
+"For detailed documentation and support, please contact your system "
+"administrator or refer to the DHIS2 DQA360 documentation."
+msgstr ""
+"For detailed documentation and support, please contact your system "
+"administrator or refer to the DHIS2 DQA360 documentation."
 
 msgid "Unable to connect. Verify the URL and credentials."
 msgstr "Unable to connect. Verify the URL and credentials."
@@ -3074,8 +2973,8 @@ msgstr "Parent"
 msgid "Path"
 msgstr "Path"
 
-msgid "Org Unit Mapping"
-msgstr "Org Unit Mapping"
+msgid "Organisation Unit Mapping"
+msgstr "Organisation Unit Mapping"
 
 msgid "{{n}} required"
 msgstr "{{n}} required"
@@ -3136,11 +3035,8 @@ msgstr "Loading local organisation units..."
 msgid "Please wait while we load the local organisation units for mapping targets."
 msgstr "Please wait while we load the local organisation units for mapping targets."
 
-msgid "Search source org units"
-msgstr "Search source org units"
-
-msgid "Search by name, id, code, path, level..."
-msgstr "Search by name, id, code, path, level..."
+msgid "Search by name, code, path, level..."
+msgstr "Search by name, code, path, level..."
 
 msgid "Apply all suggestions"
 msgstr "Apply all suggestions"
@@ -3171,14 +3067,8 @@ msgstr ""
 "The same local organisation unit is selected multiple times. Each target "
 "should be unique."
 
-msgid "Source org unit"
-msgstr "Source org unit"
-
-msgid "Target (local)"
-msgstr "Target (local)"
-
-msgid "Suggestion"
-msgstr "Suggestion"
+msgid "No organisation units to map"
+msgstr "No organisation units to map"
 
 msgid "No matches for your search."
 msgstr "No matches for your search."
@@ -3186,11 +3076,17 @@ msgstr "No matches for your search."
 msgid "No selected organisation units to map."
 msgstr "No selected organisation units to map."
 
+msgid "Source Organisation Unit"
+msgstr "Source Organisation Unit"
+
+msgid "Target (Local)"
+msgstr "Target (Local)"
+
+msgid "Suggestion"
+msgstr "Suggestion"
+
 msgid "Choose local org unit"
 msgstr "Choose local org unit"
-
-msgid "Type to search by name, id, code, or parent"
-msgstr "Type to search by name, id, code, or parent"
 
 msgid "Duplicate target"
 msgstr "Duplicate target"
@@ -3374,6 +3270,9 @@ msgstr "Shown when only the command is received"
 
 msgid "Creating DQA Datasets"
 msgstr "Creating DQA Datasets"
+
+msgid "Download JSON"
+msgstr "Download JSON"
 
 msgid "Print"
 msgstr "Print"
@@ -3650,6 +3549,9 @@ msgstr "Failed to create assessment"
 msgid "Connection"
 msgstr "Connection"
 
+msgid "Org Unit Mapping"
+msgstr "Org Unit Mapping"
+
 msgid "Preparation"
 msgstr "Preparation"
 
@@ -3717,17 +3619,17 @@ msgstr "Create Dataset"
 msgid "Update Dataset"
 msgstr "Update Dataset"
 
-msgid "Facility Level"
-msgstr "Facility Level"
+msgid "Edit Data Elements"
+msgstr "Edit Data Elements"
 
-msgid "District Level"
-msgstr "District Level"
+msgid "Edit Data Sets"
+msgstr "Edit Data Sets"
 
-msgid "Regional Level"
-msgstr "Regional Level"
+msgid "Edit Org Units"
+msgstr "Edit Org Units"
 
-msgid "National Level"
-msgstr "National Level"
+msgid "Review & Summary"
+msgstr "Review & Summary"
 
 msgid "Confidential"
 msgstr "Confidential"
@@ -3741,298 +3643,14 @@ msgstr "3 Years"
 msgid "5 Years"
 msgstr "5 Years"
 
+msgid "7 Years"
+msgstr "7 Years"
+
 msgid "10 Years"
 msgstr "10 Years"
 
 msgid "Indefinite"
 msgstr "Indefinite"
-
-msgid "Unit Interval"
-msgstr "Unit Interval"
-
-msgid "Average (sum in org unit hierarchy)"
-msgstr "Average (sum in org unit hierarchy)"
-
-msgid "Standard deviation"
-msgstr "Standard deviation"
-
-msgid "Variance"
-msgstr "Variance"
-
-msgid "Min"
-msgstr "Min"
-
-msgid "Max"
-msgstr "Max"
-
-msgid "Start date cannot be in the past"
-msgstr "Start date cannot be in the past"
-
-msgid "End date cannot be in the past"
-msgstr "End date cannot be in the past"
-
-msgid "End date cannot be earlier than start date"
-msgstr "End date cannot be earlier than start date"
-
-msgid "Local (This instance)"
-msgstr "Local (This instance)"
-
-msgid "RECOMMENDED"
-msgstr "RECOMMENDED"
-
-msgid ""
-"Use metadata from this local DHIS2 instance. Access existing datasets, data "
-"elements, and organization units from the current system."
-msgstr ""
-"Use metadata from this local DHIS2 instance. Access existing datasets, data "
-"elements, and organization units from the current system."
-
-msgid "External DHIS2 instance"
-msgstr "External DHIS2 instance"
-
-msgid ""
-"Pull metadata from an external DHIS2 system. Configure connection, select "
-"datasets, data elements, and organization units."
-msgstr ""
-"Pull metadata from an external DHIS2 system. Configure connection, select "
-"datasets, data elements, and organization units."
-
-msgid "Use this field for criteria not covered by the pre-defined options above"
-msgstr "Use this field for criteria not covered by the pre-defined options above"
-
-msgid "Assessment Options"
-msgstr "Assessment Options"
-
-msgid "Manual Metadata Mode"
-msgstr "Manual Metadata Mode"
-
-msgid ""
-"No DHIS2 connection required. You will create custom datasets, data "
-"elements, and organization units in the following steps."
-msgstr ""
-"No DHIS2 connection required. You will create custom datasets, data "
-"elements, and organization units in the following steps."
-
-msgid ""
-"Choose from existing DHIS2 datasets or create new custom datasets for your "
-"assessment."
-msgstr ""
-"Choose from existing DHIS2 datasets or create new custom datasets for your "
-"assessment."
-
-msgid "+ Create New Dataset"
-msgstr "+ Create New Dataset"
-
-msgid "No Datasets Available"
-msgstr "No Datasets Available"
-
-msgid "No datasets found in your local instance."
-msgstr "No datasets found in your local instance."
-
-msgid "Create New Dataset"
-msgstr "Create New Dataset"
-
-msgid "Dataset Auto-Population"
-msgstr "Dataset Auto-Population"
-
-msgid "local datasets"
-msgstr "local datasets"
-
-msgid "new datasets"
-msgstr "new datasets"
-
-msgid "Reused from local"
-msgstr "Reused from local"
-
-msgid "Select Data Elements for Assessment"
-msgstr "Select Data Elements for Assessment"
-
-msgid ""
-"Choose data elements from selected datasets and custom elements. Category "
-"combinations are shown for each element."
-msgstr ""
-"Choose data elements from selected datasets and custom elements. Category "
-"combinations are shown for each element."
-
-msgid "No Datasets Selected"
-msgstr "No Datasets Selected"
-
-msgid "Please go back to step 2 and select datasets first."
-msgstr "Please go back to step 2 and select datasets first."
-
-msgid "Go Back to Select Datasets"
-msgstr "Go Back to Select Datasets"
-
-msgid "No Data Elements Available"
-msgstr "No Data Elements Available"
-
-msgid "The selected datasets do not contain any data elements."
-msgstr "The selected datasets do not contain any data elements."
-
-msgid "Go Back to Select Different Datasets"
-msgstr "Go Back to Select Different Datasets"
-
-msgid "Available Data Elements"
-msgstr "Available Data Elements"
-
-msgid "Search by name..."
-msgstr "Search by name..."
-
-msgid "Filter by Source"
-msgstr "Filter by Source"
-
-msgid "All Sources"
-msgstr "All Sources"
-
-msgid "DHIS2 Only"
-msgstr "DHIS2 Only"
-
-msgid "Custom Only"
-msgstr "Custom Only"
-
-msgid "custom"
-msgstr "custom"
-
-msgid ""
-"Select datasets in the previous tab to auto-populate data elements, or "
-"create custom ones."
-msgstr ""
-"Select datasets in the previous tab to auto-populate data elements, or "
-"create custom ones."
-
-msgid "+ Create New Data Element"
-msgstr "+ Create New Data Element"
-
-msgid "Define new data elements to collect specific information for your assessment"
-msgstr "Define new data elements to collect specific information for your assessment"
-
-msgid ""
-"Organisation units from your selected datasets will be available for "
-"selection."
-msgstr ""
-"Organisation units from your selected datasets will be available for "
-"selection."
-
-msgid "Review & Create Assessment"
-msgstr "Review & Create Assessment"
-
-msgid "Assessment Summary"
-msgstr "Assessment Summary"
-
-msgid "Please Select Metadata Source"
-msgstr "Please Select Metadata Source"
-
-msgid "Go back to Assessment Details and choose your metadata source to continue."
-msgstr "Go back to Assessment Details and choose your metadata source to continue."
-
-msgid ""
-"Set up a new data quality assessment by configuring metadata, selecting "
-"data sources, and defining evaluation criteria."
-msgstr ""
-"Set up a new data quality assessment by configuring metadata, selecting "
-"data sources, and defining evaluation criteria."
-
-msgid "Update the dataset information below"
-msgstr "Update the dataset information below"
-
-msgid "Define a new custom dataset for your assessment"
-msgstr "Define a new custom dataset for your assessment"
-
-msgid "A descriptive name for your dataset"
-msgstr "A descriptive name for your dataset"
-
-msgid "Dataset Code"
-msgstr "Dataset Code"
-
-msgid "Enter unique code"
-msgstr "Enter unique code"
-
-msgid "A unique identifier for the dataset"
-msgstr "A unique identifier for the dataset"
-
-msgid "Describe the purpose and scope of this dataset"
-msgstr "Describe the purpose and scope of this dataset"
-
-msgid "Select how often data is collected"
-msgstr "Select how often data is collected"
-
-msgid "Choose the frequency of data collection for this dataset"
-msgstr "Choose the frequency of data collection for this dataset"
-
-msgid "Dataset Preview"
-msgstr "Dataset Preview"
-
-msgid "Not specified"
-msgstr "Not specified"
-
-msgid "Create New Data Element"
-msgstr "Create New Data Element"
-
-msgid "Category Combinations"
-msgstr "Category Combinations"
-
-msgid "Data Element Details"
-msgstr "Data Element Details"
-
-msgid "Category Options Management"
-msgstr "Category Options Management"
-
-msgid "+ Add Category Option"
-msgstr "+ Add Category Option"
-
-msgid "No Category Options"
-msgstr "No Category Options"
-
-msgid "Create category options to use in categories."
-msgstr "Create category options to use in categories."
-
-msgid "Categories Management"
-msgstr "Categories Management"
-
-msgid "+ Add Category"
-msgstr "+ Add Category"
-
-msgid "No Categories"
-msgstr "No Categories"
-
-msgid "Create categories using category options."
-msgstr "Create categories using category options."
-
-msgid "Category Combinations Management"
-msgstr "Category Combinations Management"
-
-msgid "+ Add Category Combination"
-msgstr "+ Add Category Combination"
-
-msgid "No Category Combinations"
-msgstr "No Category Combinations"
-
-msgid "Create category combinations using categories."
-msgstr "Create category combinations using categories."
-
-msgid "Create Data Element"
-msgstr "Create Data Element"
-
-msgid "Edit Category Combination"
-msgstr "Edit Category Combination"
-
-msgid "Create Category Combination"
-msgstr "Create Category Combination"
-
-msgid "Edit Data Elements"
-msgstr "Edit Data Elements"
-
-msgid "Edit Data Sets"
-msgstr "Edit Data Sets"
-
-msgid "Edit Org Units"
-msgstr "Edit Org Units"
-
-msgid "Review & Summary"
-msgstr "Review & Summary"
-
-msgid "7 Years"
-msgstr "7 Years"
 
 msgid "You have unsaved changes. Are you sure you want to leave?"
 msgstr "You have unsaved changes. Are you sure you want to leave?"
@@ -4265,6 +3883,9 @@ msgstr "Delete Assessment"
 msgid "Data"
 msgstr "Data"
 
+msgid "Data Entry"
+msgstr "Data Entry"
+
 msgid "Export Data"
 msgstr "Export Data"
 
@@ -4440,6 +4061,9 @@ msgstr ""
 "Please configure the external DHIS2 instance first in the DHIS2 "
 "Configuration tab."
 
+msgid "No Datasets Selected"
+msgstr "No Datasets Selected"
+
 msgid ""
 "Please select one or more datasets from the Data Sets tab to view their "
 "data elements."
@@ -4492,6 +4116,9 @@ msgstr "Show selected only"
 msgid "Selection Summary"
 msgstr "Selection Summary"
 
+msgid "Not specified"
+msgstr "Not specified"
+
 msgid "No data elements match your current filters"
 msgstr "No data elements match your current filters"
 
@@ -4515,6 +4142,9 @@ msgstr "Dataset Management"
 
 msgid "Use for Assessment"
 msgstr "Use for Assessment"
+
+msgid "Create New Dataset"
+msgstr "Create New Dataset"
 
 msgid "Using Demo Data"
 msgstr "Using Demo Data"
@@ -4618,6 +4248,9 @@ msgstr "Choose Metadata Source"
 msgid "Select how you want to provide metadata for your assessment"
 msgstr "Select how you want to provide metadata for your assessment"
 
+msgid "External DHIS2 instance"
+msgstr "External DHIS2 instance"
+
 msgid ""
 "Pull datasets, data elements, and organization units directly from an "
 "external DHIS2 instance"
@@ -4639,6 +4272,16 @@ msgstr "Seamless integration with existing workflows"
 
 msgid "Requires network connection and valid DHIS2 credentials"
 msgstr "Requires network connection and valid DHIS2 credentials"
+
+msgid "Local (This instance)"
+msgstr "Local (This instance)"
+
+msgid ""
+"Use metadata from this local DHIS2 instance. Access existing datasets, data "
+"elements, and organization units from the current system."
+msgstr ""
+"Use metadata from this local DHIS2 instance. Access existing datasets, data "
+"elements, and organization units from the current system."
 
 msgid "Direct access to local metadata"
 msgstr "Direct access to local metadata"
@@ -4860,115 +4503,21 @@ msgstr "Complete All Mappings to Continue"
 msgid "Map all organization units above to proceed to the next step"
 msgstr "Map all organization units above to proceed to the next step"
 
-msgid "Outbox & Logs"
-msgstr "Outbox & Logs"
-
-msgid "Coming soon"
-msgstr "Coming soon"
-
-msgid "Outbox listing and delivery logs"
-msgstr "Outbox listing and delivery logs"
-
-msgid "Rules"
-msgstr "Rules"
-
-msgid "Define triggers and thresholds"
-msgstr "Define triggers and thresholds"
-
-msgid "Templates"
-msgstr "Templates"
-
-msgid "Manage message templates"
-msgstr "Manage message templates"
-
-msgid "Delivery Diagnostics"
-msgstr "Delivery Diagnostics"
-
-msgid "Channel and provider health"
-msgstr "Channel and provider health"
-
-msgid "Rules, templates, outbox and diagnostics"
-msgstr "Rules, templates, outbox and diagnostics"
-
-msgid "Quick Dataset Setup"
-msgstr "Quick Dataset Setup"
-
-msgid "Create a new dataset for data quality assessments"
-msgstr "Create a new dataset for data quality assessments"
-
-msgid ""
-"Create a basic dataset template that can be used for data quality "
-"assessments"
-msgstr ""
-"Create a basic dataset template that can be used for data quality "
-"assessments"
-
-msgid "Quick Setup"
-msgstr "Quick Setup"
-
-msgid ""
-"This creates a basic dataset template. For advanced configuration with data "
-"elements, organization units, and detailed settings, use the full setup "
-"process."
-msgstr ""
-"This creates a basic dataset template. For advanced configuration with data "
-"elements, organization units, and detailed settings, use the full setup "
-"process."
-
-msgid "Enter dataset name (e.g., \"Malaria Treatment Data\")"
-msgstr "Enter dataset name (e.g., \"Malaria Treatment Data\")"
-
-msgid "Describe what this dataset will be used for..."
-msgstr "Describe what this dataset will be used for..."
-
-msgid "Dataset category"
-msgstr "Dataset category"
-
-msgid "Advanced Setup"
-msgstr "Advanced Setup"
-
-msgid "Create Dataset Template"
-msgstr "Create Dataset Template"
-
-msgid "Next Steps"
-msgstr "Next Steps"
-
-msgid "Configure Data Elements"
-msgstr "Configure Data Elements"
-
-msgid "Add specific data elements that will be collected in this dataset"
-msgstr "Add specific data elements that will be collected in this dataset"
-
-msgid "Assign Organization Units"
-msgstr "Assign Organization Units"
-
-msgid "Select which facilities or organization units will use this dataset"
-msgstr "Select which facilities or organization units will use this dataset"
-
-msgid "Use the configured dataset to create a data quality assessment"
-msgstr "Use the configured dataset to create a data quality assessment"
-
 msgid "Generate and export comprehensive data quality assessment reports"
 msgstr "Generate and export comprehensive data quality assessment reports"
 
 msgid "Report Generation"
 msgstr "Report Generation"
 
+msgid "Feature Coming Soon"
+msgstr "Feature Coming Soon"
+
 msgid ""
 "Report templates, export options (PDF/Excel), and report scheduling will be "
 "available here"
 msgstr ""
 "Report templates, export options (PDF/Excel), and report scheduling will be "
 "available here"
-
-msgid "Multi-Select Dataset Test"
-msgstr "Multi-Select Dataset Test"
-
-msgid "This page tests the multi-select functionality for datasets."
-msgstr "This page tests the multi-select functionality for datasets."
-
-msgid "Dataset Selection (Multi-Select Mode)"
-msgstr "Dataset Selection (Multi-Select Mode)"
 
 msgid "DHIS2 data engine is required for creating assessment tools"
 msgstr "DHIS2 data engine is required for creating assessment tools"

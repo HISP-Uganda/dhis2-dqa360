@@ -43,15 +43,15 @@ const OrgUnitMappingStep = ({
         [localOrgUnits]
     )
 
+    // ---------- rows (always 1:1 with selected OUs) ----------
+    const [rows, setRows] = useState([])
+
     // Get already mapped target IDs to filter them out from available options
     const mappedTargetIds = useMemo(() => {
         return new Set((rows || []).map(r => r.target).filter(Boolean))
     }, [rows])
     const localById = useMemo(() => new Map((localOptions || []).map(o => [String(o.id), o])), [localOptions])
     const selectedById = useMemo(() => new Map((selectedOrgUnits || []).map(o => [String(o.id), o])), [selectedOrgUnits])
-
-    // ---------- rows (always 1:1 with selected OUs) ----------
-    const [rows, setRows] = useState([])
     useEffect(() => {
         const bySource = new Map((orgUnitMappings || []).map(m => [String(m.source || ''), m]))
         const next = (selectedOrgUnits || []).map(ou => {
