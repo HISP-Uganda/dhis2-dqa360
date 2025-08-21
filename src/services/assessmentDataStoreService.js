@@ -26,6 +26,7 @@ import { handleDatastoreError, withSuppressed404s } from '../utils/errorHandler'
  */
 
 const NAMESPACE = 'dqa360'
+const ASSESSMENT_KEY_PREFIX = 'assessment_'
 
 export const useAssessmentDataStore = () => {
     const engine = useDataEngine()
