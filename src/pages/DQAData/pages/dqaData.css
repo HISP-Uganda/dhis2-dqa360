@@ -1,0 +1,16 @@
+:root {
+  --card-border: #e1e5e9;
+}
+
+.dqaDataContent h2 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.dqaDataContent p {
+  margin: 0 0 8px 0;
+  color: #666;
+  font-size: 13px;
+}

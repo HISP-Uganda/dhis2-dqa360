@@ -1,0 +1,510 @@
+{
+  "dataSets": [
+    {
+      "id": "A1B2C3D4E5F",
+      "name": "Test Assessment - Register",
+      "shortName": "Test Assessment - Register",
+      "code": "A1B2C3D4",
+      "description": "Test Assessment - Dataset for registering and tracking data quality assessment activities",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "REG001ELEM01"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "REG001ELEM02"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "REG001ELEM03"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "ImspTQPwCqd"
+        },
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "F6G7H8J9K0L",
+      "name": "Test Assessment - Summary",
+      "shortName": "Test Assessment - Summary",
+      "code": "F6G7H8J9",
+      "description": "Test Assessment - Dataset for summarizing data quality assessment results and metrics",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "SUM001ELEM01"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "SUM001ELEM02"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "SUM001ELEM03"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "ImspTQPwCqd"
+        },
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "M2N3P4Q5R6S",
+      "name": "Test Assessment - Reported",
+      "shortName": "Test Assessment - Reported",
+      "code": "M2N3P4Q5",
+      "description": "Test Assessment - Dataset for reported data values and submission tracking",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "RPT001ELEM01"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "RPT001ELEM02"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "RPT001ELEM03"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "ImspTQPwCqd"
+        },
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "T7U8V9W0X1Y",
+      "name": "Test Assessment - Corrected",
+      "shortName": "Test Assessment - Corrected",
+      "code": "T7U8V9W0",
+      "description": "Test Assessment - Dataset for data corrections and quality improvement actions",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "COR001ELEM01"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "COR001ELEM02"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "COR001ELEM03"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "ImspTQPwCqd"
+        },
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ],
+  "dataElements": [
+    {
+      "id": "REG001ELEM01",
+      "name": "REG - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "shortName": "REG - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "code": "F5G6H7J8",
+      "description": "Register dataset element for tracking new patients on AZT + 3TC + NVP regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "REG001ELEM02",
+      "name": "REG - Shift to NVP + AZT + 3TC 10mg/ml",
+      "shortName": "REG - Shift to NVP + AZT + 3TC 10mg/ml",
+      "code": "M1N2P3Q4",
+      "description": "Register dataset element for tracking patients shifting to NVP + AZT + 3TC regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "REG001ELEM03",
+      "name": "REG - Prev. month on TDF 300mg + ddI 200mg",
+      "shortName": "REG - Prev. month on TDF 300mg + ddI 200mg",
+      "code": "T6U7V8W9",
+      "description": "Register dataset element for tracking patients from previous month on TDF + ddI regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "SUM001ELEM01",
+      "name": "SUM - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "shortName": "SUM - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "code": "B4N7Q1R3",
+      "description": "Summary dataset element for aggregating new patients on AZT + 3TC + NVP regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "SUM001ELEM02",
+      "name": "SUM - Shift to NVP + AZT + 3TC 10mg/ml",
+      "shortName": "SUM - Shift to NVP + AZT + 3TC 10mg/ml",
+      "code": "M5P8K2L9",
+      "description": "Summary dataset element for aggregating patients shifting to NVP + AZT + 3TC regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "SUM001ELEM03",
+      "name": "SUM - Prev. month on TDF 300mg + ddI 200mg",
+      "shortName": "SUM - Prev. month on TDF 300mg + ddI 200mg",
+      "code": "H8J2L5N7",
+      "description": "Summary dataset element for aggregating patients from previous month on TDF + ddI regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "RPT001ELEM01",
+      "name": "RPT - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "shortName": "RPT - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "code": "Q1R3F6H8",
+      "description": "Reported dataset element for tracking reported new patients on AZT + 3TC + NVP regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "RPT001ELEM02",
+      "name": "RPT - Shift to NVP + AZT + 3TC 10mg/ml",
+      "shortName": "RPT - Shift to NVP + AZT + 3TC 10mg/ml",
+      "code": "L9M5P8K2",
+      "description": "Reported dataset element for tracking reported patients shifting to NVP + AZT + 3TC regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "RPT001ELEM03",
+      "name": "RPT - Prev. month on TDF 300mg + ddI 200mg",
+      "shortName": "RPT - Prev. month on TDF 300mg + ddI 200mg",
+      "code": "N7Q1R3F6",
+      "description": "Reported dataset element for tracking reported patients from previous month on TDF + ddI regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "COR001ELEM01",
+      "name": "COR - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "shortName": "COR - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "code": "P8K2L9M5",
+      "description": "Corrected dataset element for tracking corrected new patients on AZT + 3TC + NVP regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "COR001ELEM02",
+      "name": "COR - Shift to NVP + AZT + 3TC 10mg/ml",
+      "shortName": "COR - Shift to NVP + AZT + 3TC 10mg/ml",
+      "code": "R3F6H8J2",
+      "description": "Corrected dataset element for tracking corrected patients shifting to NVP + AZT + 3TC regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "COR001ELEM03",
+      "name": "COR - Prev. month on TDF 300mg + ddI 200mg",
+      "shortName": "COR - Prev. month on TDF 300mg + ddI 200mg",
+      "code": "X1Y2Z3A4",
+      "description": "Corrected dataset element for tracking corrected patients from previous month on TDF + ddI regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ]
+}

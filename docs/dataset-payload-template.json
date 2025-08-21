@@ -1,0 +1,81 @@
+{
+  "dataSets": [
+    {
+      "id": "{{DATASET_UID}}",
+      "name": "{{ASSESSMENT_NAME}} - {{DATASET_TYPE}}",
+      "shortName": "{{ASSESSMENT_NAME}} - {{DATASET_TYPE}}",
+      "code": "{{8_CHAR_CODE}}",
+      "description": "{{ASSESSMENT_DESCRIPTION}} - Dataset for {{DATASET_PURPOSE}}",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "{{DATA_ELEMENT_UID_1}}"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "{{DATA_ELEMENT_UID_2}}"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "{{ORG_UNIT_UID_1}}"
+        },
+        {
+          "id": "{{ORG_UNIT_UID_2}}"
+        }
+      ],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ],
+  "dataElements": [
+    {
+      "id": "{{DATA_ELEMENT_UID}}",
+      "name": "{{PREFIX}} - {{ORIGINAL_ELEMENT_NAME}}",
+      "shortName": "{{PREFIX}} - {{ORIGINAL_ELEMENT_SHORT_NAME}}",
+      "code": "{{8_CHAR_CODE}}",
+      "description": "{{DATASET_TYPE}} dataset element for {{ELEMENT_PURPOSE}}",
+      "valueType": "{{VALUE_TYPE}}",
+      "aggregationType": "{{AGGREGATION_TYPE}}",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "{{CATEGORY_COMBO_ID}}"
+      },
+      "zeroIsSignificant": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ]
+}

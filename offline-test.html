@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DQA360 Offline Mode Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background-color: #0053AF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #003d7a;
+        }
+        .button.secondary {
+            background-color: #6c757d;
+        }
+        .button.secondary:hover {
+            background-color: #545b62;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            border-left: 4px solid #0053AF;
+            background-color: #e7f3ff;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+            color: #155724;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 DQA360 Offline Mode Test</h1>
+        
+        <div class="status">
+            <strong>Current Status:</strong> Ready to test offline mode
+        </div>
+        
+        <h2>🎯 Quick Start Options</h2>
+        
+        <h3>Option 1: URL Parameter (Recommended)</h3>
+        <p>Click the button below to start DQA360 in offline mode:</p>
+        <a href="http://localhost:3000?offline=true" class="button" target="_blank">
+            🔧 Start Offline Mode
+        </a>
+        
+        <h3>Option 2: Script Command</h3>
+        <p>Run this command in your terminal:</p>
+        <code>npm run start:offline</code>
+        
+        <h3>Option 3: Manual Setup</h3>
+        <p>1. Start the development server: <code>npm start</code></p>
+        <p>2. Open: <code>http://localhost:3000?offline=true</code></p>
+        
+        <h2>✅ What to Expect</h2>
+        <ul>
+            <li><strong>No Authentication Required:</strong> Bypasses DHIS2 login completely</li>
+            <li><strong>Mock User:</strong> Logged in as "admin" with full permissions</li>
+            <li><strong>All Features Work:</strong> UI functionality available for testing</li>
+            <li><strong>Local Storage:</strong> Data persists in browser localStorage</li>
+            <li><strong>Clean Console:</strong> No authentication errors or warnings</li>
+        </ul>
+        
+        <h2>🧪 Test Checklist</h2>
+        <div id="testResults">
+            <p>After starting offline mode, test these features:</p>
+            <ul>
+                <li>✅ App loads without errors</li>
+                <li>✅ Navigate to "Manage Assessments"</li>
+                <li>✅ Create a new assessment</li>
+                <li>✅ Edit an existing assessment</li>
+                <li>✅ Check Administration > Datastore Management</li>
+                <li>✅ Test Fix ID functionality</li>
+                <li>✅ Verify console is clean (no errors)</li>
+            </ul>
+        </div>
+        
+        <h2>🔧 Troubleshooting</h2>
+        <div class="status error">
+            <strong>If you still see authentication errors:</strong>
+            <ol>
+                <li>Make sure you're using the URL with <code>?offline=true</code></li>
+                <li>Clear browser cache and localStorage</li>
+                <li>Restart the development server</li>
+                <li>Check browser console for any remaining errors</li>
+            </ol>
+        </div>
+        
+        <div class="status success">
+            <strong>Success Indicators:</strong>
+            <ul>
+                <li>Console shows: "🔧 DQA360: Starting in Offline Mode"</li>
+                <li>No 401 Unauthorized errors</li>
+                <li>App loads with mock user data</li>
+                <li>All navigation works smoothly</li>
+            </ul>
+        </div>
+        
+        <h2>📚 Additional Resources</h2>
+        <a href="./DEVELOPMENT_GUIDE.md" class="button secondary">Development Guide</a>
+        <a href="./ERROR_FIXES_COMPLETE.md" class="button secondary">Error Fixes Documentation</a>
+        
+        <hr style="margin: 30px 0;">
+        <p><em>DQA360 - Data Quality Assurance for DHIS2</em></p>
+    </div>
+    
+    <script>
+        // Check if we can detect the development server
+        fetch('http://localhost:3000')
+            .then(response => {
+                if (response.ok) {
+                    document.querySelector('.status').innerHTML = 
+                        '<strong>✅ Development Server:</strong> Running on http://localhost:3000';
+                    document.querySelector('.status').className = 'status success';
+                }
+            })
+            .catch(() => {
+                document.querySelector('.status').innerHTML = 
+                    '<strong>⚠️ Development Server:</strong> Not running. Please start with <code>npm start</code> first.';
+                document.querySelector('.status').className = 'status error';
+            });
+    </script>
+</body>
+</html>

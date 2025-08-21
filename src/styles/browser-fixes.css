@@ -1,0 +1,16 @@
+/**
+ * Browser-specific CSS fixes to suppress warnings
+ * 
+ * This file addresses the StyleSheet warnings that occur when CSS-in-JS libraries
+ * (like styled-components or @dhis2/ui) try to inject CSS rules containing
+ * Mozilla-specific pseudo-elements in non-Firefox browsers.
+ * 
+ * The warnings occur because browsers reject CSS rules that contain unknown
+ * pseudo-elements, but CSS-in-JS libraries inject them anyway.
+ */
+
+/*
+ * The actual solution is to prevent the CSS-in-JS library from injecting
+ * these problematic rules in the first place. Since we can't easily modify
+ * the library behavior, we'll provide a JavaScript solution instead.
+ */

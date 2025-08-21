@@ -1,0 +1,190 @@
+{
+  "dataSets": [
+    {
+      "id": "A1B2C3D4E5F",
+      "name": "Test Assessment - Register",
+      "shortName": "Test Assessment - Register",
+      "code": "A1B2C3D4",
+      "description": "Test Assessment - Dataset for registering and tracking data quality assessment activities",
+      "periodType": "Monthly",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "dataSetElements": [
+        {
+          "dataElement": {
+            "id": "F5G6H7J8K9L"
+          },
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "M1N2P3Q4R5S"
+          },
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        },
+        {
+          "dataElement": {
+            "id": "T6U7V8W9X0Y"
+          },
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        }
+      ],
+      "organisationUnits": [
+        {
+          "id": "ImspTQPwCqd"
+        },
+        {
+          "id": "O6uvpzGd5pu"
+        },
+        {
+          "id": "fdc6uOvgoji"
+        }
+      ],
+      "sections": [],
+      "indicators": [],
+      "compulsoryDataElementOperands": [],
+      "dataInputPeriods": [],
+      "legendSets": [],
+      "interpretations": [],
+      "dataElementDecorations": [],
+      "validCompleteOnly": false,
+      "noValueRequiresComment": false,
+      "skipOffline": false,
+      "dataElementDecoration": false,
+      "renderAsTabs": false,
+      "renderHorizontally": false,
+      "mobile": false,
+      "version": 1,
+      "expiryDays": 0,
+      "timelyDays": 15,
+      "notifyCompletingUser": false,
+      "openFuturePeriods": 0,
+      "openPeriodsAfterCoEndDate": 0,
+      "fieldCombinationRequired": false,
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "userGroupAccesses": [],
+      "userAccesses": [],
+      "favorites": [],
+      "translations": [],
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ],
+  "dataElements": [
+    {
+      "id": "F5G6H7J8K9L",
+      "name": "REG - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "shortName": "REG - New on AZT 10mg/ml + 3TC 10mg/ml + NVP 10mg/ml",
+      "code": "F5G6H7J8",
+      "description": "Register dataset element for tracking new patients on AZT + 3TC + NVP regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "optionSetValue": false,
+      "dimensionItem": "F5G6H7J8K9L",
+      "dimensionItemType": "DATA_ELEMENT",
+      "totalAggregationType": "SUM",
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "userGroupAccesses": [],
+      "userAccesses": [],
+      "favorites": [],
+      "translations": [],
+      "legendSets": [],
+      "aggregationLevels": [],
+      "attributeValues": [],
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "M1N2P3Q4R5S",
+      "name": "REG - Shift to NVP + AZT + 3TC 10mg/ml",
+      "shortName": "REG - Shift to NVP + AZT + 3TC 10mg/ml",
+      "code": "M1N2P3Q4",
+      "description": "Register dataset element for tracking patients shifting to NVP + AZT + 3TC regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "optionSetValue": false,
+      "dimensionItem": "M1N2P3Q4R5S",
+      "dimensionItemType": "DATA_ELEMENT",
+      "totalAggregationType": "SUM",
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "userGroupAccesses": [],
+      "userAccesses": [],
+      "favorites": [],
+      "translations": [],
+      "legendSets": [],
+      "aggregationLevels": [],
+      "attributeValues": [],
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    },
+    {
+      "id": "T6U7V8W9X0Y",
+      "name": "REG - Prev. month on TDF 300mg + ddI 200mg",
+      "shortName": "REG - Prev. month on TDF 300mg + ddI 200mg",
+      "code": "T6U7V8W9",
+      "description": "Register dataset element for tracking patients from previous month on TDF + ddI regimen",
+      "valueType": "INTEGER",
+      "aggregationType": "SUM",
+      "domainType": "AGGREGATE",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "zeroIsSignificant": false,
+      "optionSetValue": false,
+      "dimensionItem": "T6U7V8W9X0Y",
+      "dimensionItemType": "DATA_ELEMENT",
+      "totalAggregationType": "SUM",
+      "publicAccess": "rw------",
+      "externalAccess": false,
+      "userGroupAccesses": [],
+      "userAccesses": [],
+      "favorites": [],
+      "translations": [],
+      "legendSets": [],
+      "aggregationLevels": [],
+      "attributeValues": [],
+      "sharing": {
+        "owner": "admin",
+        "external": false,
+        "users": {},
+        "userGroups": {},
+        "public": "rw------"
+      }
+    }
+  ]
+}

@@ -1,0 +1,833 @@
+/* DatasetPreparation Component Styles */
+
+.container {
+    /* padding: 20px; */
+    /* max-width: 1200px; */
+    /* margin: 0 auto; */
+}
+
+.header {
+    margin-bottom: 12px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 8px 0;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Tab Navigation */
+.tabContainer {
+    margin-bottom: 24px;
+}
+
+/* alias to support existing component class name */
+.tabs,
+.tabBar {
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+}
+
+.tabContent {
+    margin-top: 24px;
+}
+
+.tab {
+    padding: 8px 16px;
+    cursor: pointer;
+    border: 1px solid #e9ecef;
+    background-color: white;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    min-height: 40px;
+    box-sizing: border-box;
+}
+
+.tab:hover {
+    color: #495057;
+    background-color: #f8f9fa;
+}
+
+.tab.active {
+    color: #495057;
+    background-color: white;
+    border-bottom-color: #007bff;
+}
+
+/* explicit class to use from JSX for active tab */
+.activeTab {
+    color: #495057;
+    background-color: white;
+    border-bottom: 3px solid #007bff;
+}
+
+.tabIcon {
+    font-size: 16px;
+}
+
+.tabLabel {
+    font-weight: 600;
+}
+
+.tabCount {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+/* Content Card */
+.contentCard {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+}
+
+.cardContent {
+    padding: 8px;
+}
+
+/* Dataset Configuration Section */
+.configSection {
+    margin-bottom: 20px;
+}
+
+/* small vertical spacing between sections */
+.configSection + .configSection,
+.dataElementsSection + .configSection,
+.configSection + .dataElementsSection,
+.smsSection,
+.dataElementsSection {
+    margin-top: 12px;
+}
+
+.configHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.configTitle {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.configDescription {
+    font-size: 13px;
+    color: #666;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.formGridFull {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.checkboxGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #495057;
+    cursor: pointer;
+    padding: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.checkboxLabel:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.checkboxLabel input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.checkboxLabel span {
+    user-select: none;
+}
+
+/* Data Elements Section */
+.dataElementsSection {
+    margin-top: 20px;
+}
+
+.dataElementsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.dataElementsTitle {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.dataElementsTable {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.elementCode {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    background-color: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.elementCode.register {
+    color: #2196f3;
+}
+
+.elementCode.summary {
+    color: #4caf50;
+}
+
+.elementCode.reported {
+    color: #ff9800;
+}
+
+.elementCode.corrected {
+    color: #9c27b0;
+}
+
+.elementType {
+    font-size: 11px;
+}
+
+/* Action Buttons */
+.actionButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+/* Progress Modal */
+.progressContent {
+    padding: 16px;
+}
+
+.progressText {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+}
+
+.progressSubtext {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.progressCounter {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Loading States */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.loadingText {
+    margin-left: 12px;
+    color: #6c757d;
+}
+
+/* Error States */
+.errorContainer {
+    margin-bottom: 16px;
+}
+
+.successContainer {
+    margin-bottom: 16px;
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.emptyStateIcon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.emptyStateTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.emptyStateText {
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .configHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .actionButtons {
+        flex-direction: column;
+    }
+    
+    .tabBar {
+        flex-wrap: wrap;
+    }
+    
+    .tab {
+        padding: 10px 16px;
+        font-size: 13px;
+        flex: 1;
+        min-width: 0;
+        height: 50px;
+        min-height: 50px;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.contentCard {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Focus States */
+.tab:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Hover Effects */
+.actionButtons button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.actionButtons button {
+    transition: all 0.2s ease;
+}
+
+/* Organization Units Section */
+.orgUnitsSection {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.orgUnitsHeader {
+    margin-bottom: 16px;
+}
+
+.orgUnitsTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.orgUnitsDescription {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.orgUnitsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.orgUnitItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.orgUnitItem:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.orgUnitIcon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.orgUnitInfo {
+    flex: 1;
+}
+
+.orgUnitName {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.orgUnitCode {
+    font-size: 12px;
+    color: #666;
+}
+
+.orgUnitCode code {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Sharing Settings Section */
+.sharingSection {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.sharingHeader {
+    margin-bottom: 16px;
+}
+
+.sharingTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sharingDescription {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.sharingOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sharingOption {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.sharingOption:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.sharingOptionIcon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.sharingOptionContent {
+    flex: 1;
+}
+
+.sharingOptionTitle {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.sharingOptionDescription {
+    font-size: 13px;
+    color: #666;
+}
+
+.sharingOptionControl {
+    display: flex;
+    align-items: center;
+}
+
+.ownerTag {
+    background: #e3f2fd !important;
+    color: #1976d2 !important;
+    border: 1px solid #bbdefb !important;
+}
+
+/* Data Elements Table Styles */
+.dataElementsTable {
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.elementName {
+    font-weight: 500;
+    color: #333;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.elementFormName {
+    color: #666;
+    font-size: 13px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.elementShortName {
+    color: #666;
+    font-size: 13px;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.elementCode {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: #495057;
+    border: 1px solid #e9ecef;
+}
+
+.elementCodeInput {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+    font-size: 11px !important;
+    width: 100px !important;
+}
+
+.elementName input {
+    font-size: 12px !important;
+    width: 150px !important;
+}
+
+.elementFormName input {
+    font-size: 12px !important;
+    width: 140px !important;
+}
+
+.elementShortName input {
+    font-size: 12px !important;
+    width: 120px !important;
+}
+
+.elementUid {
+    background: #e3f2fd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 10px;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.elementType {
+    background: #e8f5e8 !important;
+    color: #2e7d32 !important;
+    border: 1px solid #c8e6c9 !important;
+}
+
+.aggregationType {
+    background: #fff3e0 !important;
+    color: #f57c00 !important;
+    border: 1px solid #ffcc02 !important;
+}
+
+.categoryCombo {
+    font-size: 12px;
+    color: #666;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Organization Units Table Styles */
+.orgUnitsTable {
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.orgUnitDisplayName {
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orgUnitCode {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: #495057;
+    border: 1px solid #e9ecef;
+}
+
+.orgUnitUid {
+    background: #e3f2fd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 10px;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.orgUnitParentName {
+    color: #666;
+    font-size: 13px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orgUnitParentUid {
+    background: #f3e5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 10px;
+    color: #7b1fa2;
+    border: 1px solid #e1bee7;
+}
+
+.orgUnitLevel {
+    background: #e8f5e8 !important;
+    color: #2e7d32 !important;
+    border: 1px solid #c8e6c9 !important;
+}
+
+/* Configuration Sections (flattened: no card-like styling) */
+.configSection {
+    margin-bottom: 16px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.sectionHeader {
+    margin-bottom: 12px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.sectionTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sectionDescription {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* SMS Messages Subsection */
+.smsMessagesSection {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.subsectionTitle {
+    font-size: 16px;
+    font-weight: 500;
+    color: #495057;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Enhanced form grid for better spacing */
+.configSection .formGrid {
+    gap: 20px;
+}
+
+.configSection .formGridFull {
+    margin-top: 16px;
+}
+
+.configSection .checkboxGrid {
+    margin-top: 16px;
+    gap: 16px;
+}
+
+/* SMS Configuration specific styling */
+.configSection .checkboxLabel {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.configSection .checkboxLabel:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.configSection .checkboxLabel input[type="checkbox"]:checked + span {
+    font-weight: 500;
+    color: #0d6efd;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 1200px) {
+    .dataElementsTable,
+    .orgUnitsTable {
+        font-size: 12px;
+    }
+    
+    .elementName,
+    .orgUnitDisplayName {
+        max-width: 150px;
+    }
+    
+    .elementFormName,
+    .elementShortName,
+    .orgUnitParentName {
+        max-width: 120px;
+    }
+    
+    .configSection {
+        padding: 0;
+        margin-bottom: 16px;
+    }
+    
+    .sectionTitle {
+        font-size: 16px;
+    }
+    
+    .subsectionTitle {
+        font-size: 14px;
+    }
+}

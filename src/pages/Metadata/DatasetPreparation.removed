@@ -1,0 +1,1272 @@
+import React, { useState, useEffect } from 'react'
+import { useDataEngine } from '@dhis2/app-runtime'
+import { useNavigate } from 'react-router-dom'
+import { 
+    Box, 
+    Card, 
+    Button, 
+    InputField,
+    TextAreaField,
+    NoticeBox, 
+    CircularLoader,
+    Tag,
+    DataTable,
+    DataTableHead,
+    DataTableBody,
+    DataTableRow,
+    DataTableCell,
+    DataTableColumnHeader,
+    Modal,
+    ModalTitle,
+    ModalContent,
+    LinearLoader,
+    SingleSelect,
+    SingleSelectOption,
+    Checkbox
+} from '@dhis2/ui'
+import i18n from '@dhis2/d2-i18n'
+import DatasetCreationModal from '../../components/DatasetCreationModal'
+import { dhis2Service } from '../../services/dhis2Service'
+import { useSmsService } from '../../services/smsService'
+import styles from './DatasetPreparation.module.css'
+
+// Datastore operations
+const DATASTORE_NAMESPACE = 'dqa360'
+
+// UID generation query
+const generateUIDs = {
+    resource: 'system/id',
+    params: ({ count }) => ({
+        limit: count
+    })
+}
+
+// Datastore queries
+const datastoreQueries = {
+    getAssessment: {
+        resource: `dataStore/${DATASTORE_NAMESPACE}`,
+        id: ({ assessmentId }) => assessmentId
+    },
+    saveAssessment: {
+        resource: `dataStore/${DATASTORE_NAMESPACE}`,
+        id: ({ assessmentId }) => assessmentId,
+        type: 'update',
+        data: ({ data }) => data
+    }
+}
+
+const DatasetPreparation = ({ 
+    assessmentId, 
+    assessmentName, 
+    selectedDataElements = [], 
+    selectedOrgUnits = [], 
+    period, 
+    frequency,
+    dhis2Config,
+    onFinish 
+}) => {
+    // State management
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState(null)
+    const [success, setSuccess] = useState(null)
+    const [activeTab, setActiveTab] = useState('register')
+    
+    // Dataset and data element states
+    const [datasets, setDatasets] = useState({})
+    const [datasetDataElements, setDatasetDataElements] = useState({
+        register: [],
+        summary: [],
+        reported: [],
+        corrected: []
+    })
+    
+    // Modal states
+    const [showProgressModal, setShowProgressModal] = useState(false)
+    const [showDQAModal, setShowDQAModal] = useState(false)
+    const [showCreationModal, setShowCreationModal] = useState(false)
+    const [creationProgress, setCreationProgress] = useState({
+        stage: '',
+        currentItem: '',
+        current: 0,
+        total: 0
+    })
+    
+    // SMS Reporting state
+    const [smsConfig, setSmsConfig] = useState({
+        enabled: false,
+        autoGenerate: true,
+        separator: ',',
+        commands: [],
+        notifications: {
+            enabled: true,
+            recipients: [],
+            events: ['data_received', 'validation_failed', 'completion_reminder']
+        },
+        messages: {
+            defaultMessage: 'Thanks! SMS received.',
+            wrongFormatMessage: 'Wrong format.',
+            noUserMessage: 'Phone not linked to any user.',
+            moreThanOneOrgUnitMessage: 'Multiple org units linked to your user; please contact admin.',
+            successMessage: 'Saved.'
+        }
+    })
+
+    const dataEngine = useDataEngine()
+    const navigate = useNavigate()
+    const { setupSmsForDatasets } = useSmsService()
+
+    // Handle SMS configuration changes
+    const handleSmsConfigChange = (config) => {
+        setSmsConfig(prev => ({
+            ...prev,
+            ...config
+        }))
+    }
+
+    // Generate alphabetic SMS codes (A, B, C, ..., Z, AA, AB, etc.)
+    const generateSmsCode = (index) => {
+        let result = ''
+        let num = index
+        do {
+            result = String.fromCharCode(65 + (num % 26)) + result
+            num = Math.floor(num / 26) - 1
+        } while (num >= 0)
+        return result
+    }
+
+    // Auto-generate SMS codes for all data elements when SMS is enabled
+    const generateAllSmsCodes = (datasetType) => {
+        if (!smsConfig.enabled) return
+        
+        const elements = datasetDataElements[datasetType] || []
+        elements.forEach((element, index) => {
+            const smsCode = generateSmsCode(index)
+            updateDataElement(datasetType, element.id, 'smsCode', smsCode)
+        })
+    }
+
+    // Upsert function for assessments (create or update)
+    const upsertAssessment = async (assessmentData) => {
+        try {
+            // First try to update (if assessment exists)
+            await dhis2Service.saveAssessment(dataEngine, assessmentData)
+            console.log('Assessment updated successfully')
+        } catch (error) {
+            // If update fails with 404, try to create
+            if (error.details?.httpStatusCode === 404 || error.httpStatusCode === 404) {
+                console.log('Assessment not found, creating new one...')
+                await dhis2Service.createAssessment(dataEngine, assessmentData)
+                console.log('Assessment created successfully')
+            } else {
+                // Re-throw other errors
+                throw error
+            }
+        }
+    }
+
+    // Dataset types configuration
+    const datasetTypes = ['register', 'summary', 'reported', 'corrected']
+
+    // Initialize component
+    useEffect(() => {
+        initializeDatasets()
+    }, [assessmentId, selectedDataElements])
+
+    const initializeDatasets = async () => {
+        try {
+            setLoading(true)
+            setError(null)
+
+            // Load existing assessment data if available
+            let existingData = null
+            if (assessmentId) {
+                try {
+                    const response = await dataEngine.query({
+                        assessment: datastoreQueries.getAssessment
+                    }, { variables: { assessmentId } })
+                    existingData = response.assessment
+                } catch (err) {
+                    console.log('No existing assessment data found, creating new')
+                }
+            }
+
+            // Initialize datasets
+            const initialDatasets = {}
+            const initialDataElements = {
+                register: [],
+                summary: [],
+                reported: [],
+                corrected: []
+            }
+
+            // Create datasets for each type
+            for (const type of datasetTypes) {
+                const existingDataset = existingData?.datasets?.[type]
+
+                const smsDefault = ['register','summary','corrected'].includes(type)
+                
+                initialDatasets[type] = {
+                    id: existingDataset?.id || generateUID(),
+                    name: existingDataset?.name || `${assessmentName} - ${getDatasetTypeLabel(type)}`,
+                    shortName: existingDataset?.shortName || `${assessmentName} - ${getDatasetTypeLabel(type)}`,
+                    code: existingDataset?.code || await generateCode(getDatasetTypePrefix(type)),
+                    formName: existingDataset?.formName || `${assessmentName} - ${getDatasetTypeLabel(type)}`,
+                    description: existingDataset?.description || `Dataset for ${getDatasetTypeDescription(type)}`,
+                    periodType: 'Monthly',
+                    categoryCombo: { id: 'bjDvmb4bfuf' }, // Default category combo
+                    smsEnabled: existingDataset?.smsEnabled ?? smsDefault,
+                    smsKeyword: existingDataset?.smsKeyword || null,
+                    dataSetElements: [],
+                    organisationUnits: selectedOrgUnits.map(ou => ({ id: ou.id }))
+                }
+
+                // Create data elements for this dataset type
+                const existingElements = existingData?.dataElements?.[type] || []
+                const elementsToCreate = existingElements.length > 0 ? existingElements : selectedDataElements
+
+                for (const sourceElement of elementsToCreate) {
+                    // Always generate new unique UID for each dataset's data elements
+                    // Only preserve existing UID if we're loading saved assessment data
+                    const elementId = (sourceElement.id && existingElements.length > 0) 
+                        ? sourceElement.id 
+                        : generateUID()
+                    // For existing elements, preserve their code; for new elements, generate unique code
+                    const elementCode = sourceElement.code && existingElements.length > 0 
+                        ? sourceElement.code 
+                        : `${getDatasetTypePrefix(type)}${Date.now().toString(36).slice(-2).toUpperCase()}${Math.random().toString(36).slice(-2).toUpperCase()}`
+                    
+                    const dataElement = {
+                        id: elementId,
+                        name: `${getDatasetTypePrefix(type)} - ${sourceElement.name || sourceElement.displayName}`,
+                        shortName: `${getDatasetTypePrefix(type)} - ${sourceElement.shortName || sourceElement.name || sourceElement.displayName}`,
+                        code: elementCode,
+                        formName: `${getDatasetTypePrefix(type)} - ${sourceElement.formName || sourceElement.name || sourceElement.displayName}`,
+                        description: `${getDatasetTypeLabel(type)} dataset element for ${sourceElement.name || sourceElement.displayName}`,
+                        valueType: sourceElement.valueType || 'INTEGER',
+                        aggregationType: sourceElement.aggregationType || 'SUM',
+                        domainType: 'AGGREGATE',
+                        categoryCombo: { id: 'bjDvmb4bfuf' },
+                        zeroIsSignificant: false
+                    }
+
+                    initialDataElements[type].push(dataElement)
+                    initialDatasets[type].dataSetElements.push({
+                        dataElement: { id: elementId }
+                    })
+                }
+            }
+
+            setDatasets(initialDatasets)
+            setDatasetDataElements(initialDataElements)
+
+            // Auto-populate SMS defaults after initialization when enabled
+            if (smsConfig.enabled) {
+                const defaultCommands = {
+                    register: 'DQA_REGISTER',
+                    summary: 'DQA_SUMMARY',
+                    reported: 'DQA_REPORTED',
+                    corrected: 'DQA_CORRECTED'
+                }
+                ;['register','summary','reported','corrected'].forEach(type => {
+                    updateDataset(type, 'smsKeyword', initialDatasets[type]?.smsKeyword || defaultCommands[type])
+                    generateAllSmsCodes(type)
+                })
+            }
+
+        } catch (err) {
+            console.error('Error initializing datasets:', err)
+            setError('Failed to initialize datasets: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Helper functions
+    // Fast local UID generator for preview to avoid network round-trips
+    const generateUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        let result = ''
+        for (let i = 0; i < 11; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+    }
+
+    const getDatasetTypePrefix = (datasetType) => {
+        const prefixes = {
+            'register': 'REG',
+            'summary': 'SUM', 
+            'reported': 'RPT',
+            'corrected': 'COR'
+        }
+        return prefixes[datasetType] || 'GEN'
+    }
+
+    const generateCode = async (prefix = '') => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        let result = prefix.substring(0, 3).toUpperCase() // First 3 characters as prefix
+        
+        // Add timestamp component for better uniqueness (2 characters)
+        const timestamp = Date.now().toString(36).slice(-2).toUpperCase()
+        result += timestamp
+        
+        // Generate remaining characters to make total 8
+        for (let i = result.length; i < 8; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+    }
+
+    const getDatasetTypeColor = (type) => {
+        const colors = {
+            'register': '#2196f3',
+            'summary': '#4caf50',
+            'reported': '#ff9800',
+            'corrected': '#9c27b0'
+        }
+        return colors[type] || '#757575'
+    }
+
+    const getDatasetTypeLabel = (type) => {
+        const labels = {
+            'register': 'Register',
+            'summary': 'Summary',
+            'reported': 'Reported', 
+            'corrected': 'Corrected'
+        }
+        return labels[type] || type
+    }
+
+    const getDatasetTypeIcon = (type) => {
+        const icons = {
+            'register': '📝',
+            'summary': '📊',
+            'reported': '📋',
+            'corrected': '✏️'
+        }
+        return icons[type] || '📄'
+    }
+
+    const getDatasetTypeDescription = (type) => {
+        const descriptions = {
+            'register': 'Data collection from health facilities',
+            'summary': 'Aggregated data for analysis',
+            'reported': 'External DHIS2 reported data',
+            'corrected': 'Corrected data after validation'
+        }
+        return descriptions[type] || 'Dataset for DQA assessment'
+    }
+
+    // Update functions
+    const updateDataset = (datasetType, field, value) => {
+        setDatasets(prev => ({
+            ...prev,
+            [datasetType]: {
+                ...prev[datasetType],
+                [field]: value
+            }
+        }))
+    }
+
+    const updateDataElement = (datasetType, elementId, field, value) => {
+        setDatasetDataElements(prev => ({
+            ...prev,
+            [datasetType]: prev[datasetType].map(element => 
+                element.id === elementId 
+                    ? { ...element, [field]: value }
+                    : element
+            )
+        }))
+        
+        // If updating the ID field, also update the dataset element references
+        if (field === 'id') {
+            setDatasets(prevDatasets => ({
+                ...prevDatasets,
+                [datasetType]: {
+                    ...prevDatasets[datasetType],
+                    dataSetElements: prevDatasets[datasetType].dataSetElements.map(dsElement =>
+                        dsElement.dataElement.id === elementId
+                            ? { dataElement: { id: value } }
+                            : dsElement
+                    )
+                }
+            }))
+        }
+    }
+
+    // Save configuration
+    const handleSave = async () => {
+        try {
+            setSaving(true)
+            setError(null)
+
+            const assessmentData = {
+                id: assessmentId,
+                name: assessmentName,
+                datasets,
+                dataElements: datasetDataElements,
+                orgUnits: selectedOrgUnits,
+                period,
+                frequency,
+                smsConfig, // Include SMS configuration
+                lastModified: new Date().toISOString()
+            }
+
+            await upsertAssessment(assessmentData)
+
+            // Setup SMS for datasets if SMS is enabled
+            if (smsConfig.enabled && smsConfig.autoGenerate) {
+                try {
+                    const datasetsForSms = Object.values(datasets).flat()
+                    const smsResults = await setupSmsForDatasets({ datasets: datasetsForSms })
+                    
+                    // Update SMS config with generated commands
+                    setSmsConfig(prev => ({
+                        ...prev,
+                        commands: smsResults,
+                        lastGenerated: new Date().toISOString()
+                    }))
+                } catch (e) {
+                    console.warn('SMS setup skipped/failed:', e)
+                }
+            }
+
+            setSuccess('Configuration saved successfully!')
+            setTimeout(() => setSuccess(null), 3000)
+
+        } catch (err) {
+            console.error('Error saving configuration:', err)
+            setError('Failed to save configuration: ' + err.message)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    // Create datasets
+    const handleCreateDatasets = () => {
+        setShowDQAModal(true)
+    }
+
+    // Render loading state
+    if (loading) {
+        return (
+            <div className={styles.container}>
+                <div className={styles.loading}>
+                    <CircularLoader />
+                    <span className={styles.loadingText}>Initializing dataset preparation...</span>
+                </div>
+            </div>
+        )
+    }
+
+    // Render error state
+    if (error && !datasets) {
+        return (
+            <div className={styles.container}>
+                <div className={styles.errorContainer}>
+                    <NoticeBox error title="Error">
+                        {error}
+                    </NoticeBox>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className={styles.container}>
+            {/* Header */}
+            <div className={styles.header}>
+                <h1 className={styles.title}>Dataset Preparation</h1>
+                <p className={styles.subtitle}>
+                    Configure and prepare DQA datasets for "{assessmentName}"
+                </p>
+            </div>
+
+            {/* Error/Success Messages */}
+            {error && (
+                <div className={styles.errorContainer}>
+                    <NoticeBox error title="Error" onHidden={() => setError(null)}>
+                        {error}
+                    </NoticeBox>
+                </div>
+            )}
+
+            {success && (
+                <div className={styles.successContainer}>
+                    <NoticeBox valid title="Success" onHidden={() => setSuccess(null)}>
+                        {success}
+                    </NoticeBox>
+                </div>
+            )}
+
+            {/* Tab Navigation */}
+            <div className={styles.tabContainer}>
+                <div className={styles.tabBar}>
+                    {datasetTypes.map(type => (
+                        <button
+                            key={type}
+                            className={`${styles.tab} ${styles[type]} ${activeTab === type ? styles.active : ''}`}
+                            onClick={() => setActiveTab(type)}
+                        >
+                            <span className={styles.tabIcon}>{getDatasetTypeIcon(type)}</span>
+                            <span className={styles.tabLabel}>{getDatasetTypeLabel(type)}</span>
+                            <span className={styles.tabCount}>
+                                {datasetDataElements[type]?.length || 0}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Active Tab Content */}
+            {datasets[activeTab] && (
+                <div className={styles.tabContent}>
+                        <>
+                            {/* Dataset Configuration */}
+                            <div className={styles.configSection}>
+                                <div className={styles.configHeader}>
+                                    <h3 
+                                        className={styles.configTitle}
+                                        style={{ color: getDatasetTypeColor(activeTab) }}
+                                    >
+                                        {getDatasetTypeLabel(activeTab)} Configuration
+                                    </h3>
+                                    <span className={styles.configDescription}>
+                                        {getDatasetTypeDescription(activeTab)}
+                                    </span>
+                                </div>
+
+                                {/* Basic Dataset Configuration */}
+                                <div className={styles.configSection}>
+                                    <div className={styles.sectionHeader}>
+                                        <h4 className={styles.sectionTitle}>📋 Basic Configuration</h4>
+                                        <p className={styles.sectionDescription}>
+                                            Core dataset properties and metadata
+                                        </p>
+                                    </div>
+                                    
+                                    <div className={styles.formGrid}>
+                                        <InputField
+                                            dense
+                                            label="Dataset Name"
+                                            value={datasets[activeTab].name || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'name', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Short Name"
+                                            value={datasets[activeTab].shortName || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'shortName', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Code"
+                                            value={datasets[activeTab].code || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'code', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Form Name"
+                                            value={datasets[activeTab].formName || datasets[activeTab].name || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'formName', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Period Type"
+                                            value={datasets[activeTab].periodType || 'Monthly'}
+                                            onChange={({ value }) => updateDataset(activeTab, 'periodType', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Expiry Days"
+                                            type="number"
+                                            value={datasets[activeTab].expiryDays?.toString() || '0'}
+                                            onChange={({ value }) => updateDataset(activeTab, 'expiryDays', parseInt(value) || 0)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Open Future Periods"
+                                            type="number"
+                                            value={datasets[activeTab].openFuturePeriods?.toString() || '0'}
+                                            onChange={({ value }) => updateDataset(activeTab, 'openFuturePeriods', parseInt(value) || 0)}
+                                        />
+
+                                        {/* SMS settings */}
+                                        <InputField
+                                            dense
+                                            label="Command Name"
+                                            helpText="Name used for the SMS command"
+                                            value={datasets[activeTab].smsCommandName || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsCommandName', value)}
+                                        />
+
+                                        <InputField
+                                            dense
+                                            label="Success message"
+                                            value={datasets[activeTab].smsSuccessMessage || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsSuccessMessage', value)}
+                                        />
+                                        <InputField
+                                            dense
+                                            label="Wrong format message"
+                                            value={datasets[activeTab].smsWrongFormatMessage || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsWrongFormatMessage', value)}
+                                        />
+                                        <InputField
+                                            dense
+                                            label="No user message"
+                                            value={datasets[activeTab].smsNoUserMessage || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsNoUserMessage', value)}
+                                        />
+                                        <InputField
+                                            dense
+                                            label="More than one orgunit message"
+                                            value={datasets[activeTab].smsMoreThanOneOrgUnitMessage || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsMoreThanOneOrgUnitMessage', value)}
+                                        />
+                                        <InputField
+                                            dense
+                                            label="No codes message"
+                                            helpText="Reply message if no codes are sent"
+                                            value={datasets[activeTab].smsNoCodesMessage || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'smsNoCodesMessage', value)}
+                                        />
+
+                                        {/* Keyword-Data separator selector */}
+                                        <SingleSelect
+                                            selected={datasets[activeTab].smsSeparator || ' '}
+                                            onChange={({ selected }) => updateDataset(activeTab, 'smsSeparator', selected)}
+                                            clearable
+                                        >
+                                            {[' ', '-', ':', ';', '|', '/', '#', '@', '+', '.'].map(ch => (
+                                                <SingleSelectOption key={ch} value={ch} label={ch === ' ' ? 'Space' : ch} />
+                                            ))}
+                                        </SingleSelect>
+                                    </div>
+
+                                    <InputField
+                                        dense
+                                        label="Timely Days"
+                                        type="number"
+                                            value={datasets[activeTab].timelyDays?.toString() || '15'}
+                                            onChange={({ value }) => updateDataset(activeTab, 'timelyDays', parseInt(value) || 15)}
+                                        />
+                                    </div>
+
+                                    <div className={styles.formGridFull}>
+                                        <InputField
+                                            dense
+                                            label="Description"
+                                            value={datasets[activeTab].description || ''}
+                                            onChange={({ value }) => updateDataset(activeTab, 'description', value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* SMS Configuration Section */}
+                                <div className={styles.configSection}>
+                                    <div className={styles.sectionHeader}>
+                                        <h4 className={styles.sectionTitle}>📱 SMS Configuration</h4>
+                                        <p className={styles.sectionDescription}>
+                                            Configure SMS reporting settings for this dataset
+                                        </p>
+                                    </div>
+
+                                    <div className={styles.checkboxGrid}>
+                                        <label className={styles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={datasets[activeTab].smsEnabled || false}
+                                                onChange={(e) => updateDataset(activeTab, 'smsEnabled', e.target.checked)}
+                                            />
+                                            <span>Enable SMS Reporting for this dataset</span>
+                                        </label>
+                                    </div>
+
+                                    {datasets[activeTab].smsEnabled && (
+                                        <div className={styles.formGrid}>
+                                            <InputField
+                                                dense
+                                                label="SMS Keyword"
+                                                helpText="Defaults to dataset code if left blank"
+                                                value={datasets[activeTab].smsKeyword || datasets[activeTab].code || ''}
+                                                onChange={({ value }) => updateDataset(activeTab, 'smsKeyword', value)}
+                                            />
+
+                                            <InputField
+                                                dense
+                                                label="Command Name"
+                                                helpText="Defaults to '<Dataset Name> SMS' if left blank"
+                                                value={datasets[activeTab].smsCommandName || ''}
+                                                onChange={({ value }) => updateDataset(activeTab, 'smsCommandName', value)}
+                                            />
+
+                                            <InputField
+                                                dense
+                                                label="SMS Separator"
+                                                helpText="Character used between data element pairs (default ,)"
+                                                value={datasets[activeTab].smsSeparator || ','}
+                                                onChange={({ value }) => updateDataset(activeTab, 'smsSeparator', value)}
+                                            />
+
+                                            <InputField
+                                                dense
+                                                label="Keyword-Data Separator"
+                                                helpText="Character separating keyword from data (default space)"
+                                                value={datasets[activeTab].smsKeywordDataSeparator || ' '}
+                                                onChange={({ value }) => updateDataset(activeTab, 'smsKeywordDataSeparator', value)}
+                                            />
+
+                                            <InputField
+                                                dense
+                                                label="Key-Value Separator"
+                                                helpText="Character separating data element key from value (default =)"
+                                                value={datasets[activeTab].smsKeyValueSeparator || '='}
+                                                onChange={({ value }) => updateDataset(activeTab, 'smsKeyValueSeparator', value)}
+                                            />
+
+                                            <SingleSelect
+                                                dense
+                                                selected={'KEY_VALUE_PARSER'}
+                                                onChange={() => {}}
+                                                disabled
+                                                label="Parser"
+                                            >
+                                                <SingleSelectOption value="KEY_VALUE_PARSER" label="Key value parser" />
+                                            </SingleSelect>
+
+                                            <SingleSelect
+                                                dense
+                                                selected={datasets[activeTab].smsCompletenessMethod || 'AT_LEAST_ONE'}
+                                                onChange={({ selected }) => updateDataset(activeTab, 'smsCompletenessMethod', selected)}
+                                                label="Completeness method"
+                                            >
+                                                <SingleSelectOption value="AT_LEAST_ONE" label="Receive at least one data value" />
+                                                <SingleSelectOption value="ALL" label="Receive all data values" />
+                                                <SingleSelectOption value="COMPLETE_ONLY" label="Mark as complete only" />
+                                            </SingleSelect>
+
+                                            <div></div> {/* Empty cell for grid alignment */}
+
+                                            <Checkbox
+                                                checked={!!datasets[activeTab].smsUseCurrentPeriod}
+                                                onChange={({ checked }) => updateDataset(activeTab, 'smsUseCurrentPeriod', checked)}
+                                                label="Use current period for reporting"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {datasets[activeTab].smsEnabled && (
+                                        <>
+                                            <div className={styles.formGridFull}>
+                                                <TextAreaField
+                                                    dense
+                                                    label="SMS short codes (optional)"
+                                                    helpText="Provide comma separated pairs: a=DEUID, b=DEUID. If empty, codes will be auto-generated for all data elements."
+                                                    rows={2}
+                                                    value={datasets[activeTab].smsCodesRaw || ''}
+                                                    onChange={({ value }) => updateDataset(activeTab, 'smsCodesRaw', value)}
+                                                />
+                                            </div>
+
+                                            {datasets[activeTab].smsCompletenessMethod === 'AT_LEAST_ONE' && !(datasets[activeTab].smsCodesRaw || '').trim() && (
+                                                <NoticeBox warning title="Required values notice">
+                                                    Make sure at least one SMS short code is provided when completeness method "Receive at least one data value" is chosen, otherwise received messages will not be processed.
+                                                </NoticeBox>
+                                            )}
+
+                                            <div className={styles.smsMessagesSection}>
+                                                <h5 className={styles.subsectionTitle}>📨 SMS Response Messages</h5>
+                                                <div className={styles.formGrid}>
+                                                    <InputField
+                                                        dense
+                                                        label="Success message"
+                                                        value={datasets[activeTab].smsSuccessMessage || ''}
+                                                        onChange={({ value }) => updateDataset(activeTab, 'smsSuccessMessage', value)}
+                                                    />
+
+                                                    <InputField
+                                                        dense
+                                                        label="Wrong format message"
+                                                        value={datasets[activeTab].smsWrongFormatMessage || ''}
+                                                        onChange={({ value }) => updateDataset(activeTab, 'smsWrongFormatMessage', value)}
+                                                    />
+
+                                                    <InputField
+                                                        dense
+                                                        label="No user message"
+                                                        value={datasets[activeTab].smsNoUserMessage || ''}
+                                                        onChange={({ value }) => updateDataset(activeTab, 'smsNoUserMessage', value)}
+                                                    />
+
+                                                    <InputField
+                                                        dense
+                                                        label="More than one orgunit message"
+                                                        value={datasets[activeTab].smsMoreThanOneOrgUnitMessage || ''}
+                                                        onChange={({ value }) => updateDataset(activeTab, 'smsMoreThanOneOrgUnitMessage', value)}
+                                                    />
+
+                                                    <InputField
+                                                        dense
+                                                        label="Reply message if no codes are sent"
+                                                        helpText="Message sent when only the command is received"
+                                                        value={datasets[activeTab].smsNoCodesMessage || ''}
+                                                        onChange={({ value }) => updateDataset(activeTab, 'smsNoCodesMessage', value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Advanced Options Section */}
+                                <div className={styles.configSection}>
+                                    <div className={styles.sectionHeader}>
+                                        <h4 className={styles.sectionTitle}>⚙️ Advanced Options</h4>
+                                        <p className={styles.sectionDescription}>
+                                            Additional dataset behavior and display settings
+                                        </p>
+                                    </div>
+
+                                    <div className={styles.checkboxGrid}>
+                                        <label className={styles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={datasets[activeTab].compulsoryDataElementOperands || false}
+                                                onChange={(e) => updateDataset(activeTab, 'compulsoryDataElementOperands', e.target.checked)}
+                                            />
+                                            <span>Compulsory Data Element Operands</span>
+                                        </label>
+
+                                        <label className={styles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={datasets[activeTab].skipOffline || false}
+                                                onChange={(e) => updateDataset(activeTab, 'skipOffline', e.target.checked)}
+                                            />
+                                            <span>Skip Offline</span>
+                                        </label>
+
+                                        <label className={styles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={datasets[activeTab].dataElementDecoration || false}
+                                                onChange={(e) => updateDataset(activeTab, 'dataElementDecoration', e.target.checked)}
+                                            />
+                                            <span>Data Element Decoration</span>
+                                        </label>
+
+                                        <label className={styles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={datasets[activeTab].renderAsTabs || false}
+                                                onChange={(e) => updateDataset(activeTab, 'renderAsTabs', e.target.checked)}
+                                            />
+                                            <span>Render As Tabs</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Data Elements Section */}
+                            <div className={styles.dataElementsSection}>
+                                <div className={styles.dataElementsHeader}>
+                                    <h3 className={styles.dataElementsTitle}>
+                                        Data Elements ({datasetDataElements[activeTab]?.length || 0})
+                                    </h3>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <Button
+                                            small
+                                            secondary
+                                            onClick={async () => {
+                                                const elements = datasetDataElements[activeTab] || []
+                                                for (const element of elements) {
+                                                    const newCode = await generateCode(getDatasetTypePrefix(activeTab))
+                                                    updateDataElement(activeTab, element.id, 'code', newCode)
+                                                }
+                                            }}
+                                            disabled={!datasetDataElements[activeTab]?.length}
+                                        >
+                                            🎲 Regenerate All Codes
+                                        </Button>
+                                        <Button
+                                            small
+                                            secondary
+                                            onClick={async () => {
+                                                const elements = datasetDataElements[activeTab] || []
+                                                for (const element of elements) {
+                                                    const newUID = await generateUID()
+                                                    updateDataElement(activeTab, element.id, 'id', newUID)
+                                                }
+                                            }}
+                                            disabled={!datasetDataElements[activeTab]?.length}
+                                        >
+                                            🔄 Regenerate All UIDs
+                                        </Button>
+                                        <Button
+                                            small
+                                            secondary
+                                            onClick={() => {
+                                                // Debug function to verify uniqueness
+                                                const allUIDs = []
+                                                const allCodes = []
+                                                datasetTypes.forEach(type => {
+                                                    const elements = datasetDataElements[type] || []
+                                                    elements.forEach(element => {
+                                                        allUIDs.push(`${type}: ${element.id}`)
+                                                        allCodes.push(`${type}: ${element.code}`)
+                                                    })
+                                                })
+                                                console.log('All UIDs:', allUIDs)
+                                                console.log('All Codes:', allCodes)
+                                                console.log('Unique UIDs:', new Set(allUIDs.map(uid => uid.split(': ')[1])).size)
+                                                console.log('Unique Codes:', new Set(allCodes.map(code => code.split(': ')[1])).size)
+                                                alert(`UIDs: ${new Set(allUIDs.map(uid => uid.split(': ')[1])).size} unique out of ${allUIDs.length}\nCodes: ${new Set(allCodes.map(code => code.split(': ')[1])).size} unique out of ${allCodes.length}`)
+                                            }}
+                                        >
+                                            🔍 Check Uniqueness
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {(datasetDataElements[activeTab]?.length || 0) > 0 ? (
+                                    <div className={styles.dataElementsTable}>
+                                        <DataTable dense>
+                                            <DataTableHead>
+                                                <DataTableRow>
+                                                    <DataTableColumnHeader dense>Name</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Form Name</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Short Name</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Code</DataTableColumnHeader>
+                                                    {smsConfig.enabled && (
+                                                        <DataTableColumnHeader dense>
+                                                            📱 SMS Code
+                                                        </DataTableColumnHeader>
+                                                    )}
+                                                    <DataTableColumnHeader dense>UID</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Value Type</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Domain</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Aggregation</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Category Combo</DataTableColumnHeader>
+                                                </DataTableRow>
+                                            </DataTableHead>
+                                            <DataTableBody>
+                                                {datasetDataElements[activeTab].map((element) => (
+                                                    <DataTableRow key={element.id}>
+                                                        <DataTableCell dense>
+                                                            <InputField
+                                                                dense
+                                                                value={element.name}
+                                                                onChange={({ value }) => updateDataElement(activeTab, element.id, 'name', value)}
+                                                                className={styles.elementName}
+                                                            />
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <InputField
+                                                                dense
+                                                                value={element.formName || element.name}
+                                                                onChange={({ value }) => updateDataElement(activeTab, element.id, 'formName', value)}
+                                                                className={styles.elementFormName}
+                                                            />
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <InputField
+                                                                dense
+                                                                value={element.shortName}
+                                                                onChange={({ value }) => updateDataElement(activeTab, element.id, 'shortName', value)}
+                                                                className={styles.elementShortName}
+                                                            />
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <InputField
+                                                                    dense
+                                                                    value={element.code}
+                                                                    onChange={({ value }) => updateDataElement(activeTab, element.id, 'code', value)}
+                                                                    className={styles.elementCodeInput}
+                                                                />
+                                                                <Button
+                                                                    small
+                                                                    secondary
+                                                                    onClick={async () => {
+                                                                        const newCode = await generateCode(getDatasetTypePrefix(activeTab))
+                                                                        updateDataElement(activeTab, element.id, 'code', newCode)
+                                                                    }}
+                                                                >
+                                                                    🎲
+                                                                </Button>
+                                                            </div>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <code className={styles.elementUid}>
+                                                                    {element.id}
+                                                                </code>
+                                                                <Button
+                                                                    small
+                                                                    secondary
+                                                                    onClick={async () => {
+                                                                        const newUID = await generateUID()
+                                                                        updateDataElement(activeTab, element.id, 'id', newUID)
+                                                                    }}
+                                                                >
+                                                                    🔄
+                                                                </Button>
+                                                            </div>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <Tag small className={styles.elementType}>
+                                                                {element.valueType}
+                                                            </Tag>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <Tag small neutral>
+                                                                {element.domainType || 'AGGREGATE'}
+                                                            </Tag>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <Tag small className={styles.aggregationType}>
+                                                                {element.aggregationType}
+                                                            </Tag>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <div className={styles.categoryCombo}>
+                                                                {element.categoryCombo?.name || 'Default'}
+                                                            </div>
+                                                        </DataTableCell>
+                                                    </DataTableRow>
+                                                ))}
+                                            </DataTableBody>
+                                        </DataTable>
+                                    </div>
+                                ) : (
+                                    <div className={styles.emptyState}>
+                                        <div className={styles.emptyStateIcon}>📋</div>
+                                        <h4 className={styles.emptyStateTitle}>No Data Elements</h4>
+                                        <p className={styles.emptyStateText}>
+                                            No data elements have been configured for this dataset type.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Organization Units Section */}
+                            <div className={styles.orgUnitsSection}>
+                                <div className={styles.orgUnitsHeader}>
+                                    <h3 className={styles.orgUnitsTitle}>
+                                        🏢 Organization Units ({selectedOrgUnits?.length || 0})
+                                    </h3>
+                                    <p className={styles.orgUnitsDescription}>
+                                        Organization units assigned to this dataset
+                                    </p>
+                                </div>
+
+                                {(selectedOrgUnits?.length || 0) > 0 ? (
+                                    <div className={styles.orgUnitsTable}>
+                                        <DataTable dense>
+                                            <DataTableHead>
+                                                <DataTableRow>
+                                                    <DataTableColumnHeader dense>Display Name</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Code</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>UID</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Parent Name</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Parent UID</DataTableColumnHeader>
+                                                    <DataTableColumnHeader dense>Level</DataTableColumnHeader>
+                                                </DataTableRow>
+                                            </DataTableHead>
+                                            <DataTableBody>
+                                                {selectedOrgUnits.map((orgUnit) => (
+                                                    <DataTableRow key={orgUnit.id}>
+                                                        <DataTableCell dense>
+                                                            <div className={styles.orgUnitDisplayName}>
+                                                                🏢 {orgUnit.displayName || orgUnit.name}
+                                                            </div>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <code className={styles.orgUnitCode}>
+                                                                {orgUnit.code || 'N/A'}
+                                                            </code>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <code className={styles.orgUnitUid}>
+                                                                {orgUnit.id}
+                                                            </code>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <div className={styles.orgUnitParentName}>
+                                                                {orgUnit.parent?.displayName || orgUnit.parent?.name || 'Root'}
+                                                            </div>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <code className={styles.orgUnitParentUid}>
+                                                                {orgUnit.parent?.id || 'N/A'}
+                                                            </code>
+                                                        </DataTableCell>
+                                                        <DataTableCell dense>
+                                                            <Tag small className={styles.orgUnitLevel}>
+                                                                Level {orgUnit.level || '?'}
+                                                            </Tag>
+                                                        </DataTableCell>
+                                                    </DataTableRow>
+                                                ))}
+                                            </DataTableBody>
+                                        </DataTable>
+                                    </div>
+                                ) : (
+                                    <div className={styles.emptyState}>
+                                        <div className={styles.emptyStateIcon}>🏢</div>
+                                        <h4 className={styles.emptyStateTitle}>No Organization Units</h4>
+                                        <p className={styles.emptyStateText}>
+                                            No organization units have been assigned to this dataset.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sharing Settings Section */}
+                            <div className={styles.sharingSection}>
+                                <div className={styles.sharingHeader}>
+                                    <h3 className={styles.sharingTitle}>
+                                        🔐 Sharing Settings
+                                    </h3>
+                                    <p className={styles.sharingDescription}>
+                                        Configure access permissions for this dataset
+                                    </p>
+                                </div>
+
+                                <div className={styles.sharingOptions}>
+                                    <div className={styles.sharingOption}>
+                                        <div className={styles.sharingOptionIcon}>👥</div>
+                                        <div className={styles.sharingOptionContent}>
+                                            <div className={styles.sharingOptionTitle}>Public Access</div>
+                                            <div className={styles.sharingOptionDescription}>
+                                                Dataset will be accessible to all users
+                                            </div>
+                                        </div>
+                                        <div className={styles.sharingOptionControl}>
+                                            <Tag small positive>Read/Write</Tag>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.sharingOption}>
+                                        <div className={styles.sharingOptionIcon}>🔒</div>
+                                        <div className={styles.sharingOptionContent}>
+                                            <div className={styles.sharingOptionTitle}>User Groups</div>
+                                            <div className={styles.sharingOptionDescription}>
+                                                Specific user groups with access permissions
+                                            </div>
+                                        </div>
+                                        <div className={styles.sharingOptionControl}>
+                                            <Tag small neutral>DQA Users</Tag>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.sharingOption}>
+                                        <div className={styles.sharingOptionIcon}>👤</div>
+                                        <div className={styles.sharingOptionContent}>
+                                            <div className={styles.sharingOptionTitle}>Owner</div>
+                                            <div className={styles.sharingOptionDescription}>
+                                                Dataset owner with full permissions
+                                            </div>
+                                        </div>
+                                        <div className={styles.sharingOptionControl}>
+                                            <Tag small className={styles.ownerTag}>Admin</Tag>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                    </>
+                </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className={styles.actionButtons}>
+                <Button
+                    primary
+                    onClick={() => setShowCreationModal(true)}
+                    disabled={saving || Object.keys(datasets).length === 0}
+                >
+                    🚀 Create DQA Datasets
+                </Button>
+            </div>
+
+            {/* Progress Modal */}
+            {showProgressModal && (
+                <Modal large>
+                    <ModalTitle>Creating DQA Datasets</ModalTitle>
+                    <ModalContent>
+                        <div className={styles.progressContent}>
+                            <LinearLoader />
+                            <Box marginTop="16px">
+                                <p className={styles.progressText}>
+                                    {creationProgress.stage}
+                                </p>
+                                <p className={styles.progressSubtext}>
+                                    {creationProgress.currentItem}
+                                </p>
+                                {creationProgress.total > 0 && (
+                                    <p className={styles.progressCounter}>
+                                        Progress: {creationProgress.current} of {creationProgress.total}
+                                    </p>
+                                )}
+                            </Box>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            )}
+
+            {/* Dataset Creation Modal */}
+            {showCreationModal && (
+                <DatasetCreationModal
+                    isOpen={showCreationModal}
+                    onClose={() => setShowCreationModal(false)}
+                    datasets={datasets}
+                    dataElements={datasetDataElements}
+                    orgUnits={selectedOrgUnits}
+                    assessmentName={assessmentName}
+                    onAllDatasetsCreated={(report) => {
+                        // Only proceed to Review when all datasets succeeded
+                        try {
+                            const failed = Number(report?.summary?.failed || 0)
+                            if (failed === 0) {
+                                if (typeof onFinish === 'function') onFinish('review')
+                                setShowCreationModal(false)
+                            } else {
+                                // Stay on the modal so the user can inspect logs and fix issues
+                                // Do not navigate away automatically
+                            }
+                        } catch (e) { /* no-op */ }
+                    }}
+                    saveAssessmentPayload={async (payload) => {
+                        // Persist the assessment payload into datastore using dhis2Service
+                        try {
+                            await upsertAssessment({
+                                id: assessmentId,
+                                name: assessmentName,
+                                datasets,
+                                dataElements: datasetDataElements,
+                                orgUnits: selectedOrgUnits,
+                                period,
+                                frequency,
+                                creationPayload: payload,
+                                lastModified: new Date().toISOString(),
+                            })
+                        } catch (e) {
+                            console.warn('Failed to save assessment payload', e)
+                        }
+                    }}
+                />
+            )}
+        </div>
+    )
+}
+
+export default DatasetPreparation
+export { DatasetPreparation }

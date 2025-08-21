@@ -1,0 +1,47 @@
+{
+  "name": "dqa360",
+  "version": "1.0.0",
+  "description": "A robust web application for data quality assurance",
+  "license": "BSD-3-Clause",
+  "private": true,
+  "scripts": {
+    "build": "d2-app-scripts build --no-verify",
+    "start": "d2-app-scripts start",
+    "start:clean": "./test-fixes.sh",
+    "start:offline": "./start-offline-url.sh",
+    "start:offline-old": "node start-offline.js",
+    "start:demo": "d2-app-scripts start --proxy https://play.dhis2.org/stable-2-42-1",
+    "start:242": "d2-app-scripts start --proxy https://play.dhis2.org/stable-2-42-1",
+    "start:demo2": "d2-app-scripts start --proxy https://play.dhis2.org/stable-2-41-4-1",
+    "start:local": "d2-app-scripts start --proxy http://localhost:8080",
+    "start:stable": "d2-app-scripts start --port 3000 --proxy https://play.im.dhis2.org/stable-2-40-8-2",
+    "test": "d2-app-scripts test",
+    "deploy": "d2-app-scripts deploy"
+  },
+  "devDependencies": {
+    "@dhis2/cli-app-scripts": "^12.7.2"
+  },
+  "dependencies": {
+    "@dhis2/app-runtime": "^3.14.4",
+    "@dhis2/d2-i18n": "^1.1.3",
+    "@dhis2/ui": "^9.11.3",
+    "date-fns": "^2.29.3",
+    "file-saver": "^2.0.5",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "lodash": "^4.17.21",
+    "prop-types": "^15.8.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.43.5",
+    "react-is": "^19.1.0",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.8.1",
+    "recharts": "^2.5.0",
+    "styled-components": "^5.3.9",
+    "styled-jsx": "^4.0.1",
+    "typeface-roboto": "^1.1.13",
+    "uuid": "^9.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
