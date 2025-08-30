@@ -63,7 +63,7 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
     // Modal states
     const [showDatasetModal, setShowDatasetModal] = useState(false)
     const [showDataElementModal, setShowDataElementModal] = useState(false)
-    const [showCategoryComboModal, setShowCategoryComboModal] = useState(false)
+    // const [showCategoryComboModal, setShowCategoryComboModal] = useState(false)
     const [showCategoryModal, setShowCategoryModal] = useState(false)
     const [showCategoryOptionModal, setShowCategoryOptionModal] = useState(false)
     const [showAttachmentModal, setShowAttachmentModal] = useState(false)
@@ -215,13 +215,13 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
             categories: []
         })
         setEditingItem(null)
-        setShowCategoryComboModal(true)
+        // setShowCategoryComboModal(true)
     }
 
     const handleEditCategoryCombo = (combo) => {
         setCurrentForm({ ...combo })
         setEditingItem(combo)
-        setShowCategoryComboModal(true)
+        // setShowCategoryComboModal(true)
     }
 
     const handleSaveCategoryCombo = () => {
@@ -239,7 +239,7 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
             setCategoryCombos(prev => [...prev, currentForm])
         }
 
-        setShowCategoryComboModal(false)
+        // setShowCategoryComboModal(false)
         setCurrentForm({})
         setEditingItem(null)
     }
@@ -613,6 +613,7 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
         </Box>
     )
 
+
     return (
         <Box>
             <Box marginBottom="24px">
@@ -634,9 +635,7 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
                 <Tab selected={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>
                     {i18n.t('Categories')} ({categories.length})
                 </Tab>
-                <Tab selected={activeTab === 'categoryCombos'} onClick={() => setActiveTab('categoryCombos')}>
-                    {i18n.t('Category Combos')} ({categoryCombos.length})
-                </Tab>
+
                 <Tab selected={activeTab === 'dataElements'} onClick={() => setActiveTab('dataElements')}>
                     {i18n.t('Data Elements')} ({dataElements.length})
                 </Tab>
@@ -761,6 +760,7 @@ const ManualMetadataCreator = ({ onMetadataCreated, onClose }) => {
                     </ModalActions>
                 </Modal>
             )}
+
 
             {/* Attachment Modal */}
             {showAttachmentModal && (

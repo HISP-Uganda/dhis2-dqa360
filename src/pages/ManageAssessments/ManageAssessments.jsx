@@ -184,11 +184,11 @@ export const ManageAssessments = () => {
                             console.log('✅ Found assessments in main datastore:', mainData.length)
                             assessmentsList = mainData.map(assessment => ({
                                 ...assessment,
-                                // Map structure to display format
-                                name: assessment.name || 'Untitled Assessment',
-                                status: assessment.status || 'draft',
-                                createdAt: assessment.createdAt || new Date().toISOString(),
-                                createdBy: assessment.createdBy || 'Unknown User',
+                                // Map structure to display format (preserve nested Info if present)
+                                name: assessment.Info?.name || assessment.name || 'Untitled Assessment',
+                                status: assessment.Info?.status || assessment.status || 'draft',
+                                createdAt: assessment.createdAt || assessment.Info?.createdAt || new Date().toISOString(),
+                                createdBy: assessment.createdBy || assessment.Info?.createdBy || 'Unknown User',
                                 dataStoreVersion: 'main'
                             }))
                         } else {
@@ -234,9 +234,9 @@ export const ManageAssessments = () => {
                     // Ensure all assessments have proper creation data
                     const processedAssessments = assessmentsList.map(assessment => ({
                         ...assessment,
-                        createdAt: assessment.createdAt || assessment.info?.createdAt || new Date().toISOString(),
-                        createdBy: assessment.createdBy || assessment.info?.createdBy || 'Unknown User',
-                        status: assessment.status || assessment.info?.status || 'draft'
+                        createdAt: assessment.createdAt || assessment.Info?.createdAt || assessment.info?.createdAt || new Date().toISOString(),
+                        createdBy: assessment.createdBy || assessment.Info?.createdBy || assessment.info?.createdBy || 'Unknown User',
+                        status: assessment.status || assessment.Info?.status || assessment.info?.status || 'draft'
                     }))
                     
                     console.log('📊 Setting assessments state with', processedAssessments.length, 'assessments')
@@ -344,10 +344,10 @@ export const ManageAssessments = () => {
                         console.log('✅ Found assessments in main datastore during refresh:', mainData.length)
                         assessmentsList = mainData.map(assessment => ({
                             ...assessment,
-                            name: assessment.name || 'Untitled Assessment',
-                            status: assessment.status || 'draft',
-                            createdAt: assessment.createdAt || new Date().toISOString(),
-                            createdBy: assessment.createdBy || 'Unknown User',
+                            name: assessment.Info?.name || assessment.name || 'Untitled Assessment',
+                            status: assessment.Info?.status || assessment.status || 'draft',
+                            createdAt: assessment.createdAt || assessment.Info?.createdAt || new Date().toISOString(),
+                            createdBy: assessment.createdBy || assessment.Info?.createdBy || 'Unknown User',
                             dataStoreVersion: 'main'
                         }))
                     } else {
@@ -385,9 +385,9 @@ export const ManageAssessments = () => {
             // Ensure all assessments have proper creation data
             const processedAssessments = assessmentsList.map(assessment => ({
                 ...assessment,
-                createdAt: assessment.createdAt || assessment.info?.createdAt || new Date().toISOString(),
-                createdBy: assessment.createdBy || assessment.info?.createdBy || 'Unknown User',
-                status: assessment.status || assessment.info?.status || 'draft'
+                createdAt: assessment.createdAt || assessment.Info?.createdAt || assessment.info?.createdAt || new Date().toISOString(),
+                createdBy: assessment.createdBy || assessment.Info?.createdBy || assessment.info?.createdBy || 'Unknown User',
+                status: assessment.status || assessment.Info?.status || assessment.info?.status || 'draft'
             }))
             
             setAssessments(processedAssessments)
@@ -479,10 +479,10 @@ export const ManageAssessments = () => {
                         value = assessment.Info.period || assessment.Info.startDate
                         break
                     case 'frequency':
-                        value = assessment.Info.frequency
+                        value = assessment.Info.frequency || 'Not specified'
                         break
                     case 'status':
-                        value = assessment.Info.status
+                        value = assessment.Info.status || 'draft'
                         break
                     case 'priority':
                         value = assessment.Info.priority
@@ -491,7 +491,7 @@ export const ManageAssessments = () => {
                         value = assessment.Info.assessmentType
                         break
                     case 'methodology':
-                        value = assessment.Info.methodology
+                        value = (assessment.Info.methodology || 'automated')
                         break
                     case 'reportingLevel':
                         value = assessment.Info.reportingLevel
@@ -559,7 +559,7 @@ export const ManageAssessments = () => {
                         value = assessment.frequency || 
                                assessment.info?.frequency ||
                                assessment.basicInfo?.frequency ||
-                               assessment.assessmentFrequency
+                               assessment.assessmentFrequency || 'Not specified'
                         break
                     case 'status':
                         value = assessment.status || 
@@ -575,12 +575,12 @@ export const ManageAssessments = () => {
                         value = assessment.assessmentType || 
                                assessment.info?.assessmentType ||
                                assessment.basicInfo?.assessmentType ||
-                               assessment.type
+                               assessment.type || 'baseline'
                         break
                     case 'methodology':
                         value = assessment.methodology || 
                                assessment.info?.methodology ||
-                               assessment.basicInfo?.methodology
+                               assessment.basicInfo?.methodology || 'automated'
                         break
                     case 'reportingLevel':
                         value = assessment.reportingLevel || 
@@ -599,6 +599,16 @@ export const ManageAssessments = () => {
                                assessment.basicInfo?.lastModifiedBy ||
                                assessment.modifiedBy
                         break
+                    case 'startDate':
+                        value = assessment.startDate || 
+                               assessment.info?.startDate ||
+                               assessment.basicInfo?.startDate
+                        break
+                    case 'endDate':
+                        value = assessment.endDate || 
+                               assessment.info?.endDate ||
+                               assessment.basicInfo?.endDate
+                        break
                     default:
                         value = assessment[field] || assessment.info?.[field] || assessment.basicInfo?.[field]
                         break
@@ -609,6 +619,37 @@ export const ManageAssessments = () => {
         } catch (error) {
             console.warn('Error getting assessment field:', field, error)
             return defaultValue
+        }
+    }
+
+    // Helper function to get selected datasets count (source datasets, not DQA datasets)
+    const getSelectedDatasetsCount = (assessment) => {
+        try {
+            // Check if this is the new nested structure
+            const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
+            
+            if (isNestedStructure) {
+                // New v3.0.0+ nested structure
+                if (assessment.Dhis2config?.datasetsSelected && Array.isArray(assessment.Dhis2config.datasetsSelected)) {
+                    return assessment.Dhis2config.datasetsSelected.length
+                }
+            } else {
+                // Legacy structures - check for selected datasets
+                if (assessment.datasets?.selected && Array.isArray(assessment.datasets.selected)) {
+                    return assessment.datasets.selected.length
+                } else if (assessment.selectedDataSets && Array.isArray(assessment.selectedDataSets)) {
+                    return assessment.selectedDataSets.length
+                } else if (assessment.datasets && Array.isArray(assessment.datasets)) {
+                    return assessment.datasets.length
+                } else if (assessment.datasets && typeof assessment.datasets === 'object' && !assessment.datasets.selected) {
+                    return Object.keys(assessment.datasets).length
+                }
+            }
+            
+            return 0
+        } catch (error) {
+            console.warn('Error counting selected datasets:', error)
+            return 0
         }
     }
 
@@ -627,6 +668,11 @@ export const ManageAssessments = () => {
                 } else if (assessment.Dhis2config?.datasetsSelected && Array.isArray(assessment.Dhis2config.datasetsSelected)) {
                     // Count selected datasets from DHIS2 config
                     datasetsCount = assessment.Dhis2config.datasetsSelected.length
+                } else if (assessment.localDatasets?.createdDatasets) {
+                    // Some nested payloads still use localDatasets.createdDatasets
+                    datasetsCount = Array.isArray(assessment.localDatasets.createdDatasets)
+                        ? assessment.localDatasets.createdDatasets.length
+                        : Object.keys(assessment.localDatasets.createdDatasets).length
                 }
             } else {
                 // Legacy structures - check multiple possible locations
@@ -786,11 +832,11 @@ export const ManageAssessments = () => {
                                         onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                                         title={`Open ${dataset.name} in DHIS2 (ID: ${dataset.dhis2Id})`}
                                     >
-                                        📊 {dataset.type || 'Dataset'} Data
+                                        📊 {dataset.datasetType || dataset.type || 'Dataset'} Data
                                     </a>
                                 ) : (
                                     <span style={{ color: '#666' }}>
-                                        📊 {dataset.type || 'Dataset'} Data {hasValidDhis2Id ? '' : '(Creating...)'}
+                                        📊 {dataset.datasetType || dataset.type || 'Dataset'} Data {hasValidDhis2Id ? '' : '(Creating...)'}
                                     </span>
                                 )}
                             </div>
@@ -989,6 +1035,61 @@ export const ManageAssessments = () => {
 
     // Assessment Actions for each assessment - new structure
     const getAssessmentActions = (assessment) => {
+        const handleDownloadAssessmentJSON = (a) => {
+            try {
+                const payload = a?.savedPayload || a?.creationPayload || a
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const aEl = document.createElement('a')
+                const safeName = String(a?.name || a?.info?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
+                const ts = new Date().toISOString().split('T')[0]
+                aEl.download = `DQA360_${safeName}_${ts}.json`
+                aEl.href = url
+                document.body.appendChild(aEl)
+                aEl.click()
+                document.body.removeChild(aEl)
+                URL.revokeObjectURL(url)
+            } catch (e) {
+                console.error('Download failed', e)
+            }
+        }
+        const handlePrintAssessmentSummary = (a) => {
+            try {
+                const payload = a?.savedPayload || a?.creationPayload || a
+                const w = window.open('', '_blank', 'width=900,height=700')
+                if (!w) return
+                const style = `
+                    <style>
+                        body{font-family: Arial, sans-serif; padding: 20px;}
+                        h1{margin-top:0}
+                        pre{background:#f7f7f7;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
+                        .meta{margin-bottom:16px}
+                        .meta div{margin:4px 0}
+                    </style>
+                `
+                const name = a?.name || a?.info?.name || 'Assessment'
+                const info = a?.info || a?.Info || {}
+                w.document.write(`
+                    <html>
+                        <head><title>${name}</title>${style}</head>
+                        <body>
+                            <h1>${name}</h1>
+                            <div class="meta">
+                                <div><strong>Period:</strong> ${info.period || ''}</div>
+                                <div><strong>Frequency:</strong> ${info.frequency || ''}</div>
+                                <div><strong>Dates:</strong> ${info.startDate || ''} — ${info.endDate || ''}</div>
+                                <div><strong>Reporting level:</strong> ${info.reportingLevel || ''}</div>
+                            </div>
+                            <pre>${JSON.stringify(payload, null, 2)}</pre>
+                            <script>window.print();</script>
+                        </body>
+                    </html>
+                `)
+                w.document.close()
+            } catch (e) {
+                console.error('Print failed', e)
+            }
+        }
         const actions = [
             // 1. View Assessment (Details page, Edit, Delete, Deactivate)
             {
@@ -1031,6 +1132,22 @@ export const ManageAssessments = () => {
                     {
                         label: i18n.t('Edit Data'),
                         onClick: () => console.log('Edit Data for:', assessment.id)
+                    }
+                ]
+            },
+
+            // 3. Download & Print (Assessment payload)
+            {
+                label: i18n.t('Download & Print'),
+                icon: <IconDownload24 />,
+                submenu: [
+                    {
+                        label: i18n.t('Download Assessment JSON'),
+                        onClick: () => handleDownloadAssessmentJSON(assessment)
+                    },
+                    {
+                        label: i18n.t('Print Assessment Summary'),
+                        onClick: () => handlePrintAssessmentSummary(assessment)
                     }
                 ]
             },
@@ -1314,32 +1431,45 @@ export const ManageAssessments = () => {
                                     {/* Period & Frequency */}
                                     <DataTableCell>
                                         <Box>
-                                            {getAssessmentDate(assessment, 'startDate') && getAssessmentDate(assessment, 'endDate') ? (
-                                                <>
-                                                    <div style={{ fontSize: '12px', fontWeight: '500' }}>
-                                                        {formatDate(getAssessmentDate(assessment, 'startDate'))} - {formatDate(getAssessmentDate(assessment, 'endDate'))}
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                        <span style={{ fontWeight: '500' }}>Frequency:</span> {getAssessmentData(assessment, 'frequency', 'Not specified')}
-                                                    </div>
-                                                </>
-                                            ) : getAssessmentData(assessment, 'period') !== 'Not specified' ? (
-                                                <>
-                                                    <div style={{ fontSize: '12px', fontWeight: '500' }}>
-                                                        {getAssessmentData(assessment, 'period')}
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                        <span style={{ fontWeight: '500' }}>Frequency:</span> {getAssessmentData(assessment, 'frequency', 'Not specified')}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div>
-                                                    <div style={{ color: '#999', fontSize: '12px' }}>No period set</div>
-                                                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                        <span style={{ fontWeight: '500' }}>Frequency:</span> {getAssessmentData(assessment, 'frequency', 'Not specified')}
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const startDate = getAssessmentDate(assessment, 'startDate')
+                                                const endDate = getAssessmentDate(assessment, 'endDate')
+                                                const period = getAssessmentData(assessment, 'period')
+                                                const frequency = getAssessmentData(assessment, 'frequency', 'Not specified')
+                                                
+                                                if (startDate && endDate) {
+                                                    return (
+                                                        <>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500' }}>
+                                                                {formatDate(startDate)} - {formatDate(endDate)}
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            </div>
+                                                        </>
+                                                    )
+                                                } else if (period && period !== 'Not specified') {
+                                                    return (
+                                                        <>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500' }}>
+                                                                {period}
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            </div>
+                                                        </>
+                                                    )
+                                                } else {
+                                                    return (
+                                                        <div>
+                                                            <div style={{ color: '#999', fontSize: '12px' }}>No period set</div>
+                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                }
+                                            })()}
                                         </Box>
                                     </DataTableCell>
 
@@ -1348,7 +1478,7 @@ export const ManageAssessments = () => {
                                         <Box>
                                             <div style={{ marginBottom: '6px' }}>
                                                 <Tag neutral style={{ fontSize: '10px', marginBottom: '2px' }}>
-                                                    {getAssessmentData(assessment, 'assessmentType', 'routine')}
+                                                    {getAssessmentData(assessment, 'assessmentType', 'baseline')}
                                                 </Tag>
                                             </div>
                                             <div style={{ marginBottom: '6px' }}>
@@ -1382,21 +1512,38 @@ export const ManageAssessments = () => {
                                             {(() => {
                                                 const status = getAssessmentData(assessment, 'status', 'draft')
                                                 const datasetCount = getDatasetCount(assessment)
-                                                const isComplete = datasetCount >= 4
+                                                const selectedDatasets = getSelectedDatasetsCount(assessment)
+                                                const hasDQADatasets = datasetCount >= 4
+                                                const hasSelectedDatasets = selectedDatasets > 0
+                                                
+                                                // Determine completion status
+                                                let completionStatus = 'incomplete'
+                                                let statusText = status.toUpperCase()
+                                                
+                                                if (hasDQADatasets) {
+                                                    completionStatus = 'complete'
+                                                    statusText = status.toUpperCase()
+                                                } else if (hasSelectedDatasets) {
+                                                    completionStatus = 'partial'
+                                                    statusText = 'SETUP REQUIRED'
+                                                } else {
+                                                    completionStatus = 'incomplete'
+                                                    statusText = 'INCOMPLETE'
+                                                }
                                                 
                                                 return (
                                                     <div>
                                                         <div style={{ marginBottom: '4px' }}>
                                                             <Tag 
-                                                                positive={status === 'active' && isComplete}
-                                                                neutral={status === 'draft' || !isComplete}
-                                                                negative={status === 'archived' || status === 'error'}
+                                                                positive={completionStatus === 'complete' && status === 'active'}
+                                                                neutral={completionStatus === 'partial' || status === 'draft'}
+                                                                negative={status === 'archived' || status === 'error' || completionStatus === 'incomplete'}
                                                                 style={{ fontSize: '10px' }}
                                                             >
-                                                                {isComplete ? status.toUpperCase() : 'INCOMPLETE'}
+                                                                {statusText}
                                                             </Tag>
                                                         </div>
-                                                        {!isComplete && (
+                                                        {completionStatus !== 'complete' && (
                                                             <div>
                                                                 <Button 
                                                                     small 
@@ -1404,12 +1551,14 @@ export const ManageAssessments = () => {
                                                                     onClick={() => navigate(`/administration/assessments/edit/${assessment.id}`)}
                                                                     style={{ fontSize: '10px', padding: '4px 8px' }}
                                                                 >
-                                                                    {i18n.t('Complete Setup')}
+                                                                    {completionStatus === 'partial' ? i18n.t('Complete Setup') : i18n.t('Configure')}
                                                                 </Button>
                                                             </div>
                                                         )}
                                                         <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                            {isComplete ? 'Ready for use' : `${datasetCount}/4 datasets`}
+                                                            {completionStatus === 'complete' ? 'Ready for use' : 
+                                                             completionStatus === 'partial' ? `${selectedDatasets} datasets selected` :
+                                                             'Not configured'}
                                                         </div>
                                                     </div>
                                                 )
@@ -1422,12 +1571,12 @@ export const ManageAssessments = () => {
                                         <Box>
                                             {(() => {
                                                 const datasetCount = getDatasetCount(assessment)
+                                                const selectedDatasets = getSelectedDatasetsCount(assessment)
                                                 const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
                                                 
                                                 // Get data elements and org units from proper datastore structure
                                                 let localDataElements = []
                                                 let localOrgUnits = []
-                                                let selectedDatasets = []
                                                 
                                                 if (isNestedStructure) {
                                                     // New v3.0.0+ nested structure
@@ -1438,59 +1587,78 @@ export const ManageAssessments = () => {
                                                     localOrgUnits = assessment.localDatasetsCreated?.reduce((acc, dataset) => {
                                                         return acc.concat(dataset.orgUnits || [])
                                                     }, []) || []
-                                                    
-                                                    selectedDatasets = assessment.Dhis2config?.datasetsSelected || []
                                                 } else {
                                                     // Legacy structures
                                                     localDataElements = assessment.localDataElementsCreated || 
                                                                       assessment.localDataElements || []
                                                     localOrgUnits = assessment.localOrgUnitsCreated || 
                                                                    assessment.localOrgUnits || []
-                                                    selectedDatasets = assessment.selectedDataSets || 
-                                                                     assessment.datasets?.selected || []
                                                 }
                                                 
-                                                if (datasetCount < 4) {
+                                                // Show different states based on configuration progress
+                                                if (datasetCount >= 4) {
+                                                    // Complete DQA setup
                                                     return (
                                                         <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#f44336' }}>
-                                                                {i18n.t('DQA Datasets Missing')}
+                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#10B981' }}>
+                                                                ✅ DQA Datasets Ready
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    <span style={{ fontWeight: '500' }}>Datasets:</span> {datasetCount}/4 created
+                                                                </div>
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    <span style={{ fontWeight: '500' }}>Elements:</span> {localDataElements.length} DQA elements
+                                                                </div>
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    <span style={{ fontWeight: '500' }}>Facilities:</span> {localOrgUnits.length} assigned
+                                                                </div>
+                                                                {selectedDatasets > 0 && (
+                                                                    <div style={{ fontSize: '10px', color: '#888' }}>
+                                                                        From {selectedDatasets} source datasets
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                } else if (selectedDatasets > 0) {
+                                                    // Partial setup - datasets selected but DQA not created
+                                                    return (
+                                                        <div>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#f59e0b' }}>
+                                                                ⚙️ Setup In Progress
                                                             </div>
                                                             <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                {i18n.t('{{current}}/4 datasets created', { current: datasetCount })}
-                                                            </div>
-                                                            {selectedDatasets.length > 0 && (
-                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
-                                                                    {selectedDatasets.length} source datasets selected
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    <span style={{ fontWeight: '500' }}>Source:</span> {selectedDatasets} datasets selected
                                                                 </div>
-                                                            )}
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    <span style={{ fontWeight: '500' }}>DQA:</span> {datasetCount}/4 datasets created
+                                                                </div>
+                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                                                                    Complete setup to generate DQA datasets
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                } else {
+                                                    // No configuration
+                                                    return (
+                                                        <div>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#ef4444' }}>
+                                                                ❌ Not Configured
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                <div style={{ marginBottom: '1px' }}>
+                                                                    No datasets selected
+                                                                </div>
+                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                                                                    Configure assessment to get started
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     )
                                                 }
-                                                
-                                                return (
-                                                    <div>
-                                                        <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#10B981' }}>
-                                                            DQA Datasets Ready
-                                                        </div>
-                                                        <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
-                                                            <div style={{ marginBottom: '1px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Datasets:</span> {datasetCount}/4 created
-                                                            </div>
-                                                            <div style={{ marginBottom: '1px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Elements:</span> {localDataElements.length} DQA elements
-                                                            </div>
-                                                            <div style={{ marginBottom: '1px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Facilities:</span> {localOrgUnits.length} assigned
-                                                            </div>
-                                                            {selectedDatasets.length > 0 && (
-                                                                <div style={{ fontSize: '10px', color: '#888' }}>
-                                                                    From {selectedDatasets.length} source datasets
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )
                                             })()}
                                         </Box>
                                     </DataTableCell>
@@ -1614,9 +1782,10 @@ export const ManageAssessments = () => {
                 <Modal 
                     large 
                     onClose={() => setDatasetDetailsModal({ isOpen: false, dataset: null, assessment: null })}
+                    style={{ background: '#fff' }}
                 >
                     <ModalTitle>
-                        Dataset Details: {datasetDetailsModal.dataset?.type} 
+                        Dataset Details: {datasetDetailsModal.dataset?.datasetType || datasetDetailsModal.dataset?.type} 
                         {datasetDetailsModal.assessment && ` - ${datasetDetailsModal.assessment.name}`}
                     </ModalTitle>
                     <ModalContent>
@@ -1627,7 +1796,7 @@ export const ManageAssessments = () => {
                                         Dataset Information
                                     </h6>
                                     <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                                        <strong>Type:</strong> {datasetDetailsModal.dataset.type}
+                                        <strong>Type:</strong> {datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type}
                                     </div>
                                     <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
                                         <strong>Name:</strong> {datasetDetailsModal.dataset.name}
@@ -1638,22 +1807,22 @@ export const ManageAssessments = () => {
                                 </div>
 
                                 {datasetDetailsModal.assessment.localDatasetsMetadata?.createdDatasets && 
-                                 datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => ds.type === datasetDetailsModal.dataset.type) && (
+                                 datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => (ds.datasetType || ds.type) === (datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type)) && (
                                     <div style={{ marginBottom: '16px' }}>
                                         <h6 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600' }}>
                                             DHIS2 Dataset Details
                                         </h6>
                                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                                            <strong>ID:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => ds.type === datasetDetailsModal.dataset.type).id}
+                                            <strong>ID:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => (ds.datasetType || ds.type) === (datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type)).id}
                                         </div>
                                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                                            <strong>Code:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => ds.type === datasetDetailsModal.dataset.type).code}
+                                            <strong>Code:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => (ds.datasetType || ds.type) === (datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type)).code}
                                         </div>
                                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                                            <strong>Period Type:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => ds.type === datasetDetailsModal.dataset.type).periodType}
+                                            <strong>Period Type:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => (ds.datasetType || ds.type) === (datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type)).periodType}
                                         </div>
                                         <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                                            <strong>Description:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => ds.type === datasetDetailsModal.dataset.type).description}
+                                            <strong>Description:</strong> {datasetDetailsModal.assessment.localDatasetsMetadata.createdDatasets.find(ds => (ds.datasetType || ds.type) === (datasetDetailsModal.dataset.datasetType || datasetDetailsModal.dataset.type)).description}
                                         </div>
                                     </div>
                                 )}
@@ -1718,6 +1887,8 @@ export const ManageAssessments = () => {
             {statusChangeModal.isOpen && (
                 <Modal 
                     onClose={() => setStatusChangeModal({ isOpen: false, assessment: null, newStatus: null })}
+                    large
+                    style={{ background: '#fff' }}
                 >
                     <ModalTitle>
                         Change Assessment Status
@@ -1771,6 +1942,7 @@ export const ManageAssessments = () => {
                 <Modal 
                     large
                     onClose={() => setSmsTestModal({ isOpen: false })}
+                    style={{ background: '#fff' }}
                 >
                     <ModalTitle>
                         📱 SMS Integration Test

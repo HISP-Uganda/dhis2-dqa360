@@ -22,7 +22,7 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import i18n from '@dhis2/d2-i18n'
 
-export const DataElementModal = ({ onClose, dataElement, onSave }) => {
+export const DataElementModal = ({ onClose, dataElement, onSave, fullCategoryCombos = [] }) => {
     const [activeTab, setActiveTab] = useState('basic')
 
     const { control, handleSubmit, formState: { errors }, setValue } = useForm({
@@ -67,12 +67,19 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
     }, [watchedName, dataElement, setValue])
 
     const onSubmit = (formData) => {
+        // Find the selected CategoryCombo's full data
+        const categoryComboOptions = getCategoryComboOptions()
+        const selectedCCOption = categoryComboOptions.find(opt => opt.value === formData.categoryCombo)
+        const fullCategoryCombo = selectedCCOption?.fullCategoryCombo || null
+
         const processedData = {
             ...formData,
             id: dataElement?.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             // Ensure numeric fields are properly handled
             minValue: formData.minValue ? Number(formData.minValue) : null,
             maxValue: formData.maxValue ? Number(formData.maxValue) : null,
+            // Include fullCategoryCombo for external CategoryCombo creation
+            fullCategoryCombo: fullCategoryCombo,
         }
         onSave(processedData)
     }
@@ -101,8 +108,34 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
         return ['INTEGER', 'INTEGER_POSITIVE', 'INTEGER_NEGATIVE', 'INTEGER_ZERO_OR_POSITIVE', 'NUMBER', 'PERCENTAGE'].includes(valueType)
     }
 
+    // Generate CategoryCombo options from fullCategoryCombos
+    const getCategoryComboOptions = () => {
+        const options = [
+            { value: 'default', label: i18n.t('Default (No disaggregation)') }
+        ]
+
+        if (Array.isArray(fullCategoryCombos) && fullCategoryCombos.length > 0) {
+            fullCategoryCombos.forEach(cc => {
+                if (cc && cc.id && cc.id !== 'bjDvmb4bfuf') { // Skip default CC
+                    const label = cc.displayName || cc.name || cc.code || cc.id
+                    const categoriesInfo = cc.categories && cc.categories.length > 0 
+                        ? ` (${cc.categories.length} ${cc.categories.length === 1 ? i18n.t('category') : i18n.t('categories')})`
+                        : ''
+                    
+                    options.push({
+                        value: cc.id,
+                        label: `${label}${categoriesInfo}`,
+                        fullCategoryCombo: cc // Store full object for later use
+                    })
+                }
+            })
+        }
+
+        return options
+    }
+
     return (
-        <Modal large position="middle" onClose={onClose}>
+        <Modal large position="middle" onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>
                 {dataElement ? i18n.t('Edit Data Element') : i18n.t('Add Data Element')}
             </ModalTitle>
@@ -216,7 +249,10 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
                                                 control={control}
                                                 render={({ field }) => (
                                                     <InputField label={i18n.t('Value Type')}>
-                                                        <SingleSelect {...field}>
+                                                        <SingleSelect
+                                                            selected={field.value}
+                                                            onChange={({ selected }) => field.onChange(selected)}
+                                                        >
                                                             <SingleSelectOption value="TEXT" label={i18n.t('Text')} />
                                                             <SingleSelectOption value="LONG_TEXT" label={i18n.t('Long Text')} />
                                                             <SingleSelectOption value="NUMBER" label={i18n.t('Number')} />
@@ -243,7 +279,10 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
                                                         label={i18n.t('Aggregation Type')}
                                                         helpText={i18n.t('How values should be aggregated across periods and organisation units')}
                                                     >
-                                                        <SingleSelect {...field}>
+                                                        <SingleSelect
+                                                            selected={field.value}
+                                                            onChange={({ selected }) => field.onChange(selected)}
+                                                        >
                                                             {getAggregationOptions(watchedValueType).map(option => (
                                                                 <SingleSelectOption
                                                                     key={option.value}
@@ -263,7 +302,10 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
                                         control={control}
                                         render={({ field }) => (
                                             <InputField label={i18n.t('Domain Type')}>
-                                                <SingleSelect {...field}>
+                                                <SingleSelect
+                                                    selected={field.value}
+                                                    onChange={({ selected }) => field.onChange(selected)}
+                                                >
                                                     <SingleSelectOption value="AGGREGATE" label={i18n.t('Aggregate')} />
                                                     <SingleSelectOption value="TRACKER" label={i18n.t('Tracker')} />
                                                 </SingleSelect>
@@ -310,11 +352,17 @@ export const DataElementModal = ({ onClose, dataElement, onSave }) => {
                                                 label={i18n.t('Category Combination')}
                                                 helpText={i18n.t('Defines how this data element can be disaggregated')}
                                             >
-                                                <SingleSelect {...field}>
-                                                    <SingleSelectOption value="default" label={i18n.t('Default (No disaggregation)')} />
-                                                    <SingleSelectOption value="age_sex" label={i18n.t('Age and Sex')} />
-                                                    <SingleSelectOption value="sex" label={i18n.t('Sex only')} />
-                                                    <SingleSelectOption value="age" label={i18n.t('Age only')} />
+                                                <SingleSelect
+                                                    selected={field.value}
+                                                    onChange={({ selected }) => field.onChange(selected)}
+                                                >
+                                                    {getCategoryComboOptions().map(option => (
+                                                        <SingleSelectOption 
+                                                            key={option.value} 
+                                                            value={option.value} 
+                                                            label={option.label} 
+                                                        />
+                                                    ))}
                                                 </SingleSelect>
                                             </InputField>
                                         )}

@@ -113,7 +113,7 @@ const createDataElementMapping = (originalDataElements, prefixedDataElements) =>
     return mapping
 }
 
-export const AssessmentDataConflictResolver = ({ value, onChange, dataElements, error }) => {
+export const AssessmentDataConflictResolver = ({ value, onChange, dataElements, error, errorMessage }) => {
     const [editingDataElement, setEditingDataElement] = useState(null)
     const [editModalOpen, setEditModalOpen] = useState(false)
     const [isGeneratingUIDs, setIsGeneratingUIDs] = useState(false)
@@ -614,7 +614,7 @@ const DataElementEditModal = ({ dataElement, onClose, onSave }) => {
     }
 
     return (
-        <Modal large position="middle" onClose={onClose}>
+        <Modal large position="middle" onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>
                 {i18n.t('Edit Data Element')} - {dataElement.datasetTypeName}
             </ModalTitle>

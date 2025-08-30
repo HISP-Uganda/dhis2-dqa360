@@ -59,26 +59,30 @@ export const useTabBasedDataStore = () => {
 
     const saveAssessment = async (assessment) => {
         try {
-            console.log('💾 Saving assessment with standard DQA360 structure:', assessment.id)
+            console.log('💾 Saving assessment with optimized structure:', assessment.id)
             
-            await initializeDataStore()
+            // Skip datastore initialization if not needed (performance optimization)
+            const skipInit = assessment.version === '2.0.0' && assessment.info && assessment.dhis2Config
+            if (!skipInit) {
+                await initializeDataStore()
+            }
             
-            // If assessment already follows standard structure, use it directly
-            // Otherwise, transform legacy data to standard structure
+            // Optimize: If assessment already follows standard structure, use it directly
             let standardAssessment
             
             if (assessment.version === '2.0.0' && assessment.info && assessment.dhis2Config) {
-                // Already in standard format - just update timestamp
+                // Already in standard format - just update timestamp (fast path)
                 standardAssessment = {
                     ...assessment,
                     lastUpdated: new Date().toISOString()
                 }
-                console.log('📋 Assessment already in standard format')
+                console.log('⚡ Assessment already in standard format - using fast path')
             } else {
-                // Transform legacy format to standard format
+                // Transform legacy format to standard format (only when needed)
                 console.log('🔄 Transforming legacy assessment to standard format')
                 const currentTime = new Date().toISOString()
                 
+                // Optimize: Only create objects that don't exist, reuse existing ones
                 standardAssessment = {
                     // Core identification
                     id: assessment.id,
@@ -86,7 +90,7 @@ export const useTabBasedDataStore = () => {
                     createdAt: assessment.createdAt || assessment.created || currentTime,
                     lastUpdated: currentTime,
                     
-                    // Basic information tab
+                    // Basic information tab - reuse existing if available
                     info: assessment.info || {
                         name: assessment.name || 'Untitled Assessment',
                         description: assessment.description || '',
@@ -99,7 +103,7 @@ export const useTabBasedDataStore = () => {
                         notes: assessment.notes || assessment.objectives || ''
                     },
                     
-                    // DHIS2 configuration tab
+                    // DHIS2 configuration tab - reuse existing if available
                     dhis2Config: assessment.dhis2Config || {
                         baseUrl: '',
                         username: '',
@@ -110,39 +114,48 @@ export const useTabBasedDataStore = () => {
                         apiVersion: ''
                     },
                     
-                    // Datasets tab
-                    datasets: assessment.datasets || {
-                        selected: assessment.selectedDataSets || [],
-                        metadata: {
-                            totalSelected: (assessment.selectedDataSets || []).length,
-                            lastUpdated: currentTime,
-                            source: assessment.metadataSource || 'manual'
+                    // Datasets tab - optimize array length calculation
+                    datasets: assessment.datasets || (() => {
+                        const selected = assessment.selectedDataSets || []
+                        return {
+                            selected,
+                            metadata: {
+                                totalSelected: selected.length,
+                                lastUpdated: currentTime,
+                                source: assessment.metadataSource || 'manual'
+                            }
                         }
-                    },
+                    })(),
                     
-                    // Data elements tab
-                    dataElements: assessment.dataElements || {
-                        selected: assessment.selectedDataElements || [],
-                        metadata: {
-                            totalSelected: (assessment.selectedDataElements || []).length,
-                            lastUpdated: currentTime,
-                            source: assessment.metadataSource || 'manual'
-                        },
-                        mappings: assessment.dataElementMappings || {}
-                    },
+                    // Data elements tab - optimize array length calculation
+                    dataElements: assessment.dataElements || (() => {
+                        const selected = assessment.selectedDataElements || []
+                        return {
+                            selected,
+                            metadata: {
+                                totalSelected: selected.length,
+                                lastUpdated: currentTime,
+                                source: assessment.metadataSource || 'manual'
+                            },
+                            mappings: assessment.dataElementMappings || {}
+                        }
+                    })(),
                     
-                    // Organization units tab
-                    orgUnits: assessment.orgUnits || {
-                        selected: assessment.selectedOrgUnits || [],
-                        metadata: {
-                            totalSelected: (assessment.selectedOrgUnits || []).length,
-                            hierarchyLevels: [],
-                            lastUpdated: currentTime
-                        },
-                        hierarchy: {}
-                    },
+                    // Organization units tab - optimize array length calculation
+                    orgUnits: assessment.orgUnits || (() => {
+                        const selected = assessment.selectedOrgUnits || []
+                        return {
+                            selected,
+                            metadata: {
+                                totalSelected: selected.length,
+                                hierarchyLevels: [],
+                                lastUpdated: currentTime
+                            },
+                            hierarchy: {}
+                        }
+                    })(),
                     
-                    // Organization unit mapping tab
+                    // Organization unit mapping tab - reuse existing if available
                     orgUnitMapping: assessment.orgUnitMapping || {
                         mappings: assessment.orgUnitMappings || [],
                         localOrgUnits: [],
@@ -155,7 +168,7 @@ export const useTabBasedDataStore = () => {
                         }
                     },
                     
-                    // Local datasets tab
+                    // Local datasets tab - reuse existing if available
                     localDatasets: assessment.localDatasets || {
                         info: {
                             totalDatasets: 0,
@@ -167,7 +180,7 @@ export const useTabBasedDataStore = () => {
                         createdDatasets: []
                     },
                     
-                    // Statistics
+                    // Statistics - reuse existing if available
                     statistics: assessment.statistics || {
                         dataQuality: {
                             completeness: null,
@@ -184,19 +197,19 @@ export const useTabBasedDataStore = () => {
             // Generate assessment key using standard format
             const assessmentKey = standardAssessment.id
             
-            // Save to datastore
+            // Save to datastore (main operation)
             await engine.mutate({
                 resource: `dataStore/${NAMESPACE}/${assessmentKey}`,
                 type: 'update',
                 data: standardAssessment
             })
             
-            // Update assessments index
-            await updateAssessmentInIndex(standardAssessment)
-            
-            // Audit log
-            try {
-                await logEvent({
+            // Optimize: Run index update and audit logging in parallel (non-blocking)
+            const backgroundTasks = [
+                updateAssessmentInIndex(standardAssessment).catch(e => 
+                    console.warn('Index update failed (non-blocking):', e)
+                ),
+                logEvent({
                     action: 'assessment.save',
                     entityType: 'assessment',
                     entityId: standardAssessment.id,
@@ -204,10 +217,13 @@ export const useTabBasedDataStore = () => {
                     status: 'success',
                     message: 'Assessment saved',
                     context: { version: standardAssessment.version },
-                })
-            } catch (e) {
-                console.warn('Audit log failed (non-blocking):', e)
-            }
+                }).catch(e => 
+                    console.warn('Audit log failed (non-blocking):', e)
+                )
+            ]
+            
+            // Don't wait for background tasks to complete - let them run async
+            Promise.allSettled(backgroundTasks)
 
             console.log('✅ Assessment saved with standard DQA360 structure:', {
                 id: standardAssessment.id,

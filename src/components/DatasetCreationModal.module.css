@@ -1,13 +1,47 @@
 /* Dataset Creation Modal Styles */
 
+/* Global Box Sizing for Modal */
+.modal *,
+.modal *::before,
+.modal *::after {
+    box-sizing: border-box !important;
+}
+
+/* Modal Backdrop */
+.modalBackdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 9998 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 .modal {
     background: white !important;
     max-width: 1200px !important; /* wider modal */
     width: 90vw !important;      /* responsive width */
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 8px !important;
+    max-height: 90vh !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 .modalContent {
-    overflow-x: hidden; /* avoid horizontal scroll */
+    overflow-x: hidden !important; /* avoid horizontal scroll */
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
 
 .modal :global(.modal) {
@@ -27,49 +61,229 @@
 
 .modalContent {
     background: white !important;
-    min-height: 500px;
+    height: 100%;
     padding: 16px 24px !important;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .container {
-    max-height: 75vh;
-    overflow-y: auto;
+    height: 75vh; /* Fixed height for consistent layout */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px; /* Small consistent gap */
     background: white;
     padding: 0;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* Fixed Status Messages Area */
+.statusMessagesArea {
+    flex-shrink: 0; /* Fixed height - prevent shrinking */
+    max-height: 80px; /* Limit status messages height */
+    overflow-y: auto; /* Allow scrolling if needed */
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* Fixed Progress Summary Area */
+.progressSummaryArea {
+    background: transparent; /* Remove background */
+    border: none; /* Remove border */
+    border-radius: 0; /* Remove rounded corners */
+    box-sizing: border-box;
+    width: 100%;
+    flex-shrink: 0; /* Fixed height - prevent shrinking */
+    min-height: 160px; /* Increased minimum height to accommodate current task */
+    overflow: visible; /* Allow content to be fully visible */
+    padding: 4px; /* 4px padding as requested */
 }
 
 .progressCard {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
+    background: transparent; /* Use parent background */
+    border: none; /* Remove individual borders */
+    border-radius: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    width: 100%;
+    flex-shrink: 0; /* Prevent shrinking */
+    margin: 0; /* Remove any default margins */
+    padding: 0; /* Remove any default padding since parent has padding */
+}
+
+/* Current Task Display */
+.currentTaskCard {
+    border: none; /* Remove border */
+    border-radius: 0; /* Remove border radius */
+    background: transparent; /* Remove background */
+    animation: none; /* Remove pulsing animation */
+    box-sizing: border-box;
+    overflow: visible; /* Allow content to be fully visible */
+    width: 100%;
+    flex-shrink: 0; /* Prevent shrinking */
+    padding: 8px; /* Keep padding for spacing */
+}
+
+@keyframes pulse-border {
+    0%, 100% { border-color: #2196f3; }
+    50% { border-color: #1976d2; }
+}
+
+.currentTask {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.currentTaskHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.currentTaskIcon {
+    font-size: 16px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.currentTaskTitle {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.currentTaskInfo {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #333;
     background: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    border: 1px solid #e3f2fd;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+    gap: 8px;
+}
+
+/* Step Progress Indicators */
+.stepProgressIndicators {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    border: 1px solid #e3f2fd;
+    box-sizing: border-box;
+}
+
+.stepProgressIndicators > div:first-child {
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: #666;
+}
+
+.stepProgressIndicators > div:last-child {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.stepProgressIndicators .stepIndicator {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    transition: all 0.2s ease;
+    min-width: 60px;
+    justify-content: center;
+}
+
+.stepProgressIndicators .stepIndicator.current {
+    border: 2px solid #1f2937 !important;
+    box-shadow: 0 0 4px rgba(31, 41, 55, 0.3);
+}
+
+.stepProgressIndicators .stepIndicator:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fixed Log Text Area - Always visible with consistent height */
+.logTextArea {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); /* Light gray to white gradient */
+    border: 2px solid #6c757d;
+    border-radius: 8px; /* Rounded corners */
+    flex: 1; /* Take all remaining space */
+    min-height: 300px; /* Ensure minimum height for logs */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.logsHeader {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 8px 12px;
+    flex-shrink: 0; /* Fixed header */
+    border-radius: 8px 8px 0 0;
 }
 
 .logsCard {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    background: white;
-    max-height: 300px;
+    background: transparent; /* Use parent background */
+    border: none; /* Remove individual borders */
+    border-radius: 0;
+    flex: 1; /* Take all remaining space to bottom */
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.logsCardContent {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 .sectionTitle {
-    margin: 0 0 16px 0;
-    font-size: 16px;
+    margin: 0; /* No margin for tight layout */
+    font-size: 14px; /* Smaller font */
     font-weight: 600;
     color: #333;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0; /* Keep title fixed, don't scroll */
+    padding: 0; /* No padding */
 }
 
 /* Overall Progress */
 .overallProgress {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 2px; /* Reduced from 8px to 2px */
+    padding: 2px; /* Reduced from 4px to 2px */
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .progressInfo {
@@ -77,6 +291,81 @@
     justify-content: space-between;
     font-size: 14px;
     color: #666;
+    padding: 4px 8px; /* Reduced from 8px 12px to 4px 8px */
+    background: #f8f9fa;
+    border-radius: 4px; /* Reduced from 6px to 4px */
+    border: 1px solid #e9ecef;
+    margin: 1px 0; /* Reduced from 4px 0 to 1px 0 */
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+    line-height: 1.2; /* Tighter line height */
+}
+
+/* Progress Bar Styling */
+.progressBar {
+    width: 100% !important;
+    margin: 4px 0 !important; /* Reduced from 8px 0 to 4px 0 */
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Force LinearLoader to be full width and blue */
+.progressBar :global(.linear-loader) {
+    width: 100% !important;
+    height: 8px !important;
+    background-color: #f0f0f0 !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+}
+
+.progressBar :global(.linear-loader-bar) {
+    background-color: #2196f3 !important; /* Blue color */
+    height: 100% !important;
+    transition: width 0.3s ease !important;
+    border-radius: 4px !important;
+}
+
+/* Alternative approach - target DHIS2 UI LinearLoader directly */
+.overallProgress :global([data-test="dhis2-uicore-linearloader"]) {
+    width: 100% !important;
+}
+
+.overallProgress :global([data-test="dhis2-uicore-linearloader"] > div) {
+    background-color: #2196f3 !important; /* Blue color */
+    height: 8px !important;
+}
+
+/* More specific targeting for DHIS2 LinearLoader */
+.progressBar :global(.linear-loader),
+.progressBar :global([class*="linear"]),
+.progressBar :global([class*="loader"]) {
+    width: 100% !important;
+    background-color: #f0f0f0 !important;
+    border-radius: 4px !important;
+    height: 8px !important;
+}
+
+.progressBar :global(.linear-loader) > :global(div),
+.progressBar :global([class*="linear"]) > :global(div),
+.progressBar :global([class*="loader"]) > :global(div) {
+    background-color: #2196f3 !important; /* Force blue color */
+    height: 100% !important;
+    transition: width 0.3s ease !important;
+    border-radius: 4px !important;
+}
+
+/* Ensure progress bar container is full width */
+.progressBar {
+    width: 100% !important;
+    margin: 8px 0 !important;
+    display: block !important;
+}
+
+.progressBar > * {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 /* Dataset Progress Grid */
@@ -175,25 +464,112 @@
     line-height: 1.2;
 }
 
-/* Logs */
+/* Logs Container - Black terminal area */
 .logsContainer {
-    height: 600px; /* increased from 400px for better visibility */
-    overflow-y: auto;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    background: #f8f9fa;
+    flex: 1; /* Fill all remaining space */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* No horizontal scrolling */
+    background: #1a1a1a !important; /* Dark background - terminal style */
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 13px;
-    scroll-behavior: smooth;
+    line-height: 1.5;
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: 0 0 8px 8px; /* Rounded bottom corners */
+    padding: 12px; /* Internal padding for text */
+    margin: 0; /* No external margin */
+    min-height: 0; /* Allow flex to control height */
+}
+
+.logsList {
+    display: block; /* Simple block display for scrolling */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .logEntry {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 4px 8px;
-    border-bottom: 1px solid #e9ecef;
+    display: block;
+    padding: 4px 0;
+    border-bottom: 1px solid #333; /* Dark border for terminal style */
     line-height: 1.4;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    width: 100%;
+    font-size: 13px;
+    flex-shrink: 0; /* Don't compress log entries */
+    margin-bottom: 2px;
+    color: #e5e7eb; /* Light text for dark background */
+}
+
+.logEntry:last-child {
+    border-bottom: none;
+}
+
+.logTime {
+    color: #888;
+    font-family: monospace;
+    font-weight: 500;
+    font-size: 11px;
+}
+
+.logType {
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.logDatasetType {
+    background: #c084fc;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.logMessage {
+    color: #e5e7eb;
+    margin-left: 8px;
+    word-wrap: break-word;
+}
+
+.logHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 11px;
+}
+
+.logTime {
+    color: #6c757d;
+    font-family: monospace;
+    font-weight: 500;
+    min-width: 60px;
+}
+
+.logIcon {
+    font-size: 14px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.logDatasetType {
+    background: #007bff;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.logMessage {
+    font-size: 13px;
+    line-height: 1.4;
+    padding-left: 4px;
+    word-wrap: break-word;
 }
 
 .logEntry:last-child {
@@ -220,18 +596,7 @@
     color: #721c24;
 }
 
-.logTime {
-    font-size: 10px;
-    color: #666;
-    min-width: 60px;
-    font-weight: 500;
-}
-
-.logIcon {
-    font-size: 12px;
-    min-width: 16px;
-    text-align: center;
-}
+/* Removed duplicate logTime and logIcon classes - they are defined above */
 
 .logMessage {
     flex: 1;
@@ -249,14 +614,44 @@
 }
 
 .noLogs {
-    padding: 20px;
+    padding: 40px 20px;
     text-align: center;
-    color: #666;
+    color: #a0a0a0; /* Light gray for dark background */
     font-style: italic;
+    background: transparent; /* Transparent to show dark background */
+    border: 2px dashed #444; /* Dark dashed border */
+    border-radius: 6px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Modal Actions - Add margin from log area */
+.modalActions {
+    margin-top: 16px !important; /* Add space between log area and buttons */
+    padding-top: 16px !important;
+    border-top: 1px solid #e9ecef !important; /* Subtle separator line */
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .modal {
+        width: 95vw !important;
+        max-width: none !important;
+        margin: 10px !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+    
+    .container {
+        height: 85vh;
+    }
+    
+    .logsCard {
+        flex: 1; /* Fill remaining space on mobile too */
+    }
+    
     .datasetGrid {
         grid-template-columns: 1fr;
     }
@@ -264,6 +659,17 @@
     .progressInfo {
         flex-direction: column;
         gap: 4px;
+        padding: 8px 12px;
+        overflow: hidden;
+        word-wrap: break-word;
+    }
+    
+    .currentTaskInfo {
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 16px;
+        overflow: hidden;
+        word-wrap: break-word;
     }
     
     .logEntry {
@@ -300,4 +706,17 @@
 .container::-webkit-scrollbar-thumb:hover,
 .logsContainer::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+/* Performance indicators for optimized processing */
+.logEntry.performance {
+    background: rgba(96, 165, 250, 0.1); /* Light blue background for performance logs */
+    border-left: 3px solid #60a5fa;
+    padding-left: 8px;
+}
+
+.logEntry.batch {
+    background: rgba(52, 211, 153, 0.1); /* Light green background for batch operations */
+    border-left: 3px solid #34d399;
+    padding-left: 8px;
 }

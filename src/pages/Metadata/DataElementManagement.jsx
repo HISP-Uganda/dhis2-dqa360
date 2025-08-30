@@ -690,7 +690,7 @@ const CreateDatasetModal = ({ selectedElements, dataElements, onClose }) => {
     }
 
     return (
-        <Modal large onClose={onClose}>
+        <Modal large onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>{i18n.t('Create Assessment Dataset')}</ModalTitle>
             <ModalContent>
                 <Box display="flex" flexDirection="column" gap="16px">

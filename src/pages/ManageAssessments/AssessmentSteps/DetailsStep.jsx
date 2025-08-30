@@ -184,7 +184,7 @@ const DetailsStep = ({
                 <SingleSelectField
                     label={i18n.t('Assessment Type')}
                     selected={assessmentData.assessmentType}
-                    onChange={({ selected }) => setAssessmentData(prev => ({ ...prev, assessmentType: selected }))}
+                    onChange={({ selected }) => setAssessmentData(prev => ({ ...prev, assessmentType: selected })) /* draft saved in parent */}
                 >
                     {(Array.isArray(assessmentTypes) ? assessmentTypes : []).map(type => (
                         <SingleSelectOption key={type.value} value={type.value} label={type.label} />

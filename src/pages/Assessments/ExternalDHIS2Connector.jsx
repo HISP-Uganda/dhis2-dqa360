@@ -30,7 +30,7 @@ import {
 import { useForm, Controller } from 'react-hook-form'
 import i18n from '@dhis2/d2-i18n'
 
-export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
+export const ExternalDHIS2Connector = ({ value, onChange, error, errorMessage }) => {
     const [connectionStatus, setConnectionStatus] = useState('disconnected') // 'disconnected', 'connecting', 'connected', 'error'
     const [loadingDatasets, setLoadingDatasets] = useState(false)
     const [loadingOrgUnits, setLoadingOrgUnits] = useState(false)
@@ -38,7 +38,8 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
         datasets: [],
         selectedDatasets: [],
         dataElements: [],
-        organisationUnits: []
+        organisationUnits: [],
+        fullCategoryCombos: []
     })
 
     const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm({
@@ -100,11 +101,66 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
         ]
     }
 
+    const loadCategoryCombos = async (url, user, pass) => {
+        // Simulate API call to get category combos from external DHIS2
+        await new Promise(resolve => setTimeout(resolve, 800))
+
+        // Mock CategoryCombos with full hierarchy
+        const mockCategoryCombos = [
+            {
+                id: 'ext_cc_1',
+                name: 'Age and Sex',
+                displayName: 'Age and Sex',
+                code: 'AGE_SEX',
+                categories: [
+                    {
+                        id: 'ext_cat_1',
+                        name: 'Age',
+                        code: 'AGE',
+                        categoryOptions: [
+                            { id: 'ext_co_1', name: '<5 years', code: 'UNDER_5' },
+                            { id: 'ext_co_2', name: '5-14 years', code: 'AGE_5_14' },
+                            { id: 'ext_co_3', name: '15+ years', code: 'AGE_15_PLUS' }
+                        ]
+                    },
+                    {
+                        id: 'ext_cat_2',
+                        name: 'Sex',
+                        code: 'SEX',
+                        categoryOptions: [
+                            { id: 'ext_co_4', name: 'Male', code: 'MALE' },
+                            { id: 'ext_co_5', name: 'Female', code: 'FEMALE' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'ext_cc_2',
+                name: 'Sex only',
+                displayName: 'Sex only',
+                code: 'SEX_ONLY',
+                categories: [
+                    {
+                        id: 'ext_cat_2',
+                        name: 'Sex',
+                        code: 'SEX',
+                        categoryOptions: [
+                            { id: 'ext_co_4', name: 'Male', code: 'MALE' },
+                            { id: 'ext_co_5', name: 'Female', code: 'FEMALE' }
+                        ]
+                    }
+                ]
+            }
+        ]
+
+        return mockCategoryCombos
+    }
+
     const loadDatasetDetails = async (url, user, pass, datasetIds) => {
         // Simulate API call to get data elements for selected datasets
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        // Mock data elements with assessment type separation
+        // Mock data elements with assessment type separation and CategoryCombo references
         const mockDataElements = [
             {
                 id: 'ext_de_1',
@@ -112,7 +168,9 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
                 valueType: 'INTEGER',
                 aggregationType: 'SUM',
                 datasetId: 'ext_ds_1',
-                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy'] // Available for all assessment types
+                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy'],
+                categoryCombo: { id: 'ext_cc_1' }, // Reference to Age and Sex CategoryCombo
+                fullCategoryCombo: null // Will be populated when CategoryCombos are loaded
             },
             {
                 id: 'ext_de_2',
@@ -120,7 +178,9 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
                 valueType: 'INTEGER',
                 aggregationType: 'SUM',
                 datasetId: 'ext_ds_1',
-                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy']
+                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy'],
+                categoryCombo: { id: 'ext_cc_2' }, // Reference to Sex only CategoryCombo
+                fullCategoryCombo: null
             },
             {
                 id: 'ext_de_3',
@@ -128,7 +188,9 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
                 valueType: 'INTEGER',
                 aggregationType: 'SUM',
                 datasetId: 'ext_ds_2',
-                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy']
+                assessmentTypes: ['Completeness', 'Timeliness', 'Consistency', 'Accuracy'],
+                categoryCombo: { id: 'bjDvmb4bfuf' }, // Default CategoryCombo
+                fullCategoryCombo: null
             }
         ]
 
@@ -195,13 +257,31 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
 
         if (datasetIds.length > 0) {
             try {
-                const dataElements = await loadDatasetDetails(serverUrl, username, password, datasetIds)
-                setExternalData(prev => ({ ...prev, dataElements }))
+                // Load data elements and category combos
+                const [dataElements, categoryCombos] = await Promise.all([
+                    loadDatasetDetails(serverUrl, username, password, datasetIds),
+                    loadCategoryCombos(serverUrl, username, password)
+                ])
+
+                // Populate fullCategoryCombo field in data elements
+                const enrichedDataElements = dataElements.map(de => {
+                    if (de.categoryCombo?.id && de.categoryCombo.id !== 'bjDvmb4bfuf') {
+                        const fullCC = categoryCombos.find(cc => cc.id === de.categoryCombo.id)
+                        return { ...de, fullCategoryCombo: fullCC || null }
+                    }
+                    return de
+                })
+
+                setExternalData(prev => ({ 
+                    ...prev, 
+                    dataElements: enrichedDataElements,
+                    fullCategoryCombos: categoryCombos
+                }))
             } catch (error) {
-                console.error('Failed to load data elements:', error)
+                console.error('Failed to load data elements and category combos:', error)
             }
         } else {
-            setExternalData(prev => ({ ...prev, dataElements: [] }))
+            setExternalData(prev => ({ ...prev, dataElements: [], fullCategoryCombos: [] }))
         }
     }
 
@@ -227,6 +307,7 @@ export const ExternalDHIS2Connector = ({ value, onChange, error }) => {
                 selectedDatasets: externalData.selectedDatasets,
                 dataElements: externalData.dataElements,
                 organisationUnits: externalData.organisationUnits,
+                fullCategoryCombos: externalData.fullCategoryCombos,
                 datasets: externalData.datasets.filter(ds =>
                     externalData.selectedDatasets.includes(ds.id)
                 )

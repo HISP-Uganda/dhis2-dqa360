@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Button,
@@ -30,7 +30,66 @@ import ReviewStep from './AssessmentSteps/ReviewStep'
 import { useAssessmentDataStore } from '../../services/assessmentDataStoreService'
 import { useUserAuthorities } from '../../hooks/useUserAuthorities'
 
+// ---------------------- draft storage ----------------------
+const DRAFT_KEY = 'dqa360_create_assessment_draft_v1'
+const loadDraft = () => {
+    try {
+        const raw = localStorage.getItem(DRAFT_KEY)
+        return raw ? JSON.parse(raw) : null
+    } catch { return null }
+}
+const saveDraft = (partial) => {
+    try {
+        const curr = loadDraft() || {}
+        const next = { ...curr, ...partial, __updatedAt: new Date().toISOString() }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(next))
+    } catch {}
+}
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY) } catch {} }
+
 // ---------------------- helpers ----------------------
+/* Clean URL for display: unescape HTML entities (even double-encoded) + safe percent decode */
+const decodeHtmlEntities = (input = '') => {
+    if (!input) return ''
+    let out = String(input).trim()
+    for (let i = 0; i < 3; i++) {
+        const before = out
+        // DOMParser path (handles many edge cases)
+        if (typeof window !== 'undefined' && typeof DOMParser !== 'undefined') {
+            try {
+                const doc = new DOMParser().parseFromString(out, 'text/html')
+                out = (doc.documentElement && doc.documentElement.textContent) || out
+            } catch { /* noop */ }
+        }
+        // Manual fallback
+        out = out
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&sol;/g, '/')
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+                const code = parseInt(hex, 16)
+                return Number.isFinite(code) ? String.fromCodePoint(code) : _
+            })
+            .replace(/&#(\d+);/g, (_, dec) => {
+                const code = parseInt(dec, 10)
+                return Number.isFinite(code) ? String.fromCodePoint(code) : _
+            })
+        if (out === before) break
+    }
+    // Common leftover
+    out = out.replace(/&#x2F;/g, '/')
+    // Best-effort percent decode
+    try { out = decodeURIComponent(out) } catch { /* ignore */ }
+    // Collapse duplicate slashes except protocol
+    out = out.replace(/([^:]\/)\/+/g, '$1')
+    // Trim trailing slashes
+    out = out.replace(/\/+$/, '')
+    return out
+}
+
 const generatePeriodFromFrequency = (frequency) => {
     const now = new Date()
     const y = now.getFullYear()
@@ -75,32 +134,25 @@ const sanitizeForCommand = (s) => (s || 'CMD')
 
 // Extended default responses + backward-compatible aliases
 const defaultSmsResponses = (dsName) => ({
-    // primary set (your requested fields)
     success: i18n.t('Thank you. {{dataset}} for {{period}} at {{orgUnit}} received.', { dataset: dsName || '{{dataset}}' }),
     wrongFormat: i18n.t("Sorry, we couldn't process your message. Reply HELP for guidance."),
     noUser: i18n.t('Your number is not registered for this service.'),
     multipleOrgUnits: i18n.t('We found more than one org unit for your number. Please include the org unit code.'),
     noCodes: i18n.t('Please include data codes. Reply HELP for the format.'),
     onlyCommand: i18n.t('Command received. Now send data using: {{command}} <DATA>'),
-
-    // legacy/extra keys (kept for compatibility with older saved payloads)
-    error: i18n.t("Sorry, we couldn't process your message. Reply HELP for guidance."), // alias of wrongFormat
+    // legacy aliases
+    error: i18n.t("Sorry, we couldn't process your message. Reply HELP for guidance."),
     help: i18n.t('Format: {{command}} <DATA>. Example: {{command}} 010 23 ...'),
     duplicate: i18n.t('Already submitted for {{period}}.'),
-    notAuthorized: i18n.t('Your number is not registered for this service.'), // alias of noUser
+    notAuthorized: i18n.t('Your number is not registered for this service.'),
     validationFailed: i18n.t('Some values are invalid. Please check and resend.')
 })
 
-// Normalize any previously saved responses to the full set above
 const normalizeResponses = (dsName, commandName, existing = {}) => {
     const base = defaultSmsResponses(dsName)
     const merged = { ...base, ...existing }
-
-    // keep aliases in sync if old keys were used
     if (!merged.wrongFormat && merged.error) merged.wrongFormat = merged.error
     if (!merged.noUser && merged.notAuthorized) merged.noUser = merged.notAuthorized
-
-    // we intentionally keep {{command}}/{{dataset}} tokens as-is
     return merged
 }
 
@@ -130,7 +182,6 @@ const DATA_RETENTION_PERIODS = [
     { value: '5years', label: i18n.t('5 years') },
     { value: '7years', label: i18n.t('7 years') },
 ]
-// Expanded DQ dimensions; default is set in DetailsStep -> 'accuracy'
 const DATA_QUALITY_DIMENSIONS = [
     { value: 'accuracy', label: i18n.t('Accuracy') },
     { value: 'completeness', label: i18n.t('Completeness') },
@@ -156,11 +207,10 @@ const isValidHttpUrl = (value) => {
 const isConnectionConfigured = (metadataSource, cfg) => {
     if (metadataSource !== 'external') return true
     if (!cfg || !isValidHttpUrl(cfg.baseUrl)) return false
-    
-    // Accept both 'configured' (saved credentials) and 'ok' (tested and working)
+
     const status = cfg.connectionStatus
     if (status !== 'configured' && status !== 'ok') return false
-    
+
     const authType = (cfg.authType || '').toLowerCase()
     if (authType === 'token') {
         return !!(cfg.token && cfg.token.trim().length >= 12)
@@ -168,11 +218,141 @@ const isConnectionConfigured = (metadataSource, cfg) => {
     return !!(cfg.username && cfg.username.trim() && cfg.password && cfg.password.trim())
 }
 
+/**
+ * Load datasets (local OR external) with one call.
+ * - Defaults to skipPaging=true (modern, loads all datasets at once)
+ * - If the server still returns a pager, auto-fetch the remaining pages
+ * - Returns { dataSets, sourceUrl }
+ */
+const loadDatasets = async ({
+                                engine,                    // required when source==='local'
+                                source = 'local',          // 'local' | 'external'
+                                externalConfig = null,     // required when source==='external'
+                                fields,                    // DHIS2 fields expression (required)
+                                order = 'name:asc',
+                                skipPaging = true,
+                                pageSize = 1000,
+                                filter = null,             // optional filter parameter
+                                signal
+                            }) => {
+    if (!fields || typeof fields !== 'string') {
+        throw new Error('loadDatasets: "fields" is required')
+    }
+
+    const paramsBase = { fields, order }
+    if (filter) {
+        paramsBase.filter = filter
+    }
+    if (skipPaging) {
+        paramsBase.skipPaging = true
+    } else {
+        paramsBase.paging = true
+        paramsBase.pageSize = pageSize
+        paramsBase.page = 1
+    }
+
+    const fetchExternal = async () => {
+        const cfg = externalConfig || {}
+        const trim = s => (s || '').trim()
+        const trimSlash = u => trim(u).replace(/\/+$/, '')
+        const root = trimSlash(cfg.baseUrl || '')
+        const v = trim(String(cfg.apiVersion ?? ''))
+        const versionPart = v ? `/v${v.replace(/^v/i, '')}` : ''
+        const apiBase = `${root}/api${versionPart}`
+
+        const headers = { Accept: 'application/json' }
+        if ((cfg.authType || 'basic').toLowerCase() === 'token') {
+            const tok = (cfg.token || '').trim()
+            if (tok) headers.Authorization = `ApiToken ${tok}`
+        } else if (cfg.username || cfg.password) {
+            headers.Authorization = `Basic ${btoa(`${cfg.username || ''}:${cfg.password || ''}`)}`
+        }
+
+        const buildUrl = p => `${apiBase}/dataSets?${new URLSearchParams(p).toString()}`
+
+        // 1) try single shot
+        let res = await fetch(buildUrl(paramsBase), { headers, credentials: 'omit', mode: 'cors', signal })
+        if (res.status === 401) throw new Error('Authentication failed')
+        if (res.status === 403) throw new Error('Access denied')
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+
+        let json = await res.json()
+        let list = Array.isArray(json?.dataSets) ? json.dataSets : []
+
+        // 2) if server ignored skipPaging (pager present), fetch all pages
+        const pager = json?.pager
+        if (pager && pager.pageCount && pager.pageCount > 1) {
+            const all = [...list]
+            for (let page = (pager.page || 1) + 1; page <= pager.pageCount; page++) {
+                const resPage = await fetch(buildUrl({ ...paramsBase, paging: true, skipPaging: undefined, pageSize, page }), {
+                    headers, credentials: 'omit', mode: 'cors', signal
+                })
+                if (!resPage.ok) throw new Error(`HTTP ${resPage.status} on page ${page}`)
+                const jsonPage = await resPage.json()
+                const listPage = Array.isArray(jsonPage?.dataSets) ? jsonPage.dataSets : []
+                all.push(...listPage)
+            }
+            list = all
+        }
+
+        return { dataSets: list, sourceUrl: decodeHtmlEntities(cfg.baseUrl || '') }
+    }
+
+    const fetchLocal = async () => {
+        console.log('🏠 Fetching local datasets with params:', paramsBase)
+        
+        const res = await engine.query({
+            dataSets: { resource: 'dataSets', params: paramsBase }
+        }, { signal })
+
+        const list = Array.isArray(res?.dataSets?.dataSets) ? res.dataSets.dataSets
+            : Array.isArray(res?.dataSets) ? res.dataSets
+                : []
+                
+        console.log('🏠 Local fetch result:', { 
+            totalDatasets: list.length, 
+            firstDataset: list[0] ? { id: list[0].id, name: list[0].name } : null 
+        })
+        
+        return { dataSets: list, sourceUrl: `${window.location.origin}` }
+    }
+
+    return source === 'external' ? fetchExternal() : fetchLocal()
+}
+
+// Add CSS for spinner animation
+const spinnerStyle = `
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+`
+
 export const CreateAssessmentPage = () => {
     const navigate = useNavigate()
     const dataEngine = useDataEngine()
     const { userInfo } = useUserAuthorities()
     const { saveAssessment, listAssessments } = useAssessmentDataStore()
+
+    // Inject CSS for spinner animation
+    useEffect(() => {
+        const styleId = 'create-assessment-spinner-styles'
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style')
+            style.id = styleId
+            style.textContent = spinnerStyle
+            document.head.appendChild(style)
+        }
+        return () => {
+            const style = document.getElementById(styleId)
+            if (style) style.remove()
+        }
+    }, [])
+
+    // Clear any existing draft when starting fresh assessment creation
+    useEffect(() => {
+        clearDraft()
+    }, [])
 
     // ----- UI state -----
     const [activeTab, setActiveTab] = useState('details')
@@ -194,10 +374,8 @@ export const CreateAssessmentPage = () => {
         assessmentType: 'baseline',
         priority: 'medium',
         methodology: 'automated',
-        // Let DetailsStep set these once it loads lists (prevents "no option" crash)
         frequency: '',
         reportingLevel: '',
-        // Start with Accuracy selected by default (DetailsStep ensures this if empty)
         dataQualityDimensions: ['accuracy'],
         successCriteriaPredefined: [],
         successCriteria: '',
@@ -217,9 +395,22 @@ export const CreateAssessmentPage = () => {
     // datasets
     const [localDatasets, setLocalDatasets] = useState([])
     const [selectedDataSets, setSelectedDataSets] = useState([])
-    const [datasetsLoading, setDatasetsLoading] = useState(false) // Start with false, will be set to true by useEffect
+    
+    // Debug dataset selection changes
+    useEffect(() => {
+        console.log('📊 Selected datasets changed:', selectedDataSets)
+    }, [selectedDataSets])
+    const [datasetsLoading, setDatasetsLoading] = useState(false)
     const [datasetsPage, setDatasetsPage] = useState(1)
-    const [datasetsHasMore, setDatasetsHasMore] = useState(true)
+    const [datasetsHasMore, setDatasetsHasMore] = useState(false) // default false with skipPaging
+
+    // Cache for dataset requests to avoid repeated API calls
+    const [datasetsCache] = useState(new Map())
+
+
+    // Preloaded datasets from connection step
+    const [preloadedDatasets, setPreloadedDatasets] = useState(null)
+    const [preloadTimestamp, setPreloadTimestamp] = useState(null)
 
     // data elements (derived + selection)
     const [elementsAll, setElementsAll] = useState([])
@@ -228,10 +419,12 @@ export const CreateAssessmentPage = () => {
     // org units (derived from datasets + selection)
     const [orgUnitsAll, setOrgUnitsAll] = useState([])
     const [selectedOrgUnitIds, setSelectedOrgUnitIds] = useState([])
-    
+
     // local org units (for mapping targets - always from local DHIS2)
     const [localOrgUnitsAll, setLocalOrgUnitsAll] = useState([])
     const [localOrgUnitsLoading, setLocalOrgUnitsLoading] = useState(false)
+    const [localOrgUnitsCache, setLocalOrgUnitsCache] = useState(null) // Cache to avoid reloading
+    const [orgUnitLevels, setOrgUnitLevels] = useState([]) // Store org unit levels for level number lookup
 
     // mapping (optional, used for external)
     const [orgUnitMappings, setOrgUnitMappings] = useState([])
@@ -250,6 +443,8 @@ export const CreateAssessmentPage = () => {
     })
     const [smsDatasetCommands, setSmsDatasetCommands] = useState([])
 
+    // No draft persistence - fresh start for each assessment creation
+
     // dataset modal
     const [datasetModalOpen, setDatasetModalOpen] = useState(false)
     const emptyDatasetForm = { name: '', code: '', description: '', periodType: 'Monthly' }
@@ -262,12 +457,10 @@ export const CreateAssessmentPage = () => {
     // Save connection handler
     const handleSaveConnection = async () => {
         try {
-            // Save connection to localStorage for persistence across sessions
             const connectionData = {
                 baseUrl: externalConfig?.baseUrl,
                 authType: externalConfig?.authType,
                 username: externalConfig?.authType === 'basic' ? externalConfig?.username : undefined,
-                // Save credentials for authentication (stored locally)
                 password: externalConfig?.authType === 'basic' ? externalConfig?.password : undefined,
                 token: externalConfig?.authType === 'token' ? externalConfig?.token : undefined,
                 apiVersion: externalConfig?.apiVersion,
@@ -276,16 +469,7 @@ export const CreateAssessmentPage = () => {
                 lastTested: externalConfig?.lastTested,
                 savedAt: new Date().toISOString()
             }
-            
             localStorage.setItem('dqa360_external_connection', JSON.stringify(connectionData))
-            
-            // You could also save to DHIS2 dataStore here:
-            // await dataEngine.mutate({
-            //     type: 'create',
-            //     resource: 'dataStore/dqa360-connections/external',
-            //     data: connectionData
-            // })
-            
             console.log('Connection saved successfully')
         } catch (error) {
             console.error('Failed to save connection:', error)
@@ -307,9 +491,14 @@ export const CreateAssessmentPage = () => {
     }
 
     // ----- data loading -----
-    // Expanded dataset fields
-    // Expanded dataset fields (includes elements, categories, and org unit details) to avoid re-queries in later steps
-    const DATASET_FIELDS_FOR_FETCH =
+    // Minimal dataset fields for fastest loading
+    const DATASET_FIELDS_MINIMAL = 'id,name,code,periodType,organisationUnits~size,dataSetElements~size'
+    
+    // Simplified dataset fields for faster initial loading
+    const DATASET_FIELDS_BASIC = 'id,name,code,shortName,periodType,description,categoryCombo[id,name,shortName],organisationUnits~size,dataSetElements~size'
+    
+    // Detailed dataset fields including data elements and org units
+    const DATASET_FIELDS_DETAILED =
         'id,name,code,shortName,periodType,description,categoryCombo[id,name,shortName],' +
         'organisationUnits[id,name,code,level,parent[id,name,code],path],' +
         'dataSetElements[' +
@@ -326,27 +515,68 @@ export const CreateAssessmentPage = () => {
         'categoryCombo[id,name]' +
         ']'
 
-    // Define connectionReady before it's used in useEffect
-    // Connection is ready only when tested successfully
+    // Use basic fields for faster initial loading, detailed fields can be loaded later if needed
+    const DATASET_FIELDS_FOR_FETCH = DATASET_FIELDS_BASIC
+    
+    // For immediate fallback when detailed data is not available
+    const createFallbackElements = (dataset) => {
+        // Create minimal elements based on dataset info
+        if (!dataset) return []
+        
+        const elementCount = typeof dataset.dataSetElements === 'number' ? dataset.dataSetElements : 0
+        if (elementCount === 0) return []
+        
+        // Create placeholder elements
+        const elements = []
+        for (let i = 0; i < Math.min(elementCount, 10); i++) { // Limit to 10 placeholders
+            elements.push({
+                id: `${dataset.id}_element_${i}`,
+                name: `${dataset.name || dataset.code || 'Dataset'} - Element ${i + 1}`,
+                code: `${dataset.code || dataset.id}_${i}`,
+                valueType: 'NUMBER',
+                categoryCombo: undefined,
+                categories: [],
+                categoryOptionCount: 0,
+                isPlaceholder: true
+            })
+        }
+        return elements
+    }
+    
+    const createFallbackOrgUnits = (dataset) => {
+        // Create minimal org units based on dataset info
+        if (!dataset) return []
+        
+        const orgUnitCount = typeof dataset.organisationUnits === 'number' ? dataset.organisationUnits : 0
+        if (orgUnitCount === 0) return []
+        
+        // Create placeholder org units
+        const orgUnits = []
+        for (let i = 0; i < Math.min(orgUnitCount, 5); i++) { // Limit to 5 placeholders
+            orgUnits.push({
+                id: `${dataset.id}_orgunit_${i}`,
+                name: `${dataset.name || dataset.code || 'Dataset'} - Org Unit ${i + 1}`,
+                code: `${dataset.code || dataset.id}_OU_${i}`,
+                level: 1,
+                path: `/root/ou${i}`,
+                parent: undefined,
+                isPlaceholder: true
+            })
+        }
+        return orgUnits
+    }
+    
+    // Define connectionReady before it's used in validate
     const connectionReady = useMemo(() => {
         if (metadataSource !== 'external') return true
-        if (!externalConfig) return false
-        
-        const status = externalConfig.connectionStatus
-        
-        // Ready only when connection is tested successfully
-        return status === 'ok'
+        return Boolean(externalConfig?.baseUrl)
     }, [metadataSource, externalConfig])
 
-    // Create a stable reference for external config to prevent infinite loops
-    // Only update when connection is tested successfully
+    // Create a stable reference for external config to prevent loops
     const stableExternalConfig = useMemo(() => {
         if (!externalConfig) return null
-        const status = externalConfig.connectionStatus
-        
-        // Return config only when connection is tested successfully
-        if (status !== 'ok') return null
-        
+        const hasBase = Boolean(externalConfig.baseUrl)
+        if (!hasBase) return null
         return {
             baseUrl: externalConfig.baseUrl,
             authType: externalConfig.authType,
@@ -365,6 +595,66 @@ export const CreateAssessmentPage = () => {
         externalConfig?.apiVersion,
         externalConfig?.connectionStatus
     ])
+    
+    // State to track detailed dataset data
+    const [detailedDatasets, setDetailedDatasets] = useState(new Map())
+    const [loadingDetailedData, setLoadingDetailedData] = useState(false)
+    const [detailedDataVersion, setDetailedDataVersion] = useState(0)
+    
+    // Ref to access current detailed datasets without causing re-renders
+    const detailedDatasetsRef = useRef(detailedDatasets)
+    useEffect(() => {
+        detailedDatasetsRef.current = detailedDatasets
+    }, [detailedDatasets])
+    
+    // Function to load detailed dataset information
+    const loadDetailedDatasets = useCallback(async (datasetIds) => {
+        console.log('🔍 loadDetailedDatasets called with:', datasetIds)
+        
+        if (!datasetIds || datasetIds.length === 0) {
+            console.log('❌ No dataset IDs provided')
+            return
+        }
+        
+        const missingIds = datasetIds.filter(id => !detailedDatasetsRef.current.has(id))
+        console.log('📋 Missing detailed data for:', missingIds, 'out of', datasetIds)
+        
+        if (missingIds.length === 0) {
+            console.log('✅ All detailed data already loaded')
+            return
+        }
+        
+        console.log('📋 Loading detailed data for datasets:', missingIds)
+        setLoadingDetailedData(true)
+        
+        try {
+            const { dataSets } = await loadDatasets({
+                engine: dataEngine,
+                source: metadataSource === 'external' ? 'external' : 'local',
+                externalConfig: stableExternalConfig,
+                fields: DATASET_FIELDS_DETAILED,
+                filter: `id:in:[${missingIds.join(',')}]`,
+                order: 'name:asc',
+                skipPaging: true,
+            })
+            
+            const newDetailedData = new Map(detailedDatasetsRef.current)
+            dataSets.forEach(ds => {
+                newDetailedData.set(ds.id, ds)
+            })
+            setDetailedDatasets(newDetailedData)
+            setDetailedDataVersion(prev => prev + 1) // Trigger re-render
+            
+            console.log('✅ Loaded detailed data for', dataSets.length, 'datasets')
+        } catch (error) {
+            console.error('❌ Failed to load detailed dataset data:', error)
+        } finally {
+            setLoadingDetailedData(false)
+        }
+    }, [dataEngine, metadataSource, stableExternalConfig])
+
+    // Track if we've attempted to load saved connection
+    const [savedConnectionLoaded, setSavedConnectionLoaded] = useState(false)
 
     // Load saved connection on component mount
     useEffect(() => {
@@ -374,256 +664,434 @@ export const CreateAssessmentPage = () => {
                 const connectionData = JSON.parse(savedConnection)
                 setExternalConfig({
                     ...connectionData,
-                    // Keep saved credentials for authentication
-                    // Reset connection status to 'configured' since we have saved credentials
                     connectionStatus: connectionData.password || connectionData.token ? 'configured' : 'not_tested'
                 })
             }
         } catch (error) {
             console.error('Failed to load saved connection:', error)
+        } finally {
+            setSavedConnectionLoaded(true)
         }
-    }, [])
+    }, []) // eslint-disable-line
 
-    useEffect(() => {
-        if (!dataEngine) {
-            return
+    // Preload datasets function (called from ConnectionStep)
+    const preloadDatasets = async () => {
+        try {
+            setDatasetsLoading(true)
+            const { dataSets } = await loadDatasets({
+                engine: dataEngine,
+                source: metadataSource === 'external' ? 'external' : 'local',
+                externalConfig: stableExternalConfig,
+                fields: DATASET_FIELDS_FOR_FETCH,
+                order: 'name:asc',
+                skipPaging: true,
+                pageSize: 1000, // Increase page size for faster loading
+            })
+            setPreloadedDatasets(dataSets)
+            setPreloadTimestamp(Date.now())
+        } catch (error) {
+            console.log('Preload failed:', error?.message || error)
+        } finally {
+            setDatasetsLoading(false)
         }
-        
-        // Only load datasets if we're using local source OR external connection is ready and tested
-        const shouldLoadDatasets = metadataSource === 'local' || 
-            (metadataSource === 'external' && connectionReady && stableExternalConfig)
-        
-        if (!shouldLoadDatasets) {
-            // Clear datasets if switching to external but connection not ready
-            if (metadataSource === 'external' && !connectionReady) {
+    }
+
+    // Refresh datasets function (called from DatasetsStep)
+    const refreshDatasets = async () => {
+        setPreloadedDatasets(null)
+        setPreloadTimestamp(null)
+        datasetsCache.clear()
+
+        setDatasetsLoading(true)
+        setLocalDatasets([])
+        setCorsError(null)
+
+        try {
+            const { dataSets, sourceUrl } = await loadDatasets({
+                engine: dataEngine,
+                source: metadataSource === 'external' ? 'external' : 'local',
+                externalConfig: stableExternalConfig,
+                fields: DATASET_FIELDS_FOR_FETCH,
+                order: 'name:asc',
+                skipPaging: true,
+                pageSize: 1000, // Increase page size for faster loading
+            })
+            setLocalDatasets(dataSets)
+            setDatasetsHasMore(false) // skipPaging brought everything
+            setDatasetsPage(1)
+            setLoadingSource(decodeHtmlEntities(sourceUrl))
+        } catch (e) {
+            console.error('Failed to refresh datasets', e)
+            setLocalDatasets([])
+            setDatasetsHasMore(false)
+            const msg = e?.message || ''
+            if (/Authentication failed/i.test(msg)) setCorsError('Authentication failed. Check credentials/token.')
+            else if (/Access denied/i.test(msg))  setCorsError('Access denied. Your user may lack dataset permissions.')
+            else if (/Failed to fetch|CORS|cross-origin/i.test(msg)) setCorsError(`The external server does not allow cross-origin requests from this app. Ask admin to add ${window.location.origin} to the CORS allowlist.`)
+            else setCorsError(msg)
+        } finally {
+            setDatasetsLoading(false)
+            setLoadingSource('')
+        }
+    }
+
+    // Single loader effect (local/external)
+    useEffect(() => {
+        if (!dataEngine) return
+        if (!savedConnectionLoaded) return
+
+        const shouldLoad = metadataSource === 'local' ||
+            (metadataSource === 'external' && stableExternalConfig)
+
+        if (!shouldLoad) {
+            if (metadataSource === 'external' && !stableExternalConfig) {
                 setLocalDatasets([])
                 setDatasetsLoading(false)
                 setCorsError(null)
             }
             return
         }
-        
-        (async () => {
+
+        console.log('🔄 Starting dataset loading...', { metadataSource, shouldLoad, savedConnectionLoaded })
+
+        const abort = new AbortController()
+        const run = async () => {
             setDatasetsLoading(true)
-            setLocalDatasets([]) // Clear existing datasets when switching sources
-            setCorsError(null) // Clear any previous CORS errors
-            
+            setLocalDatasets([])
+            setCorsError(null)
+
+            // Use preloaded if fresh (<=10min)
+            if (preloadedDatasets && preloadTimestamp && Date.now() - preloadTimestamp < 10 * 60 * 1000) {
+                setLocalDatasets(preloadedDatasets)
+                setDatasetsHasMore(false)
+                setDatasetsPage(1)
+                setLoadingSource('')
+                setDatasetsLoading(false)
+                return
+            }
+
             try {
-                const isExternal = metadataSource === 'external' && connectionReady && stableExternalConfig?.baseUrl
-                
-                // Set loading source for display
-                if (isExternal) {
-                    // Decode any HTML entities in the URL for display
-                    const cleanUrl = stableExternalConfig.baseUrl
-                        .replace(/&#x2F;/g, '/')
-                        .replace(/&amp;/g, '&')
-                        .replace(/&lt;/g, '<')
-                        .replace(/&gt;/g, '>')
-                        .replace(/&quot;/g, '"')
-                    setLoadingSource(cleanUrl)
-                } else {
-                    // Get current instance URL from window location
-                    const currentUrl = `${window.location.protocol}//${window.location.host}`
-                    setLoadingSource(`${currentUrl} (current instance)`)
-                }
-                
-                if (isExternal) {
-                    // Make direct requests to external DHIS2
-                    // CORS should be handled by DHIS2 CORS allowlist configuration
-                    const cfg = stableExternalConfig || {}
-                    
-                    // Build external API URL
-                    const trim = (s) => (s || '').trim()
-                    const trimSlash = (u) => trim(u).replace(/\/+$/, '')
-                    const root = trimSlash(cfg.baseUrl || '')
-                    const v = trim(String(cfg.apiVersion ?? ''))
-                    const versionPart = v ? `/v${v.replace(/^v/i, '')}` : ''
-                    const apiBase = `${root}/api${versionPart}`
-                    
-                    // Build authorization header
-                    const headers = { 'Accept': 'application/json' }
-                    if ((cfg.authType || 'basic').toLowerCase() === 'token') {
-                        const tok = (cfg.token || '').trim()
-                        if (tok) {
-                            headers['Authorization'] = `ApiToken ${tok}`
-                        }
-                    } else if (cfg.username || cfg.password) {
-                        const enc = btoa(`${cfg.username || ''}:${cfg.password || ''}`)
-                        headers['Authorization'] = `Basic ${enc}`
-                    }
-                    
-                    const params = new URLSearchParams({
-                        fields: DATASET_FIELDS_FOR_FETCH,
-                        paging: 'true',
-                        pageSize: '100',
-                        page: '1'
-                    })
-                    
-                    try {
-                        const res = await fetch(`${apiBase}/dataSets?${params.toString()}`, { 
-                            headers, 
-                            credentials: 'omit',
-                            mode: 'cors'
-                        })
-                        
-                        if (!res.ok) {
-                            if (res.status === 401) {
-                                throw new Error(`CREDENTIALS_ERROR: Authentication failed. Please check your username/password or token in the Connection step.`)
-                            }
-                            if (res.status === 403) {
-                                throw new Error(`PERMISSION_ERROR: Access denied. Your account may not have permission to access datasets.`)
-                            }
-                            throw new Error(`External fetch failed: HTTP ${res.status}`)
-                        }
-                        
-                        const json = await res.json()
-                        const list = json?.dataSets ?? []
-                        setLocalDatasets(list)
-                        const pager = json?.pager
-                        setDatasetsHasMore(Boolean(pager && pager.page < pager.pageCount))
+                const cacheKey = metadataSource === 'external'
+                    ? `external_${stableExternalConfig.baseUrl}_${stableExternalConfig.username || 'anonymous'}`
+                    : 'local'
+
+                // Return cached (<=5min)
+                if (datasetsCache.has(cacheKey)) {
+                    const cachedData = datasetsCache.get(cacheKey)
+                    const isExpired = Date.now() - cachedData.timestamp > 5 * 60 * 1000
+                    if (!isExpired) {
+                        setLocalDatasets(cachedData.datasets)
+                        setDatasetsHasMore(false)
                         setDatasetsPage(1)
-                        
-                    } catch (fetchError) {
-                        console.error('External fetch error:', fetchError)
-                        if (fetchError.message.includes('CREDENTIALS_ERROR') || fetchError.message.includes('PERMISSION_ERROR')) {
-                            throw fetchError // Re-throw specific errors
-                        }
-                        if (fetchError.message.includes('Failed to fetch') || fetchError.name === 'TypeError') {
-                            throw new Error(`CORS_ERROR: The external DHIS2 server (${cfg.baseUrl}) does not allow cross-origin requests from this application. Please ask your DHIS2 administrator to add your domain to the CORS allowlist.`)
-                        }
-                        throw new Error(`External fetch failed: ${fetchError.message}`)
+                        setLoadingSource('')
+                        setDatasetsLoading(false)
+                        return
+                    } else {
+                        datasetsCache.delete(cacheKey)
                     }
-                } else {
-                    const q = {
-                        ds: {
-                            resource: 'dataSets',
-                            params: { fields: DATASET_FIELDS_FOR_FETCH, paging: true, pageSize: 100, page: 1 },
-                        },
-                    }
-                    const res = await dataEngine.query(q)
-                    const list = res?.ds?.dataSets ?? []
-                    setLocalDatasets(list)
-                    const pager = res?.ds?.pager
-                    setDatasetsHasMore(Boolean(pager && pager.page < pager.pageCount))
-                    setDatasetsPage(1)
                 }
-            } catch (e) {
-                console.error('Failed to load datasets', e)
-                console.error('Error details:', {
-                    message: e.message,
-                    stack: e.stack,
-                    metadataSource,
-                    connectionReady,
-                    externalConfig: externalConfig ? 'present' : 'missing'
+
+                const startTime = Date.now()
+                console.log('📡 Loading datasets with fields:', DATASET_FIELDS_FOR_FETCH)
+                
+                // Add timeout to prevent hanging requests
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000)
                 })
                 
-                // Handle different error types
-                if (e.message.includes('CORS_ERROR')) {
-                    setCorsError(e.message.replace('CORS_ERROR: ', ''))
-                } else if (e.message.includes('CREDENTIALS_ERROR')) {
-                    setCorsError(e.message.replace('CREDENTIALS_ERROR: ', ''))
-                } else if (e.message.includes('PERMISSION_ERROR')) {
-                    setCorsError(e.message.replace('PERMISSION_ERROR: ', ''))
-                } else {
-                    setCorsError(null)
+                let dataSets, sourceUrl
+                
+                try {
+                    // Try with basic fields first
+                    const loadPromise = loadDatasets({
+                        engine: dataEngine,
+                        source: metadataSource === 'external' ? 'external' : 'local',
+                        externalConfig: stableExternalConfig,
+                        fields: DATASET_FIELDS_FOR_FETCH,
+                        order: 'name:asc',
+                        skipPaging: true,
+                        pageSize: 1000, // Larger page size for better performance
+                        signal: abort.signal
+                    })
+                    
+                    const result = await Promise.race([loadPromise, timeoutPromise])
+                    dataSets = result.dataSets
+                    sourceUrl = result.sourceUrl
+                } catch (basicError) {
+                    console.warn('⚠️ Basic fields failed, trying minimal fields:', basicError.message)
+                    
+                    // Fallback to minimal fields
+                    const fallbackPromise = loadDatasets({
+                        engine: dataEngine,
+                        source: metadataSource === 'external' ? 'external' : 'local',
+                        externalConfig: stableExternalConfig,
+                        fields: DATASET_FIELDS_MINIMAL,
+                        order: 'name:asc',
+                        skipPaging: true,
+                        pageSize: 1000,
+                        signal: abort.signal
+                    })
+                    
+                    const result = await Promise.race([fallbackPromise, timeoutPromise])
+                    dataSets = result.dataSets
+                    sourceUrl = result.sourceUrl
+                }
+
+                const loadTime = Date.now() - startTime
+                console.log(`✅ Loaded ${dataSets.length} datasets in ${loadTime}ms with full data elements and org units`)
+                
+                // Filter and validate datasets
+                const validDatasets = []
+                const incompleteDatasets = []
+                
+                dataSets.forEach(ds => {
+                    // Handle both ~size (number) and full arrays for backward compatibility
+                    const elemCount = typeof ds.dataSetElements === 'number' 
+                        ? ds.dataSetElements 
+                        : Array.isArray(ds.dataSetElements) ? ds.dataSetElements.length : 0
+                    const orgCount = typeof ds.organisationUnits === 'number' 
+                        ? ds.organisationUnits 
+                        : Array.isArray(ds.organisationUnits) ? ds.organisationUnits.length : 0
+                    
+                    // Include datasets that have counts (even if they're ~size fields) or actual arrays
+                    // We'll load detailed data later for datasets with ~size fields
+                    if (elemCount > 0 && orgCount > 0) {
+                        validDatasets.push(ds)
+                    } else {
+                        incompleteDatasets.push({
+                            name: ds.name,
+                            id: ds.id,
+                            missingElements: elemCount === 0,
+                            missingOrgUnits: orgCount === 0
+                        })
+                    }
+                })
+                
+                if (incompleteDatasets.length > 0) {
+                    console.warn(`⚠️ Found ${incompleteDatasets.length} incomplete datasets (missing data elements or org units):`)
+                    incompleteDatasets.forEach(ds => {
+                        const missing = []
+                        if (ds.missingElements) missing.push('data elements')
+                        if (ds.missingOrgUnits) missing.push('org units')
+                        console.warn(`   - "${ds.name}" (${ds.id}): missing ${missing.join(' and ')}`)
+                    })
                 }
                 
+                console.log(`✅ Using ${validDatasets.length} valid datasets (${incompleteDatasets.length} filtered out)`)
+                console.log('📋 Sample valid datasets:', validDatasets.slice(0, 3).map(ds => ({
+                    id: ds.id,
+                    name: ds.name,
+                    dataSetElements: typeof ds.dataSetElements === 'number' ? `count:${ds.dataSetElements}` : `array:${ds.dataSetElements?.length || 0}`,
+                    organisationUnits: typeof ds.organisationUnits === 'number' ? `count:${ds.organisationUnits}` : `array:${ds.organisationUnits?.length || 0}`
+                })))
+                setLocalDatasets(validDatasets)
+                setDatasetsHasMore(false)
+                setDatasetsPage(1)
+                setLoadingSource(decodeHtmlEntities(sourceUrl))
+
+                // Cache valid datasets only
+                const cacheKey2 = metadataSource === 'external'
+                    ? `external_${stableExternalConfig.baseUrl}_${stableExternalConfig.username || 'anonymous'}`
+                    : 'local'
+                datasetsCache.set(cacheKey2, {
+                    datasets: validDatasets,
+                    hasMore: false,
+                    page: 1,
+                    timestamp: Date.now()
+                })
+            } catch (e) {
+                console.error('❌ Failed to load datasets:', e)
+                const msg = e?.message || ''
+                if (/Authentication failed/i.test(msg)) setCorsError('Authentication failed. Please verify your username/password or token.')
+                else if (/Access denied/i.test(msg)) setCorsError('Access denied. Your account may not have permission to read datasets.')
+                else if (/Failed to fetch|CORS|cross-origin/i.test(msg)) setCorsError(`CORS: ${stableExternalConfig?.baseUrl} doesn’t allow this origin. Ask admin to add ${window.location.origin} to the CORS allowlist.`)
+                else setCorsError(msg)
+
                 setLocalDatasets([])
                 setDatasetsHasMore(false)
             } finally {
                 setDatasetsLoading(false)
                 setLoadingSource('')
             }
-        })()
-        // Re-run when switching between local/external
+        }
+
+        run()
+        return () => abort.abort()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dataEngine, metadataSource, connectionReady, stableExternalConfig])
-
-
+    }, [dataEngine, metadataSource, stableExternalConfig, savedConnectionLoaded])
 
     // period recompute
     useEffect(() => {
         if (assessmentData.frequency) {
-            setAssessmentData(prev => ({ ...prev, period: generatePeriodFromFrequency(prev.frequency) }))
+            setAssessmentData(prev => ({
+                ...prev, 
+                period: generatePeriodFromFrequency(prev.frequency)
+            }))
         }
-    }, [assessmentData.frequency])
+    }, [assessmentData.frequency]) // eslint-disable-line
 
     // Derive elements & org units from selected datasets
     useEffect(() => {
-        // Elements
+        console.log('🔄 useEffect triggered for elements/org units derivation:', {
+            selectedDataSets: selectedDataSets?.length || 0,
+            localDatasets: localDatasets?.length || 0,
+            detailedDatasets: detailedDatasets.size
+        })
+        
+        // Load detailed data for selected datasets if not already loaded
+        if (selectedDataSets && selectedDataSets.length > 0) {
+            console.log('📋 Triggering detailed data load for:', selectedDataSets)
+            loadDetailedDatasets(selectedDataSets)
+        }
+        
+        // Elements - process from loaded dataset data
         const elemMap = new Map()
+        console.log('🔍 Processing elements for datasets:', selectedDataSets, {
+            detailedDatasets: detailedDatasets.size,
+            localDatasets: localDatasets.length
+        })
+        
         ;(selectedDataSets || []).forEach(id => {
-            const ds = localDatasets.find(d => d.id === id)
-            ds?.dataSetElements?.forEach(dse => {
-                const de = dse?.dataElement
-                if (!de) return
-                const cc = dse?.categoryCombo || de?.categoryCombo
-                const categories = Array.isArray(cc?.categories) ? cc.categories : []
-                const mappedCats = categories.map(cat => ({
-                    id: cat.id,
-                    name: cat.name,
-                    code: cat.code || '',
-                    options: Array.isArray(cat.categoryOptions)
-                        ? cat.categoryOptions.map(o => ({ id: o.id, name: o.name, code: o.code || '' }))
-                        : [],
-                }))
-                const optCount = mappedCats.reduce((sum, c) => sum + (c.options?.length || 0), 0)
-
-                if (!elemMap.has(de.id)) {
-                    elemMap.set(de.id, {
-                        id: de.id,
-                        name: de.name,
-                        code: de.code || '',
-                        valueType: de.valueType || 'TEXT',
-                        categoryCombo: cc ? { id: cc.id, name: cc.name } : undefined,
-                        categories: mappedCats,
-                        categoryOptionCount: optCount,
-                    })
-                }
+            // Try to get detailed data first, fall back to basic data
+            const detailedDs = detailedDatasets.get(id)
+            const basicDs = localDatasets.find(d => d.id === id)
+            const ds = detailedDs || basicDs
+            
+            console.log(`📋 Dataset ${id}:`, {
+                hasDetailed: !!detailedDs,
+                hasBasic: !!basicDs,
+                dataSetElements: ds?.dataSetElements ? 
+                    (Array.isArray(ds.dataSetElements) ? `array[${ds.dataSetElements.length}]` : typeof ds.dataSetElements)
+                    : 'none',
+                needsDetailedLoad: ds && typeof ds.dataSetElements === 'number'
             })
+            
+            // If we only have a count (~size), use fallback elements while detailed data loads
+            if (ds && typeof ds.dataSetElements === 'number' && !detailedDs) {
+                console.log(`⚠️ Dataset ${id} only has count (${ds.dataSetElements}), using fallback elements`)
+                const fallbackElements = createFallbackElements(ds)
+                fallbackElements.forEach(elem => {
+                    if (!elemMap.has(elem.id)) {
+                        elemMap.set(elem.id, elem)
+                    }
+                })
+                return // Continue to next dataset
+            }
+            
+            // Process data elements from the dataset
+            if (ds && Array.isArray(ds?.dataSetElements)) {
+                ds.dataSetElements.forEach(dse => {
+                    const de = dse?.dataElement
+                    if (!de) return
+                    const cc = dse?.categoryCombo || de?.categoryCombo
+                    const categories = Array.isArray(cc?.categories) ? cc.categories : []
+                    const mappedCats = categories.map(cat => ({
+                        id: cat.id,
+                        name: cat.name,
+                        code: cat.code || '',
+                        options: Array.isArray(cat.categoryOptions)
+                            ? cat.categoryOptions.map(o => ({ id: o.id, name: o.name, code: o.code || '' }))
+                            : [],
+                    }))
+                    const optCount = mappedCats.reduce((sum, c) => sum + (c.options?.length || 0), 0)
+
+                    if (!elemMap.has(de.id)) {
+                        elemMap.set(de.id, {
+                            id: de.id,
+                            name: de.name,
+                            code: de.code || '',
+                            valueType: de.valueType || 'TEXT',
+                            categoryCombo: cc ? { id: cc.id, name: cc.name } : undefined,
+                            categories: mappedCats,
+                            categoryOptionCount: optCount,
+                        })
+                    }
+                })
+            }
         })
         const derivedElements = Array.from(elemMap.values())
+        
+        console.log('🎯 Derived elements:', derivedElements.length, derivedElements.slice(0, 3).map(e => ({ id: e.id, name: e.name, isPlaceholder: e.isPlaceholder })))
+        
+        // Additional debugging for empty elements
+        if (derivedElements.length === 0 && selectedDataSets && selectedDataSets.length > 0) {
+            console.warn('❌ No elements derived despite having selected datasets!')
+            console.warn('Selected datasets:', selectedDataSets)
+            console.warn('Available local datasets:', localDatasets.map(ds => ({ id: ds.id, name: ds.name })))
+            console.warn('Detailed datasets loaded:', Array.from(detailedDatasets.keys()))
+        }
 
-        // Maintain/initialize selected element IDs:
-        setSelectedElementIds(prev => {
-            const prevSet = new Set(prev || [])
-            const derivedIds = derivedElements.map(e => e.id)
-            // If nothing selected yet, default to all derived
-            if ((prev || []).length === 0) return derivedIds
-            // Otherwise trim to still-existing
-            return derivedIds.filter(id => prevSet.has(id))
-        })
-        setElementsAll(derivedElements)
+        if ((selectedDataSets || []).length === 0) {
+            // Keep previous selections; user may switch tabs or adjust datasets later
+            setElementsAll([])
+            // Do NOT clear selectedElementIds here to preserve user's selection
+        } else if (derivedElements.length > 0) {
+            setElementsAll(derivedElements)
+            setSelectedElementIds(prev => {
+                const prevArr = Array.isArray(prev) ? prev : []
+                if (prevArr.length === 0) {
+                    // Do not auto-select; maintain empty until user adjusts
+                    return prevArr
+                }
+                const valid = new Set(derivedElements.map(e => e.id))
+                // Preserve only previously selected IDs that still exist in derived list
+                return prevArr.filter(id => valid.has(id))
+            })
+        }
 
-        // Org Units (union)
+        // Org Units (union) - process from loaded dataset data
         const ouMap = new Map()
         ;(selectedDataSets || []).forEach(id => {
-            const ds = localDatasets.find(d => d.id === id)
-            ;(ds?.organisationUnits || []).forEach(ou => {
-                if (!ou?.id) return
-                if (!ouMap.has(ou.id)) {
-                    ouMap.set(ou.id, {
-                        id: ou.id,
-                        name: ou.name,
-                        code: ou.code || '',
-                        level: ou.level,
-                        path: ou.path,
-                        parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : undefined,
-                    })
-                }
-            })
+            // Try to get detailed data first, fall back to basic data
+            const detailedDs = detailedDatasets.get(id)
+            const basicDs = localDatasets.find(d => d.id === id)
+            const ds = detailedDs || basicDs
+            
+            // If we only have a count (~size), use fallback org units while detailed data loads
+            if (ds && typeof ds.organisationUnits === 'number' && !detailedDs) {
+                console.log(`⚠️ Dataset ${id} only has org unit count (${ds.organisationUnits}), using fallback org units`)
+                const fallbackOrgUnits = createFallbackOrgUnits(ds)
+                fallbackOrgUnits.forEach(ou => {
+                    if (!ouMap.has(ou.id)) {
+                        ouMap.set(ou.id, ou)
+                    }
+                })
+                return // Continue to next dataset
+            }
+            
+            // Process organization units from the dataset
+            if (ds && Array.isArray(ds?.organisationUnits)) {
+                ds.organisationUnits.forEach(ou => {
+                    if (!ou?.id) return
+                    if (!ouMap.has(ou.id)) {
+                        ouMap.set(ou.id, {
+                            id: ou.id,
+                            name: ou.name,
+                            code: ou.code || '',
+                            level: ou.level,
+                            path: ou.path,
+                            parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : undefined,
+                        })
+                    }
+                })
+            }
         })
         const derivedOUs = Array.from(ouMap.values())
-        setOrgUnitsAll(derivedOUs)
 
-        // Trim OU selection to still-existing
-        setSelectedOrgUnitIds(prev => {
-            if ((derivedOUs || []).length === 0) return []
-            const valid = new Set(derivedOUs.map(o => o.id))
-            return (prev || []).filter(id => valid.has(id))
-        })
+        if ((selectedDataSets || []).length === 0) {
+            // Keep previous selections
+            setOrgUnitsAll([])
+            // Do NOT clear selectedOrgUnitIds here to preserve user's selection
+        } else if (derivedOUs.length > 0) {
+            setOrgUnitsAll(derivedOUs)
+            setSelectedOrgUnitIds(prev => {
+                const prevArr = Array.isArray(prev) ? prev : []
+                const valid = new Set(derivedOUs.map(o => o.id))
+                return prevArr.filter(id => valid.has(id))
+            })
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(selectedDataSets), JSON.stringify(localDatasets)])
+    }, [JSON.stringify(selectedDataSets), JSON.stringify(localDatasets), detailedDataVersion, loadDetailedDatasets])
 
     // pre-gen SMS commands (uses normalized defaults)
     useEffect(() => {
@@ -696,56 +1164,137 @@ export const CreateAssessmentPage = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [assessmentData.assessmentType])
 
+    // ----- load org unit levels for level number lookup -----
+    useEffect(() => {
+        const loadOrgUnitLevels = async () => {
+            try {
+                const query = {
+                    organisationUnitLevels: {
+                        resource: 'organisationUnitLevels',
+                        params: { fields: 'id,name,level', order: 'level:asc', pageSize: 200 },
+                    },
+                }
+                const response = await dataEngine.query(query)
+                const levels = response?.organisationUnitLevels?.organisationUnitLevels || []
+                setOrgUnitLevels(levels)
+            } catch (error) {
+                console.error('Failed to load org unit levels:', error)
+                setOrgUnitLevels([])
+            }
+        }
+        
+        loadOrgUnitLevels()
+    }, [dataEngine])
+
+    // Helper function to get target level number from reporting level ID
+    const getTargetLevelNumber = () => {
+        if (!assessmentData.reportingLevel || !orgUnitLevels.length) {
+            return 3 // Default to level 3 if not available
+        }
+        const levelObj = orgUnitLevels.find(l => l.id === assessmentData.reportingLevel)
+        return levelObj?.level || 3
+    }
+
     // ----- load local org units for mapping (when using external source) -----
     useEffect(() => {
         if (metadataSource !== 'external') {
             setLocalOrgUnitsAll([])
             setLocalOrgUnitsLoading(false)
+            setLocalOrgUnitsCache(null)
             return
         }
+
+        // Don't load until we have both reporting level and org unit levels
+        if (!assessmentData.reportingLevel || !orgUnitLevels.length) {
+            return
+        }
+
+        const targetLevel = getTargetLevelNumber()
         
-        // Load local org units from the current DHIS2 instance for mapping targets
+        // Check cache first (but only if target level hasn't changed)
+        if (localOrgUnitsCache && localOrgUnitsCache.data && localOrgUnitsCache.targetLevel === targetLevel) {
+            setLocalOrgUnitsAll(localOrgUnitsCache.data)
+            setLocalOrgUnitsLoading(false)
+            return
+        }
+
         const loadLocalOrgUnits = async () => {
             setLocalOrgUnitsLoading(true)
             try {
                 let allOrgUnits = []
+                
+                // Load org units up to and including the target level
+                // This is much more efficient than loading all levels
+                const levelQuery = {
+                    organisationUnits: {
+                        resource: 'organisationUnits',
+                        params: {
+                            fields: 'id,name,displayName,code,level,path,parent[id,name,displayName,code]',
+                            filter: `level:le:${targetLevel}`, // Level <= target level
+                            paging: true,
+                            pageSize: 3000, // Larger page size for fewer requests
+                            totalPages: true,
+                        },
+                    },
+                }
+                
                 let page = 1
                 let hasMore = true
                 
                 while (hasMore) {
                     const query = {
+                        ...levelQuery,
                         organisationUnits: {
-                            resource: 'organisationUnits',
+                            ...levelQuery.organisationUnits,
                             params: {
-                                fields: 'id,name,code,level,path,parent[id,name,code]',
-                                paging: true,
-                                pageSize: 1000,
+                                ...levelQuery.organisationUnits.params,
                                 page: page,
                             },
                         },
                     }
+                    
                     const response = await dataEngine.query(query)
                     const orgUnits = response?.organisationUnits?.organisationUnits || []
                     const pager = response?.organisationUnits?.pager
                     
                     allOrgUnits = [...allOrgUnits, ...orgUnits]
-                    hasMore = pager && pager.page < pager.pageCount
+                    hasMore = pager && pager.page < pager.pageCount && orgUnits.length > 0
                     page++
+                    
+                    console.log(`Loaded page ${page - 1}: ${orgUnits.length} org units (total: ${allOrgUnits.length})`)
+                    
+                    // Add a small delay to prevent overwhelming the server
+                    if (hasMore) {
+                        await new Promise(resolve => setTimeout(resolve, 50))
+                    }
                 }
-                
+
                 setLocalOrgUnitsAll(allOrgUnits)
+                
+                // Cache with target level info
+                setLocalOrgUnitsCache({
+                    data: allOrgUnits,
+                    targetLevel: targetLevel,
+                    loadedAt: new Date().toISOString()
+                })
+                
             } catch (error) {
                 console.error('Failed to load local org units for mapping:', error)
                 setLocalOrgUnitsAll([])
+                setLocalOrgUnitsCache(null)
             } finally {
                 setLocalOrgUnitsLoading(false)
             }
         }
-        
+
         loadLocalOrgUnits()
-    }, [metadataSource, dataEngine])
+    }, [metadataSource, dataEngine, assessmentData.reportingLevel, orgUnitLevels])
 
     // ----- computed selections -----
+    const selectedDatasetObjects = useMemo(
+        () => (localDatasets || []).filter(ds => (selectedDataSets || []).includes(ds.id)),
+        [localDatasets, selectedDataSets]
+    )
     const selectedDataElements = useMemo(
         () => (elementsAll || []).filter(e => (selectedElementIds || []).includes(e.id)),
         [elementsAll, selectedElementIds]
@@ -778,8 +1327,7 @@ export const CreateAssessmentPage = () => {
             selectedDataSets.length > 0 &&
             selectedDataElements.length > 0 &&
             selectedOrgUnitIds.length > 0 &&
-            datasetPreparationComplete &&
-            (metadataSource !== 'external' || connectionReady)
+            datasetPreparationComplete
         )
     }
 
@@ -819,17 +1367,10 @@ export const CreateAssessmentPage = () => {
                         const n = Number(cfg.apiVersion)
                         if (!Number.isInteger(n) || n <= 0) messages.push(i18n.t('API version must be a positive integer when provided.'))
                     }
-                    // Require connection to be tested successfully before proceeding
-                    if (cfg.connectionStatus !== 'ok') {
-                        messages.push(i18n.t('Please test the connection successfully before proceeding to datasets.'))
-                    }
                 }
                 break
             }
             case 'datasets': {
-                if (metadataSource === 'external' && !connectionReady) {
-                    messages.push(i18n.t('Please configure your DHIS2 connection before selecting datasets.'))
-                }
                 if (selectedDataSets.length === 0) messages.push(i18n.t('Select at least one dataset.'))
                 break
             }
@@ -845,18 +1386,14 @@ export const CreateAssessmentPage = () => {
                 if (metadataSource === 'external') {
                     const selectedIds = new Set(selectedOrgUnitIds || [])
                     const rows = (orgUnitMappings || []).filter(Boolean)
-                    if ((selectedOrgUnitIds || []).length > 0 && rows.length === 0) {
-                        messages.push(i18n.t('Provide mappings for all selected organisation units.'))
-                        break
-                    }
                     const invalidRows = []
                     rows.forEach((m, idx) => {
                         const hasSource = m?.source && String(m.source).trim().length > 0
                         const hasTarget = m?.target && String(m.target).trim().length > 0
-                        if (!hasSource || !hasTarget) invalidRows.push(idx + 1)
+                        if ((hasSource && !hasTarget) || (!hasSource && hasTarget)) invalidRows.push(idx + 1)
                     })
                     if (invalidRows.length > 0) {
-                        messages.push(i18n.t('Mapping row(s) missing source/target: {{rows}}', { rows: invalidRows.join(', ') }))
+                        messages.push(i18n.t('Mapping row(s) incomplete: {{rows}}', { rows: invalidRows.join(', ') }))
                     }
                     const seen = new Map()
                     const dupSources = new Set()
@@ -876,11 +1413,6 @@ export const CreateAssessmentPage = () => {
                         messages.push(i18n.t('Mappings contain source(s) not in the selected organisation units: {{list}}', {
                             list: Array.from(new Set(unknownSources)).join(', ')
                         }))
-                    }
-                    const mappedSources = new Set(rows.map(m => (m?.source || '').trim()).filter(Boolean))
-                    const unmapped = (selectedOrgUnits || []).filter(ou => !mappedSources.has(ou.id))
-                    if (unmapped.length > 0) {
-                        messages.push(i18n.t('Some organisation units are not mapped ({{count}} missing).', { count: unmapped.length }))
                     }
                 }
                 break
@@ -906,7 +1438,6 @@ export const CreateAssessmentPage = () => {
     const showValidationErrors = (messages) => {
         setError(messages.map(m => `• ${m}`).join('\n'))
         try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch (_) {}
-        // Auto-fade the error after a short delay so users can proceed
         setTimeout(() => setError(null), 3500)
     }
 
@@ -988,7 +1519,11 @@ export const CreateAssessmentPage = () => {
                         },
                     })
                     setLocalDatasets(prev => [...prev, ref?.d])
-                    setSelectedDataSets(prev => [...prev, id])
+                    setSelectedDataSets(prev => {
+                        const next = [...(prev || []), id]
+                        saveDraft({ selectedDataSets: next })
+                        return next
+                    })
                 }
             }
         } catch (e) {
@@ -1047,7 +1582,6 @@ export const CreateAssessmentPage = () => {
                     publicAccess: !!assessmentData.publicAccess,
                 },
             },
-            // sms moved per dataset; remove top-level sms in saved payload preview
             sms: undefined,
             datasets: {
                 selected: selectedDataSets.map(id => {
@@ -1057,11 +1591,15 @@ export const CreateAssessmentPage = () => {
                         name: ds.name,
                         code: ds.code || '',
                         periodType: ds.periodType || 'Monthly',
-                        organisationUnits: (ds.organisationUnits || []).map(ou => ({
+                        organisationUnits: (
+                            Array.isArray(ds.organisationUnits)
+                                ? ds.organisationUnits
+                                : (Array.isArray(ds?.organisationUnits?.selected) ? ds.organisationUnits.selected : [])
+                        ).map(ou => ({
                             id: ou.id, name: ou.name, code: ou.code || '', level: ou.level,
                             path: ou.path, parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : null
                         })),
-                        dataSetElements: (ds.dataSetElements || []).map(dse => ({
+                        dataSetElements: (Array.isArray(ds.dataSetElements) ? ds.dataSetElements : []).map(dse => ({
                             dataElement: dse?.dataElement ? {
                                 id: dse.dataElement.id,
                                 name: dse.dataElement.name,
@@ -1123,19 +1661,15 @@ export const CreateAssessmentPage = () => {
                             periodType: p.periodType || 'Monthly',
                             elements: Array.isArray(p.dataSetElements) ? p.dataSetElements.length : 0,
                             orgUnits: Array.isArray(p.organisationUnits) ? p.organisationUnits.length : 0,
-                            // Attach SMS command per dataset (if any)
                             sms: entry.smsCommand || null,
-                            // Carry sharing snapshot that went to DHIS2
                             sharing: p.sharing || null,
-                            // Persist the dataset payload itself as requested
                             payload: p || null,
                         }
                     }).filter(d => d.id)
                 })(),
-                // Use new top-level elementMappings array if present; fallback to object map for older runs
                 elementMappings: Array.isArray(assessmentData?.creationPayload?.elementMappings)
                     ? assessmentData.creationPayload.elementMappings
-                    : (assessmentData?.creationPayload?.elementMappings || {}),
+                    : (assessmentData?.elementMappings || assessmentData?.creationPayload?.localDatasets?.elementMappings || []),
             },
             externalConfig: metadataSource === 'external' ? (externalConfig || {}) : undefined,
             metadataSource,
@@ -1193,6 +1727,7 @@ export const CreateAssessmentPage = () => {
             if (!valid) { showValidationErrors(messages); setLoading(false); return }
             const payload = buildAssessmentPayload()
             await saveAssessment(payload)
+            clearDraft()
             navigate('/administration/assessments', {
                 state: { message: i18n.t('Assessment "{{name}}" created successfully', { name: payload.info.name }) },
             })
@@ -1228,31 +1763,18 @@ export const CreateAssessmentPage = () => {
     const tabs = baseTabs.map((t, i) => ({ ...t, label: `${i + 1}. ${t.label}` }))
 
     const renderDatasetsStep = () => {
-        
-        if (metadataSource === 'external' && !connectionReady) {
-            return (
-                <>
-                    <h3 style={{ margin: '0 0 12px 0' }}>{i18n.t('Select datasets for this assessment')}</h3>
-                    <NoticeBox title={i18n.t('DHIS2 Connection Required')}>
-                        {i18n.t('Please configure your DHIS2 connection first before selecting datasets.')}
-                    </NoticeBox>
-                </>
-            )
-        }
-        
-        // Show error if present (CORS, credentials, permissions, etc.)
         if (corsError) {
             const isCredentialsError = corsError.includes('Authentication failed') || corsError.includes('check your username/password')
             const isPermissionError = corsError.includes('Access denied') || corsError.includes('not have permission')
             const isCorsError = !isCredentialsError && !isPermissionError
-            
+
             return (
                 <>
                     <h3 style={{ margin: '0 0 12px 0' }}>{i18n.t('Select datasets for this assessment')}</h3>
                     <NoticeBox error title={
                         isCredentialsError ? i18n.t('Authentication Failed') :
-                        isPermissionError ? i18n.t('Access Denied') :
-                        i18n.t('Connection Error')
+                            isPermissionError ? i18n.t('Access Denied') :
+                                i18n.t('Connection Error')
                     }>
                         <div style={{ marginBottom: 12 }}>
                             {corsError}
@@ -1302,114 +1824,35 @@ export const CreateAssessmentPage = () => {
                 </>
             )
         }
-        // Show info notice for external source with configured credentials
-        const showConfiguredNotice = metadataSource === 'external' && 
-            externalConfig?.connectionStatus === 'configured' && 
-            !datasetsLoading && 
+
+        const showConfiguredNotice = metadataSource === 'external' &&
+            externalConfig?.connectionStatus === 'configured' &&
+            !datasetsLoading &&
             localDatasets.length === 0
-        
+
         return (
             <>
                 <h3 style={{ margin: '0 0 12px 0' }}>{i18n.t('Select datasets for this assessment')}</h3>
                 {showConfiguredNotice && (
                     <div style={{ marginBottom: 16 }}>
                         <NoticeBox title={i18n.t('External DHIS2 Connection')}>
-                            {i18n.t('Your credentials are saved. The connection will be tested automatically when loading datasets from {{url}}.', { 
-                                url: externalConfig.baseUrl 
-                            })}
+                            {i18n.t('Your credentials are saved. The connection will be tested automatically when loading datasets from')} <strong>{externalConfig.baseUrl}</strong>.
                         </NoticeBox>
                     </div>
                 )}
                 <DatasetsStep
                     datasets={localDatasets}
+                    localDatasets={[]}
                     selectedDataSets={selectedDataSets}
                     setSelectedDataSets={setSelectedDataSets}
                     loading={datasetsLoading}
                     loadingSource={loadingSource}
-                    footer={
-                        datasetsHasMore && (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-                                <Button
-                                    loading={datasetsLoading}
-                                    onClick={async () => {
-                                        try {
-                                            setDatasetsLoading(true)
-                                            const nextPage = datasetsPage + 1
-                                            const isExternal = metadataSource === 'external' && connectionReady && externalConfig?.baseUrl
-                                            if (isExternal) {
-                                                const trim = (s) => (s || '').trim()
-                                                const trimSlash = (u) => trim(u).replace(/\/+$/, '')
-                                                const toApiBase = (baseUrl, apiVersion) => {
-                                                    const root = trimSlash(baseUrl || '')
-                                                    const v = trim(String(apiVersion ?? ''))
-                                                    const versionPart = v ? `/v${v.replace(/^v/i, '')}` : ''
-                                                    return `${root}/api${versionPart}`
-                                                }
-                                                const cfg = externalConfig || {}
-                                                const apiBase = toApiBase(cfg.baseUrl, cfg.apiVersion)
-                                                const headerVariants = (() => {
-                                                    const variants = []
-                                                    if ((cfg.authType || 'basic').toLowerCase() === 'token') {
-                                                        const tok = (cfg.token || '').trim()
-                                                        if (tok) {
-                                                            variants.push({ 'Accept': 'application/json', 'Authorization': `ApiToken ${tok}` })
-                                                            variants.push({ 'Accept': 'application/json', 'Authorization': `Bearer ${tok}` })
-                                                        } else {
-                                                            variants.push({ 'Accept': 'application/json' })
-                                                        }
-                                                    } else if (cfg.username || cfg.password) {
-                                                        const enc = btoa(`${cfg.username || ''}:${cfg.password || ''}`)
-                                                        variants.push({ 'Accept': 'application/json', 'Authorization': `Basic ${enc}` })
-                                                    } else {
-                                                        variants.push({ 'Accept': 'application/json' })
-                                                    }
-                                                    return variants
-                                                })()
-                                                const params = new URLSearchParams({
-                                                    fields: DATASET_FIELDS_FOR_FETCH,
-                                                    paging: 'true',
-                                                    pageSize: '100',
-                                                    page: String(nextPage)
-                                                })
-                                                let json = null
-                                                let lastStatus = null
-                                                for (const headers of headerVariants) {
-                                                    const resp = await fetch(`${apiBase}/dataSets?${params.toString()}`, { headers, credentials: 'omit' })
-                                                    if (resp.ok) { json = await resp.json(); break }
-                                                    lastStatus = resp.status
-                                                }
-                                                if (!json) throw new Error(`External fetch failed${lastStatus ? `: HTTP ${lastStatus}` : ''}`)
-                                                const pageList = json?.dataSets ?? []
-                                                setLocalDatasets(prev => [...prev, ...pageList])
-                                                const pager = json?.pager
-                                                setDatasetsHasMore(Boolean(pager && pager.page < pager.pageCount))
-                                                setDatasetsPage(nextPage)
-                                            } else {
-                                                const res = await dataEngine.query({
-                                                    ds: {
-                                                        resource: 'dataSets',
-                                                        params: { fields: DATASET_FIELDS_FOR_FETCH, paging: true, pageSize: 100, page: nextPage },
-                                                    },
-                                                })
-                                                const pageList = res?.ds?.dataSets ?? []
-                                                setLocalDatasets(prev => [...prev, ...pageList])
-                                                const pager = res?.ds?.pager
-                                                setDatasetsHasMore(Boolean(pager && pager.page < pager.pageCount))
-                                                setDatasetsPage(nextPage)
-                                            }
-                                        } catch (e) {
-                                            console.error('Failed to load more datasets', e)
-                                            setDatasetsHasMore(false)
-                                        } finally {
-                                            setDatasetsLoading(false)
-                                        }
-                                    }}
-                                >
-                                    {i18n.t('Load more')}
-                                </Button>
-                            </div>
-                        )
-                    }
+                    onRefresh={refreshDatasets}
+                    preloadedDatasets={preloadedDatasets}
+                    preloadTimestamp={preloadTimestamp}
+                    showEmptyIfNoData={false}
+                    minInitialLoaderMs={600}
+                    footer={null /* skipPaging loads all; no "Load more" needed */}
                 />
             </>
         )
@@ -1437,7 +1880,14 @@ export const CreateAssessmentPage = () => {
                     />
                 )
             case 'connection':
-                return <ConnectionStep dhis2Config={externalConfig} setDhis2Config={setExternalConfig} onSaveConnection={handleSaveConnection} />
+                return <ConnectionStep
+                    dhis2Config={externalConfig}
+                    setDhis2Config={setExternalConfig}
+                    onSaveConnection={handleSaveConnection}
+                    onPreloadDatasets={preloadDatasets}
+                    preloadedDatasets={preloadedDatasets}
+                    preloadTimestamp={preloadTimestamp}
+                />
             case 'datasets':
                 return renderDatasetsStep()
             case 'elements':
@@ -1446,6 +1896,7 @@ export const CreateAssessmentPage = () => {
                         dataElementsAll={elementsAll}
                         selectedDataElementIds={selectedElementIds}
                         setSelectedDataElementIds={setSelectedElementIds}
+                        loading={loadingDetailedData}
                     />
                 )
             case 'units':
@@ -1459,12 +1910,14 @@ export const CreateAssessmentPage = () => {
             case 'mapping':
                 return (
                     <OrgUnitMappingStep
-                        metadataSource={metadataSource}                 // 'external' | 'local'
-                        selectedOrgUnits={selectedOrgUnits}            // sources (from previous step)
-                        localOrgUnits={metadataSource === 'external' ? localOrgUnitsAll : orgUnitsAll} // local targets for mapping
-                        localOrgUnitsLoading={metadataSource === 'external' ? localOrgUnitsLoading : false} // loading state
+                        metadataSource={metadataSource}
+                        selectedOrgUnits={selectedOrgUnits}
+                        localOrgUnits={metadataSource === 'external' ? localOrgUnitsAll : orgUnitsAll}
+                        localOrgUnitsLoading={metadataSource === 'external' ? localOrgUnitsLoading : false}
                         orgUnitMappings={orgUnitMappings}
                         setOrgUnitMappings={setOrgUnitMappings}
+                        reportingLevel={assessmentData.reportingLevel}
+                        orgUnitLevels={orgUnitLevels}
                         externalInfo={{
                             baseUrl: externalConfig?.baseUrl,
                             apiVersion: externalConfig?.apiVersion,
@@ -1482,12 +1935,12 @@ export const CreateAssessmentPage = () => {
                         metadataSource={metadataSource}
                         dataEngine={dataEngine}
                         assessmentData={assessmentData}
+                        setAssessmentData={setAssessmentData}
                         localDatasets={localDatasets}
                         selectedDataSets={selectedDataSets}
                         selectedDataElements={elementsAll.filter(e => selectedElementIds.includes(e.id))}
                         selectedOrgUnits={orgUnitsAll.filter(ou => selectedOrgUnitIds.includes(ou.id))}
                         orgUnitMappings={orgUnitMappings}
-                        // NEW: surface SMS commands so defaults are visible/editable per dataset
                         smsCommands={smsDatasetCommands}
                         setSmsCommands={setSmsDatasetCommands}
                         onComplete={(v) => {
@@ -1500,7 +1953,18 @@ export const CreateAssessmentPage = () => {
             case 'review':
                 return (
                     <ReviewStep
-                        assessmentData={assessmentData}
+                        assessmentData={{
+                            ...assessmentData,
+                            // Add the selected data to assessmentData for ReviewStep (use different keys to avoid conflicts)
+                            selectedDatasets: selectedDatasetObjects,
+                            selectedDataElements: selectedDataElements,
+                            selectedOrgUnits: selectedOrgUnits,
+                            selectedOrgUnitMappings: orgUnitMappings,
+                            // Preserve existing creationPayload and created datasets if they exist
+                            creationPayload: assessmentData?.creationPayload || null,
+                            createdDatasets: assessmentData?.createdDatasets || [],
+                            localDatasets: assessmentData?.localDatasets || {}
+                        }}
                         setAssessmentData={setAssessmentData}
                         smsConfig={smsConfig}
                         setSmsConfig={setSmsConfig}
@@ -1512,7 +1976,7 @@ export const CreateAssessmentPage = () => {
                         saving={loading}
                         buildPayload={buildAssessmentPayload}
                         selectedDataElements={selectedDataElements}
-                        selectedDataSets={selectedDataSets}
+                        selectedDataSets={selectedDatasetObjects}
                     />
                 )
             default:
@@ -1588,13 +2052,10 @@ export const CreateAssessmentPage = () => {
                             onClick={() => attemptNext(tabs)}
                             disabled={
                                 (activeTab === 'details' && !isDetailsValid) ||
-                                (activeTab === 'datasets' && (
-                                    selectedDataSets.length === 0 ||
-                                    (metadataSource === 'external' && !connectionReady)
-                                )) ||
+                                (activeTab === 'datasets' && (selectedDataSets.length === 0)) ||
                                 (activeTab === 'elements' && selectedDataElements.length === 0) ||
                                 (activeTab === 'units' && selectedOrgUnitIds.length === 0) ||
-                                (activeTab === 'preparation' && (!datasetPreparationComplete || (metadataSource === 'external' && !connectionReady)))
+                                (activeTab === 'preparation' && (!datasetPreparationComplete))
                             }
                         >
                             {i18n.t('Next')}

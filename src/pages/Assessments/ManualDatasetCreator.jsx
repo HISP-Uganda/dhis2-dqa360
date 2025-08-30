@@ -32,7 +32,7 @@ import { useForm, Controller } from 'react-hook-form'
 import i18n from '@dhis2/d2-i18n'
 import { DataElementModal } from './DataElementModal'
 
-export const ManualDatasetCreator = ({ value, onChange, error }) => {
+export const ManualDatasetCreator = ({ value, onChange, error, errorMessage, fullCategoryCombos = [] }) => {
     const [datasetModal, setDatasetModal] = useState(false)
     const [dataElementModal, setDataElementModal] = useState(false)
     const [editingDataElement, setEditingDataElement] = useState(null)
@@ -118,10 +118,10 @@ export const ManualDatasetCreator = ({ value, onChange, error }) => {
                         </Button>
                     </Box>
 
-                    {error && (
+                    {(error || errorMessage) && (
                         <Box marginBottom="16px">
                             <NoticeBox error>
-                                {error}
+                                {errorMessage || error}
                             </NoticeBox>
                         </Box>
                     )}
@@ -194,6 +194,9 @@ export const ManualDatasetCreator = ({ value, onChange, error }) => {
                                         <TableCell>
                                             <Box>
                                                 <div style={{ fontWeight: 500 }}>{dataElement.name}</div>
+                                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                                                    {dataElement.id}
+                                                </div>
                                                 {dataElement.description && (
                                                     <div style={{ fontSize: '12px', color: '#6C7B7F', marginTop: '2px' }}>
                                                         {dataElement.description}
@@ -271,6 +274,7 @@ export const ManualDatasetCreator = ({ value, onChange, error }) => {
                     }}
                     dataElement={editingDataElement}
                     onSave={editingDataElement ? handleEditDataElement : handleAddDataElement}
+                    fullCategoryCombos={fullCategoryCombos}
                 />
             )}
         </Box>
@@ -301,7 +305,7 @@ const DatasetConfigModal = ({ onClose, dataset, onSave }) => {
     }
 
     return (
-        <Modal large onClose={onClose}>
+        <Modal large onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>{i18n.t('Dataset Configuration')}</ModalTitle>
             <ModalContent>
                 <form onSubmit={handleSubmit(onSubmit)}>
@@ -352,7 +356,10 @@ const DatasetConfigModal = ({ onClose, dataset, onSave }) => {
                             control={control}
                             render={({ field }) => (
                                 <InputField label={i18n.t('Period Type')}>
-                                    <SingleSelect {...field}>
+                                    <SingleSelect
+                                        selected={field.value}
+                                        onChange={({ selected }) => field.onChange(selected)}
+                                    >
                                         <SingleSelectOption value="Daily" label={i18n.t('Daily')} />
                                         <SingleSelectOption value="Weekly" label={i18n.t('Weekly')} />
                                         <SingleSelectOption value="Monthly" label={i18n.t('Monthly')} />

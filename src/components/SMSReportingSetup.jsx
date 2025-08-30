@@ -535,7 +535,7 @@ export const SMSReportingSetup = ({
 
             {/* Edit Command Modal */}
             {modalOpen && editingCommand && (
-                <Modal onClose={() => setModalOpen(false)} large>
+                <Modal onClose={() => setModalOpen(false)} large style={{ background: '#fff' }}>
                     <ModalTitle>{i18n.t('Edit SMS Command')}</ModalTitle>
                     <ModalContent>
                         <SMSCommandEditor

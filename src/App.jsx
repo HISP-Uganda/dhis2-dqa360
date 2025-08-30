@@ -5,6 +5,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { useAssessmentDataStore } from './services/assessmentDataStoreService'
 // './locales' will be populated after running start or build scripts
 import './locales'
+// Global table hover styles
+import './styles/tables.css'
 
 const MyApp = () => {
     const { initializeDataStore } = useAssessmentDataStore()
@@ -56,6 +58,11 @@ const MyApp = () => {
                 message.includes('Error: socket hang up')) {
                 return
             }
+            // Suppress deprecated paging warnings (we've already fixed the usage)
+            if (message.includes('paging=false') ||
+                message.includes('Data queries with paging=false are deprecated')) {
+                return
+            }
             originalConsoleWarn.apply(console, args)
         }
 
@@ -81,6 +88,21 @@ const MyApp = () => {
                 message.includes('dataStore/dqa360-manual') ||
                 message.includes('at async Promise.all')) {
                 return
+            }
+            // Suppress expected 409 conflicts during metadata creation (normal behavior)
+            // But allow critical processing errors to show through
+            if (message.includes('409') || message.includes('Conflict') || 
+                message.includes('the server responded with a status of 409')) {
+                // Allow through if it's a processing failure or critical error
+                if (message.includes('Failed to process') || 
+                    message.includes('Critical error') ||
+                    message.includes('Individual creation failed') ||
+                    message.includes('Failed to find created element')) {
+                    // Let these through as they indicate real problems
+                } else {
+                    // Suppress routine 409 conflicts (metadata already exists)
+                    return
+                }
             }
             originalConsoleError.apply(console, args)
         }

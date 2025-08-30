@@ -794,11 +794,15 @@ export const EditAssessmentPage = () => {
                     name: ds.name || ds.id,
                     code: ds.code || '',
                     periodType: ds.periodType || 'Monthly',
-                    organisationUnits: (ds.organisationUnits || []).map(ou => ({
+                    organisationUnits: (
+                        Array.isArray(ds.organisationUnits)
+                            ? ds.organisationUnits
+                            : (Array.isArray(ds?.organisationUnits?.selected) ? ds.organisationUnits.selected : [])
+                    ).map(ou => ({
                         id: ou.id, name: ou.name, code: ou.code || '', level: ou.level,
                         path: ou.path, parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : null
                     })),
-                    dataSetElements: (ds.dataSetElements || []).map(dse => ({
+                    dataSetElements: (Array.isArray(ds.dataSetElements) ? ds.dataSetElements : []).map(dse => ({
                         dataElement: dse?.dataElement ? {
                             id: dse.dataElement.id,
                             name: dse.dataElement.name,
@@ -869,7 +873,7 @@ export const EditAssessmentPage = () => {
                 // Use new top-level elementMappings array if present; fallback to object map for older runs
                 elementMappings: Array.isArray(assessmentData?.creationPayload?.elementMappings)
                     ? assessmentData.creationPayload.elementMappings
-                    : (assessmentData?.creationPayload?.elementMappings || {}),
+                    : (assessmentData?.elementMappings || assessmentData?.creationPayload?.localDatasets?.elementMappings || []),
             },
             metadataSource: metadataSource || 'dhis2',
         }
@@ -1723,7 +1727,16 @@ export const EditAssessmentPage = () => {
                 return (
                     <div style={{ padding: '20px 40px', width: '100%' }}>
                         <ReviewStep
-                            assessmentData={assessmentData}
+                            assessmentData={{
+                                ...assessmentData,
+                                // Add the selected data to assessmentData for ReviewStep
+                                datasets: { selected: selectedDataSets },
+                                dataElements: { selected: selectedDataElements },
+                                orgUnits: { selected: selectedOrgUnits },
+                                orgUnitMapping: { mappings: orgUnitMappings },
+                                // Preserve existing creationPayload if it exists
+                                creationPayload: assessmentData?.creationPayload || null
+                            }}
                             setAssessmentData={setAssessmentData}
                             smsConfig={assessmentData?.smsConfig || {}}
                             setSmsConfig={(cfg) => setAssessmentData(prev => ({ ...prev, smsConfig: cfg }))}

@@ -1,0 +1,7 @@
+/* Global table row hover styling for step tables */
+/* Applies a soft hover background to all table body rows */
+
+table tbody tr:hover {
+  background-color: #e7eff5;
+  transition: background-color 120ms ease-in-out;
+}

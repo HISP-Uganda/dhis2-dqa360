@@ -32,9 +32,16 @@ export const useAssessmentDataStore = () => {
     const engine = useDataEngine()
 
     /**
-     * Generate assessment key from ID (identity)
+     * Generate assessment key from ID with proper prefix
      */
-    const getAssessmentKey = (assessmentId) => assessmentId
+    const getAssessmentKey = (assessmentId) => {
+        // If already has prefix, return as-is
+        if (assessmentId && assessmentId.startsWith(ASSESSMENT_KEY_PREFIX)) {
+            return assessmentId
+        }
+        // Otherwise add prefix
+        return `${ASSESSMENT_KEY_PREFIX}${assessmentId || Date.now()}`
+    }
 
     /**
      * Initialize the dataStore namespace
@@ -71,7 +78,8 @@ export const useAssessmentDataStore = () => {
      */
     const createAssessmentStructure = (assessmentData, dhis2Config, selectedDataSets, selectedDataElements, selectedOrgUnits, orgUnitMappings, localDatasets, userInfo) => {
         const currentTime = new Date().toISOString()
-        const assessmentId = assessmentData.id || `assessment_${Date.now()}`
+        // Generate unique assessment ID if not provided
+        const assessmentId = assessmentData.id || `assessment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
         return {
             // Core identification
@@ -243,7 +251,9 @@ export const useAssessmentDataStore = () => {
                 },
 
                 // Datasets Selected with Full Details
-                datasetsSelected: (selectedDataSets || []).map(dataset => ({
+                datasetsSelected: (Array.isArray(selectedDataSets) ? selectedDataSets : [])
+                    .filter(dataset => dataset && typeof dataset === 'object')
+                    .map(dataset => ({
                     // Dataset Basic Information
                     info: {
                         id: dataset.id || '',
@@ -288,7 +298,8 @@ export const useAssessmentDataStore = () => {
                     },
 
                     // Data Elements with Full Details
-                    dataElements: (selectedDataElements || [])
+                    dataElements: (Array.isArray(selectedDataElements) ? selectedDataElements : [])
+                        .filter(de => de && typeof de === 'object' && de.id)
                         .filter(de => dataset.dataSetElements?.some(dse => dse.dataElement?.id === de.id) || true)
                         .map(dataElement => ({
                             // Basic Information
@@ -334,7 +345,9 @@ export const useAssessmentDataStore = () => {
                         })),
 
                     // Organisation Units with Full Details
-                    organisationUnits: (selectedOrgUnits || []).map(orgUnit => ({
+                    organisationUnits: (Array.isArray(selectedOrgUnits) ? selectedOrgUnits : [])
+                        .filter(orgUnit => orgUnit && typeof orgUnit === 'object' && orgUnit.id)
+                        .map(orgUnit => ({
                         // Basic Information
                         id: orgUnit.id || '',
                         name: orgUnit.name || orgUnit.displayName || '',
@@ -385,8 +398,8 @@ export const useAssessmentDataStore = () => {
                 })),
 
                 // Organisation Unit Mapping Details
-                orgUnitMapping: (orgUnitMappings || [])
-                    .filter(mapping => mapping.mapped)
+                orgUnitMapping: (Array.isArray(orgUnitMappings) ? orgUnitMappings : [])
+                    .filter(mapping => mapping && typeof mapping === 'object' && mapping.mapped)
                     .map(mapping => ({
                         // External (Local) Organisation Unit
                         external: {
@@ -429,7 +442,9 @@ export const useAssessmentDataStore = () => {
             },
 
             // Tab 3: Local Datasets Created
-            localDatasetsCreated: (localDatasets || []).map(localDataset => {
+            localDatasetsCreated: (Array.isArray(localDatasets) ? localDatasets : [])
+                .filter(localDataset => localDataset && typeof localDataset === 'object')
+                .map(localDataset => {
                 console.log('🔍 Processing local dataset:', {
                     id: localDataset.id,
                     name: localDataset.name,
@@ -488,7 +503,10 @@ export const useAssessmentDataStore = () => {
                 },
 
                 // Data Elements
-                dataElements: (localDataset.dataElements || selectedDataElements || []).map(de => ({
+                dataElements: (Array.isArray(localDataset.dataElements) ? localDataset.dataElements : 
+                              Array.isArray(selectedDataElements) ? selectedDataElements : [])
+                    .filter(de => de && typeof de === 'object' && de.id)
+                    .map(de => ({
                     id: de.id || '',
                     name: de.name || de.displayName || '',
                     displayName: de.displayName || de.name || '',
@@ -510,7 +528,10 @@ export const useAssessmentDataStore = () => {
                 })),
 
                 // Organisation Units
-                orgUnits: (localDataset.orgUnits || selectedOrgUnits || []).map(ou => ({
+                orgUnits: (Array.isArray(localDataset.orgUnits) ? localDataset.orgUnits : 
+                          Array.isArray(selectedOrgUnits) ? selectedOrgUnits : [])
+                    .filter(ou => ou && typeof ou === 'object' && ou.id)
+                    .map(ou => ({
                     id: ou.id || '',
                     name: ou.name || ou.displayName || '',
                     displayName: ou.displayName || ou.name || '',

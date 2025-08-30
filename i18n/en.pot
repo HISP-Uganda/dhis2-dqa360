@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-21T06:30:13.680Z\n"
-"PO-Revision-Date: 2025-08-21T06:30:13.681Z\n"
+"POT-Creation-Date: 2025-08-29T18:30:58.331Z\n"
+"PO-Revision-Date: 2025-08-29T18:30:58.332Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -221,80 +221,8 @@ msgstr "No description provided"
 msgid "Organization Units"
 msgstr "Organization Units"
 
-msgid "Source Data Elements"
-msgstr "Source Data Elements"
-
-msgid "Instance Type"
-msgstr "Instance Type"
-
 msgid "Metadata to be Created"
 msgstr "Metadata to be Created"
-
-msgid "Datasets"
-msgstr "Datasets"
-
-msgid "Will use category combinations from selected data elements or default"
-msgstr "Will use category combinations from selected data elements or default"
-
-msgid "Reuse existing metadata when possible"
-msgstr "Reuse existing metadata when possible"
-
-msgid "Creation Progress"
-msgstr "Creation Progress"
-
-msgid "Step {{current}} of 6"
-msgstr "Step {{current}} of 6"
-
-msgid "Progress will be shown here during creation..."
-msgstr "Progress will be shown here during creation..."
-
-msgid "Creation Summary"
-msgstr "Creation Summary"
-
-msgid "Metadata Type"
-msgstr "Metadata Type"
-
-msgid "Count"
-msgstr "Count"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Created"
-msgstr "Created"
-
-msgid "Assigned"
-msgstr "Assigned"
-
-msgid "DQA Dataset Creation"
-msgstr "DQA Dataset Creation"
-
-msgid "Overview"
-msgstr "Overview"
-
-msgid "Progress"
-msgstr "Progress"
-
-msgid "Summary"
-msgstr "Summary"
-
-msgid "Success"
-msgstr "Success"
-
-msgid "DQA metadata has been created successfully!"
-msgstr "DQA metadata has been created successfully!"
-
-msgid "Cancel"
-msgstr "Cancel"
-
-msgid "Creating..."
-msgstr "Creating..."
-
-msgid "Create DQA Datasets"
-msgstr "Create DQA Datasets"
-
-msgid "Complete & Continue"
-msgstr "Complete & Continue"
 
 msgid "Category Options"
 msgstr "Category Options"
@@ -304,6 +232,9 @@ msgstr "Category"
 
 msgid "Category Combination"
 msgstr "Category Combination"
+
+msgid "Datasets"
+msgstr "Datasets"
 
 msgid "Reuse existing DQA metadata when possible"
 msgstr "Reuse existing DQA metadata when possible"
@@ -317,17 +248,44 @@ msgstr "items"
 msgid "No existing items found"
 msgstr "No existing items found"
 
+msgid "Creation Progress"
+msgstr "Creation Progress"
+
 msgid "Step {{current}} of 8"
 msgstr "Step {{current}} of 8"
+
+msgid "Progress will be shown here during creation..."
+msgstr "Progress will be shown here during creation..."
 
 msgid "DQA Metadata Manager"
 msgstr "DQA Metadata Manager"
 
+msgid "Overview"
+msgstr "Overview"
+
 msgid "Existing Metadata"
 msgstr "Existing Metadata"
 
+msgid "Progress"
+msgstr "Progress"
+
+msgid "Success"
+msgstr "Success"
+
+msgid "DQA metadata has been created successfully!"
+msgstr "DQA metadata has been created successfully!"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Creating..."
+msgstr "Creating..."
+
 msgid "Create DQA Metadata"
 msgstr "Create DQA Metadata"
+
+msgid "Complete & Continue"
+msgstr "Complete & Continue"
 
 msgid "Data Quality Check - {{name}}"
 msgstr "Data Quality Check - {{name}}"
@@ -368,6 +326,9 @@ msgstr "Data Quality Issues"
 
 msgid "Issue Type"
 msgstr "Issue Type"
+
+msgid "Count"
+msgstr "Count"
 
 msgid "Severity"
 msgstr "Severity"
@@ -529,6 +490,9 @@ msgstr "Add Category Option"
 msgid "Code"
 msgstr "Code"
 
+msgid "Status"
+msgstr "Status"
+
 msgid "Actions"
 msgstr "Actions"
 
@@ -573,6 +537,9 @@ msgstr "Data Dimension Type"
 
 msgid "Add Attachments"
 msgstr "Add Attachments"
+
+msgid "Metadata Type"
+msgstr "Metadata Type"
 
 msgid "Metadata ID"
 msgstr "Metadata ID"
@@ -1220,6 +1187,9 @@ msgstr "No datasets have been created via assessments yet."
 msgid "Organisation Units"
 msgstr "Organisation Units"
 
+msgid "Created"
+msgstr "Created"
+
 msgid ""
 "Start by selecting a dataset, then view its data elements, select "
 "organisation units, and create assessment templates"
@@ -1385,6 +1355,9 @@ msgstr "Primary Source (Tie-break)"
 
 msgid "Register"
 msgstr "Register"
+
+msgid "Summary"
+msgstr "Summary"
 
 msgid "DHIS2 Reported"
 msgstr "DHIS2 Reported"
@@ -1727,20 +1700,53 @@ msgstr "No assessments found"
 msgid "Create your first assessment to get started"
 msgstr "Create your first assessment to get started"
 
-msgid "Assessment Name"
-msgstr "Assessment Name"
+msgid "No period set"
+msgstr "No period set"
+
+msgid "Not specified"
+msgstr "Not specified"
+
+msgid "No datasets selected"
+msgstr "No datasets selected"
+
+msgid "Untitled Assessment"
+msgstr "Untitled Assessment"
+
+msgid "Created by"
+msgstr "Created by"
+
+msgid "Frequency"
+msgstr "Frequency"
+
+msgid "Assessment Type"
+msgstr "Assessment Type"
+
+msgid "Priority"
+msgstr "Priority"
+
+msgid "Method"
+msgstr "Method"
 
 msgid "Facilities"
 msgstr "Facilities"
 
-msgid "DQA Datasets"
-msgstr "DQA Datasets"
+msgid "DHIS2 Connection"
+msgstr "DHIS2 Connection"
 
-msgid "Baseline ID"
-msgstr "Baseline ID"
+msgid "Configured"
+msgstr "Configured"
 
-msgid "Created Date"
-msgstr "Created Date"
+msgid "Not Configured"
+msgstr "Not Configured"
+
+msgid "mappings"
+msgstr "mappings"
+
+msgid "No mappings"
+msgstr "No mappings"
+
+msgid "Local datasets created"
+msgstr "Local datasets created"
 
 msgid "Error loading form data"
 msgstr "Error loading form data"
@@ -1759,6 +1765,9 @@ msgstr "Basic Information"
 
 msgid "Assessment name is required"
 msgstr "Assessment name is required"
+
+msgid "Assessment Name"
+msgstr "Assessment Name"
 
 msgid "Enter assessment name"
 msgstr "Enter assessment name"
@@ -1856,6 +1865,15 @@ msgstr "Maximum"
 msgid "None"
 msgstr "None"
 
+msgid "Default (No disaggregation)"
+msgstr "Default (No disaggregation)"
+
+msgid "category"
+msgstr "category"
+
+msgid "categories"
+msgstr "categories"
+
 msgid "Add Data Element"
 msgstr "Add Data Element"
 
@@ -1943,18 +1961,6 @@ msgstr "Link to additional information about this data element"
 msgid "Defines how this data element can be disaggregated"
 msgstr "Defines how this data element can be disaggregated"
 
-msgid "Default (No disaggregation)"
-msgstr "Default (No disaggregation)"
-
-msgid "Age and Sex"
-msgstr "Age and Sex"
-
-msgid "Sex only"
-msgstr "Sex only"
-
-msgid "Age only"
-msgstr "Age only"
-
 msgid ""
 "Advanced options affect how data is collected and analyzed. Use default "
 "values unless you have specific requirements."
@@ -1992,9 +1998,6 @@ msgstr ""
 
 msgid "Update Data Element"
 msgstr "Update Data Element"
-
-msgid "DHIS2 Connection"
-msgstr "DHIS2 Connection"
 
 msgid "Connected"
 msgstr "Connected"
@@ -2071,9 +2074,6 @@ msgstr "DQ Summary"
 
 msgid "DQ Details"
 msgstr "DQ Details"
-
-msgid "Frequency"
-msgstr "Frequency"
 
 msgid "Period Configuration"
 msgstr "Period Configuration"
@@ -2469,9 +2469,6 @@ msgstr "Manage and view immutable snapshots of Reported data pulls"
 msgid "Label"
 msgstr "Label"
 
-msgid "Created by"
-msgstr "Created by"
-
 msgid "Ready"
 msgstr "Ready"
 
@@ -2601,6 +2598,30 @@ msgstr "Corrections Pending"
 msgid "Data Quality Score"
 msgstr "Data Quality Score"
 
+msgid "At-a-glance visuals with drill-downs"
+msgstr "At-a-glance visuals with drill-downs"
+
+msgid "Facility Dashboard"
+msgstr "Facility Dashboard"
+
+msgid "Trends & Time Series"
+msgstr "Trends & Time Series"
+
+msgid "Discrepancy Heatmap"
+msgstr "Discrepancy Heatmap"
+
+msgid "DQ Dimensions Dashboard"
+msgstr "DQ Dimensions Dashboard"
+
+msgid "Success Criteria Dashboard"
+msgstr "Success Criteria Dashboard"
+
+msgid "Exports & Sharing"
+msgstr "Exports & Sharing"
+
+msgid "Visual summaries and exports"
+msgstr "Visual summaries and exports"
+
 msgid "Data Quality Trends"
 msgstr "Data Quality Trends"
 
@@ -2680,6 +2701,100 @@ msgstr ""
 "For detailed documentation and support, please contact your system "
 "administrator or refer to the DHIS2 DQA360 documentation."
 
+msgid "No concept mapping available"
+msgstr "No concept mapping available"
+
+msgid "No data elements selected"
+msgstr "No data elements selected"
+
+msgid "Please go back to the Elements step and select data elements first."
+msgstr "Please go back to the Elements step and select data elements first."
+
+msgid "Back to Elements"
+msgstr "Back to Elements"
+
+msgid "Data Elements Concept Mapping"
+msgstr "Data Elements Concept Mapping"
+
+msgid ""
+"Create logical concepts from your data elements and map them across "
+"datasets. This enables cross-dataset analysis and standardized reporting."
+msgstr ""
+"Create logical concepts from your data elements and map them across "
+"datasets. This enables cross-dataset analysis and standardized reporting."
+
+msgid "Concepts"
+msgstr "Concepts"
+
+msgid "Mapped Elements"
+msgstr "Mapped Elements"
+
+msgid "Dataset Bindings"
+msgstr "Dataset Bindings"
+
+msgid "Unmapped Elements"
+msgstr "Unmapped Elements"
+
+msgid "Validation Errors"
+msgstr "Validation Errors"
+
+msgid "Concept Mapping"
+msgstr "Concept Mapping"
+
+msgid "Preview & Export"
+msgstr "Preview & Export"
+
+msgid "No concept mapping created yet"
+msgstr "No concept mapping created yet"
+
+msgid "Generate an initial concept mapping from your selected data elements."
+msgstr "Generate an initial concept mapping from your selected data elements."
+
+msgid "Generate Concept Mapping"
+msgstr "Generate Concept Mapping"
+
+msgid "Previous"
+msgstr "Previous"
+
+msgid "Ready to proceed"
+msgstr "Ready to proceed"
+
+msgid "Fix errors to continue"
+msgstr "Fix errors to continue"
+
+msgid "No mapping to preview"
+msgstr "No mapping to preview"
+
+msgid "Create a concept mapping first to see the preview."
+msgstr "Create a concept mapping first to see the preview."
+
+msgid "Mapping Summary"
+msgstr "Mapping Summary"
+
+msgid "Concept List"
+msgstr "Concept List"
+
+msgid "View Full Preview"
+msgstr "View Full Preview"
+
+msgid "Download JSON"
+msgstr "Download JSON"
+
+msgid "Download Legacy Format"
+msgstr "Download Legacy Format"
+
+msgid "Concept Mapping Preview"
+msgstr "Concept Mapping Preview"
+
+msgid "JSON Format"
+msgstr "JSON Format"
+
+msgid "Legacy Format"
+msgstr "Legacy Format"
+
+msgid "Copy to Clipboard"
+msgstr "Copy to Clipboard"
+
 msgid "Unable to connect. Verify the URL and credentials."
 msgstr "Unable to connect. Verify the URL and credentials."
 
@@ -2688,9 +2803,6 @@ msgstr "Unexpected error while testing connection"
 
 msgid "Failed to save connection"
 msgstr "Failed to save connection"
-
-msgid "Configured"
-msgstr "Configured"
 
 msgid "Failed"
 msgstr "Failed"
@@ -2750,6 +2862,9 @@ msgstr ""
 msgid "Testing…"
 msgstr "Testing…"
 
+msgid "Testing & Preloading…"
+msgstr "Testing & Preloading…"
+
 msgid "Test connection"
 msgstr "Test connection"
 
@@ -2759,18 +2874,46 @@ msgstr "Saving…"
 msgid "Save credentials"
 msgstr "Save credentials"
 
+msgid "Preloading…"
+msgstr "Preloading…"
+
+msgid "Preload datasets"
+msgstr "Preload datasets"
+
 msgid "Server version"
 msgstr "Server version"
 
 msgid "Last tested"
 msgstr "Last tested"
 
+msgid "Datasets preloaded"
+msgstr "Datasets preloaded"
+
+msgid "datasets"
+msgstr "datasets"
+
+msgid "min ago"
+msgstr "min ago"
+
 msgid ""
-"Test the connection to verify it works before proceeding to the next step. "
-"The connection status must show \"Connected\" to load datasets in step 3."
+"Testing validates credentials only. Datasets will load from the saved "
+"external connection if you choose it in the next step."
 msgstr ""
-"Test the connection to verify it works before proceeding to the next step. "
-"The connection status must show \"Connected\" to load datasets in step 3."
+"Testing validates credentials only. Datasets will load from the saved "
+"external connection if you choose it in the next step."
+
+msgid "This is taking longer than expected... ({{time}}s)"
+msgstr "This is taking longer than expected... ({{time}}s)"
+
+msgid "Loading for {{time}} seconds..."
+msgstr "Loading for {{time}} seconds..."
+
+msgid ""
+"Loading is taking unusually long. You may want to refresh the page or check "
+"your connection."
+msgstr ""
+"Loading is taking unusually long. You may want to refresh the page or check "
+"your connection."
 
 msgid "Filter"
 msgstr "Filter"
@@ -2778,17 +2921,27 @@ msgstr "Filter"
 msgid "Search by name, code, or ID"
 msgstr "Search by name, code, or ID"
 
-msgid "No datasets found"
-msgstr "No datasets found"
+msgid "Using preloaded datasets from {{time}} minutes ago"
+msgstr "Using preloaded datasets from {{time}} minutes ago"
 
-msgid "Try adjusting your search or change the period type filter."
-msgstr "Try adjusting your search or change the period type filter."
+msgid "Click Refresh to get latest data"
+msgstr "Click Refresh to get latest data"
+
+msgid ""
+"Showing first 500 of {{total}} datasets for better performance. Use filters "
+"to narrow down results."
+msgstr ""
+"Showing first 500 of {{total}} datasets for better performance. Use filters "
+"to narrow down results."
 
 msgid "# Data elements"
 msgstr "# Data elements"
 
 msgid "# Org units"
 msgstr "# Org units"
+
+msgid "No records found"
+msgstr "No records found"
 
 msgid "Level {{n}}"
 msgstr "Level {{n}}"
@@ -2811,9 +2964,6 @@ msgstr "Connect next"
 msgid "Using this instance"
 msgstr "Using this instance"
 
-msgid "Assessment Type"
-msgstr "Assessment Type"
-
 msgid "Start Date"
 msgstr "Start Date"
 
@@ -2825,9 +2975,6 @@ msgstr "End Date"
 
 msgid "Select end date"
 msgstr "Select end date"
-
-msgid "Priority"
-msgstr "Priority"
 
 msgid "Methodology"
 msgstr "Methodology"
@@ -2940,6 +3087,12 @@ msgstr "Select baseline assessment for comparison"
 msgid "All types"
 msgstr "All types"
 
+msgid "Loading data elements..."
+msgstr "Loading data elements..."
+
+msgid "Extracting data elements from selected datasets"
+msgstr "Extracting data elements from selected datasets"
+
 msgid "Search by name, code, category combo, or ID"
 msgstr "Search by name, code, category combo, or ID"
 
@@ -2957,9 +3110,6 @@ msgstr "No data elements found"
 
 msgid "Adjust the filters or select datasets first to derive data elements."
 msgstr "Adjust the filters or select datasets first to derive data elements."
-
-msgid "Category combo"
-msgstr "Category combo"
 
 msgid "# Categories"
 msgstr "# Categories"
@@ -3035,6 +3185,30 @@ msgstr "Loading local organisation units..."
 msgid "Please wait while we load the local organisation units for mapping targets."
 msgstr "Please wait while we load the local organisation units for mapping targets."
 
+msgid ""
+"Loading org units up to {{levelName}} (Level {{levelNumber}}) based on your "
+"reporting level selection."
+msgstr ""
+"Loading org units up to {{levelName}} (Level {{levelNumber}}) based on your "
+"reporting level selection."
+
+msgid "(Limited to improve performance)"
+msgstr "(Limited to improve performance)"
+
+msgid "Limited organisation units loaded"
+msgstr "Limited organisation units loaded"
+
+msgid ""
+"Only higher-level organisation units were loaded for performance. If you "
+"need to map to facility-level units, please contact your system "
+"administrator to optimize the org unit hierarchy or use a more specific "
+"external selection."
+msgstr ""
+"Only higher-level organisation units were loaded for performance. If you "
+"need to map to facility-level units, please contact your system "
+"administrator to optimize the org unit hierarchy or use a more specific "
+"external selection."
+
 msgid "Search by name, code, path, level..."
 msgstr "Search by name, code, path, level..."
 
@@ -3043,9 +3217,6 @@ msgstr "Apply all suggestions"
 
 msgid "Clear mappings"
 msgstr "Clear mappings"
-
-msgid "Save mappings"
-msgstr "Save mappings"
 
 msgid "No local organisation units available"
 msgstr "No local organisation units available"
@@ -3111,6 +3282,12 @@ msgstr "Search by name, code, parent, or ID"
 
 msgid "Select datasets first to derive the organisation units."
 msgstr "Select datasets first to derive the organisation units."
+
+msgid "OrgUnit UID"
+msgstr "OrgUnit UID"
+
+msgid "Parent UID"
+msgstr "Parent UID"
 
 msgid "Corrected"
 msgstr "Corrected"
@@ -3184,6 +3361,9 @@ msgstr "Preview of elements included in this dataset"
 msgid "Domain"
 msgstr "Domain"
 
+msgid "Category Combo (Name · UID)"
+msgstr "Category Combo (Name · UID)"
+
 msgid "SMS Code"
 msgstr "SMS Code"
 
@@ -3192,6 +3372,12 @@ msgstr "Assigned Organisation Units"
 
 msgid "These org units will be linked to the dataset"
 msgstr "These org units will be linked to the dataset"
+
+msgid "External Org (Name)"
+msgstr "External Org (Name)"
+
+msgid "External Org (UID)"
+msgstr "External Org (UID)"
 
 msgid "Dataset Sharing Settings"
 msgstr "Dataset Sharing Settings"
@@ -3204,6 +3390,9 @@ msgstr "Public access"
 
 msgid "Can capture and view"
 msgstr "Can capture and view"
+
+msgid "Capture & view (legacy)"
+msgstr "Capture & view (legacy)"
 
 msgid "Can view only"
 msgstr "Can view only"
@@ -3235,20 +3424,62 @@ msgstr "Defaults to \"{{name}}\" if left empty"
 msgid "SMS"
 msgstr "SMS"
 
+msgid "SMS Parser"
+msgstr "SMS Parser"
+
+msgid "Choose the DHIS2 SMS parser type"
+msgstr "Choose the DHIS2 SMS parser type"
+
+msgid "Key-Value Parser (default)"
+msgstr "Key-Value Parser (default)"
+
+msgid "J2ME Parser"
+msgstr "J2ME Parser"
+
+msgid "Alert Parser"
+msgstr "Alert Parser"
+
+msgid "Unregistered Parser"
+msgstr "Unregistered Parser"
+
+msgid "Tracked Entity Registration Parser"
+msgstr "Tracked Entity Registration Parser"
+
+msgid "Program Stage Data Entry Parser"
+msgstr "Program Stage Data Entry Parser"
+
+msgid "Default is Key-Value Parser."
+msgstr "Default is Key-Value Parser."
+
 msgid "SMS Command Keyword"
 msgstr "SMS Command Keyword"
 
 msgid "Defaults to a dataset-specific keyword if left empty"
 msgstr "Defaults to a dataset-specific keyword if left empty"
 
-msgid "Separator (Keyword and data separator)"
-msgstr "Separator (Keyword and data separator)"
+msgid "Keyword-Data Separator"
+msgstr "Keyword-Data Separator"
+
+msgid "Separator between keyword and data values"
+msgstr "Separator between keyword and data values"
 
 msgid "Space"
 msgstr "Space"
 
-msgid "Used to separate the keyword from codes and between key=value pairs"
-msgstr "Used to separate the keyword from codes and between key=value pairs"
+msgid "Used to separate the keyword from data values"
+msgstr "Used to separate the keyword from data values"
+
+msgid "Code-Code Separator"
+msgstr "Code-Code Separator"
+
+msgid "Separator between SMS codes"
+msgstr "Separator between SMS codes"
+
+msgid "Code-Value Separator"
+msgstr "Code-Value Separator"
+
+msgid "Separator between SMS code and its value"
+msgstr "Separator between SMS code and its value"
 
 msgid "Success message"
 msgstr "Success message"
@@ -3268,132 +3499,111 @@ msgstr "No codes message"
 msgid "Shown when only the command is received"
 msgstr "Shown when only the command is received"
 
+msgid "SMS Command Preview"
+msgstr "SMS Command Preview"
+
+msgid "Preview of how SMS commands will be structured"
+msgstr "Preview of how SMS commands will be structured"
+
+msgid ""
+"SMS is currently disabled for this dataset. Enable SMS above to see the "
+"command preview."
+msgstr ""
+"SMS is currently disabled for this dataset. Enable SMS above to see the "
+"command preview."
+
+msgid "Create DQA Datasets"
+msgstr "Create DQA Datasets"
+
 msgid "Creating DQA Datasets"
 msgstr "Creating DQA Datasets"
 
-msgid "Download JSON"
-msgstr "Download JSON"
+msgid "Select data elements first to generate concept mappings."
+msgstr "Select data elements first to generate concept mappings."
 
-msgid "Print"
-msgstr "Print"
+msgid "Concept-Based Data Elements Mapping"
+msgstr "Concept-Based Data Elements Mapping"
 
-msgid "Save Assessment"
-msgstr "Save Assessment"
+msgid "concepts"
+msgstr "concepts"
 
-msgid "Review & Save"
-msgstr "Review & Save"
+msgid "bindings"
+msgstr "bindings"
 
-msgid "Missing prerequisites"
-msgstr "Missing prerequisites"
+msgid "Auto-group by concept"
+msgstr "Auto-group by concept"
 
-msgid ""
-"Some steps are incomplete. Please go back and complete all steps (Details, "
-"Datasets, Data Elements, Org Units, Preparation)."
-msgstr ""
-"Some steps are incomplete. Please go back and complete all steps (Details, "
-"Datasets, Data Elements, Org Units, Preparation)."
+msgid "Regenerate"
+msgstr "Regenerate"
 
-msgid "Reporting level"
-msgstr "Reporting level"
+msgid "Add Concept"
+msgstr "Add Concept"
 
-msgid "Start date"
-msgstr "Start date"
+msgid "Unit"
+msgstr "Unit"
 
-msgid "End date"
-msgstr "End date"
+msgid "Percent"
+msgstr "Percent"
 
-msgid "Baseline"
-msgstr "Baseline"
+msgid "Boolean"
+msgstr "Boolean"
 
-msgid "Success Criteria (pre-defined)"
-msgstr "Success Criteria (pre-defined)"
+msgid "Add binding to dataset..."
+msgstr "Add binding to dataset..."
 
-msgid "Confidentiality"
-msgstr "Confidentiality"
+msgid "No dataset bindings configured"
+msgstr "No dataset bindings configured"
 
-msgid "Retention"
-msgstr "Retention"
+msgid "source elements"
+msgstr "source elements"
 
-msgid "Options"
-msgstr "Options"
+msgid "Create New Concept"
+msgstr "Create New Concept"
 
-msgid "Auto Save"
-msgstr "Auto Save"
+msgid "Concept Name"
+msgstr "Concept Name"
 
-msgid "SMS Settings"
-msgstr "SMS Settings"
+msgid "Enter concept name..."
+msgstr "Enter concept name..."
 
-msgid "Enable SMS reporting"
-msgstr "Enable SMS reporting"
+msgid "Loading real category option combos..."
+msgstr "Loading real category option combos..."
 
-msgid "Sender ID"
-msgstr "Sender ID"
+msgid "Keyword-Data"
+msgstr "Keyword-Data"
 
-msgid "Report Keyword"
-msgstr "Report Keyword"
+msgid "Code-Code"
+msgstr "Code-Code"
 
-msgid "Phone Pattern (regex)"
-msgstr "Phone Pattern (regex)"
+msgid "Code-Value"
+msgstr "Code-Value"
 
-msgid "Preview Template"
-msgstr "Preview Template"
+msgid "SMS Command Template"
+msgstr "SMS Command Template"
 
-msgid "Dataset Commands"
-msgstr "Dataset Commands"
+msgid "Dataelement Category Option Combo allocated its SMS Codes"
+msgstr "Dataelement Category Option Combo allocated its SMS Codes"
 
-msgid "Dataset ID"
-msgstr "Dataset ID"
+msgid "Taking longer to generate preview."
+msgstr "Taking longer to generate preview."
 
-msgid "Command"
-msgstr "Command"
+msgid "Preparing preview..."
+msgstr "Preparing preview..."
 
-msgid "No dataset commands generated yet."
-msgstr "No dataset commands generated yet."
+msgid "combinations"
+msgstr "combinations"
 
-msgid "Selections"
-msgstr "Selections"
+msgid "FINAL SMS COMMAND TEMPLATE"
+msgstr "FINAL SMS COMMAND TEMPLATE"
 
-msgid "Data elements"
-msgstr "Data elements"
+msgid "FINAL SMS COMMAND examples (with random values)"
+msgstr "FINAL SMS COMMAND examples (with random values)"
 
-msgid "Organisation units"
-msgstr "Organisation units"
+msgid "Export JOB AIDE (PDF)"
+msgstr "Export JOB AIDE (PDF)"
 
-msgid "Mappings"
-msgstr "Mappings"
-
-msgid "No datasets selected"
-msgstr "No datasets selected"
-
-msgid "Created DQA Datasets"
-msgstr "Created DQA Datasets"
-
-msgid "No created DQA datasets yet"
-msgstr "No created DQA datasets yet"
-
-msgid "Elements"
-msgstr "Elements"
-
-msgid "Element Mappings"
-msgstr "Element Mappings"
-
-msgid "No element mappings found"
-msgstr "No element mappings found"
-
-msgid "Dataset Type"
-msgstr "Dataset Type"
-
-msgid "Pairs"
-msgstr "Pairs"
-
-msgid "No organisation units selected"
-msgstr "No organisation units selected"
-
-msgid "Hide JSON preview"
-msgstr "Hide JSON preview"
-
-msgid "Show JSON preview"
-msgstr "Show JSON preview"
+msgid "Download JOB AIDE (Word)"
+msgstr "Download JOB AIDE (Word)"
 
 msgid "Thank you. {{dataset}} for {{period}} at {{orgUnit}} received."
 msgstr "Thank you. {{dataset}} for {{period}} at {{orgUnit}} received."
@@ -3504,12 +3714,6 @@ msgstr "Password is required."
 msgid "API version must be a positive integer when provided."
 msgstr "API version must be a positive integer when provided."
 
-msgid "Please test the connection successfully before proceeding to datasets."
-msgstr "Please test the connection successfully before proceeding to datasets."
-
-msgid "Please configure your DHIS2 connection before selecting datasets."
-msgstr "Please configure your DHIS2 connection before selecting datasets."
-
 msgid "Select at least one dataset."
 msgstr "Select at least one dataset."
 
@@ -3518,9 +3722,6 @@ msgstr "Select at least one data element."
 
 msgid "Select at least one organisation unit."
 msgstr "Select at least one organisation unit."
-
-msgid "Provide mappings for all selected organisation units."
-msgstr "Provide mappings for all selected organisation units."
 
 msgid "Run preparation and mark it complete."
 msgstr "Run preparation and mark it complete."
@@ -3539,6 +3740,9 @@ msgstr "Failed to save dataset"
 
 msgid "Dates"
 msgstr "Dates"
+
+msgid "Reporting level"
+msgstr "Reporting level"
 
 msgid "Assessment \"{{name}}\" created successfully"
 msgstr "Assessment \"{{name}}\" created successfully"
@@ -3596,22 +3800,16 @@ msgstr "External DHIS2 Connection"
 
 msgid ""
 "Your credentials are saved. The connection will be tested automatically "
-"when loading datasets from {{url}}."
+"when loading datasets from"
 msgstr ""
 "Your credentials are saved. The connection will be tested automatically "
-"when loading datasets from {{url}}."
-
-msgid "Load more"
-msgstr "Load more"
+"when loading datasets from"
 
 msgid "Preparation failed"
 msgstr "Preparation failed"
 
 msgid "Step {{n}} of {{total}}"
 msgstr "Step {{n}} of {{total}}"
-
-msgid "Previous"
-msgstr "Previous"
 
 msgid "Create Dataset"
 msgstr "Create Dataset"
@@ -3793,9 +3991,6 @@ msgstr ""
 "You can remove data elements from the selection. Changes will be applied "
 "when you click \"Save Changes\"."
 
-msgid "No data elements selected"
-msgstr "No data elements selected"
-
 msgid "Go to the Data Elements tab to select data elements."
 msgstr "Go to the Data Elements tab to select data elements."
 
@@ -3836,6 +4031,9 @@ msgstr "Go to the Map Organisation Units tab to create mappings."
 
 msgid "Tab content not found"
 msgstr "Tab content not found"
+
+msgid "Save Assessment"
+msgstr "Save Assessment"
 
 msgid "Loading assessment..."
 msgstr "Loading assessment..."
@@ -3891,6 +4089,15 @@ msgstr "Export Data"
 
 msgid "Edit Data"
 msgstr "Edit Data"
+
+msgid "Download & Print"
+msgstr "Download & Print"
+
+msgid "Download Assessment JSON"
+msgstr "Download Assessment JSON"
+
+msgid "Print Assessment Summary"
+msgstr "Print Assessment Summary"
 
 msgid "Consistency Analysis"
 msgstr "Consistency Analysis"
@@ -3960,12 +4167,6 @@ msgstr "Data Configuration"
 
 msgid "Complete Setup"
 msgstr "Complete Setup"
-
-msgid "DQA Datasets Missing"
-msgstr "DQA Datasets Missing"
-
-msgid "{{current}}/4 datasets created"
-msgstr "{{current}}/4 datasets created"
 
 msgid "Assessment Templates"
 msgstr "Assessment Templates"
@@ -4071,9 +4272,6 @@ msgstr ""
 "Please select one or more datasets from the Data Sets tab to view their "
 "data elements."
 
-msgid "Loading data elements..."
-msgstr "Loading data elements..."
-
 msgid "Error loading data elements from selected datasets"
 msgstr "Error loading data elements from selected datasets"
 
@@ -4101,9 +4299,6 @@ msgstr "Enter data element name..."
 msgid "Clear selection"
 msgstr "Clear selection"
 
-msgid "Boolean"
-msgstr "Boolean"
-
 msgid "Filter by Dataset"
 msgstr "Filter by Dataset"
 
@@ -4115,9 +4310,6 @@ msgstr "Show selected only"
 
 msgid "Selection Summary"
 msgstr "Selection Summary"
-
-msgid "Not specified"
-msgstr "Not specified"
 
 msgid "No data elements match your current filters"
 msgstr "No data elements match your current filters"
@@ -4542,6 +4734,9 @@ msgstr "No valid organisation units with IDs found"
 
 msgid "Creating {{toolName}}..."
 msgstr "Creating {{toolName}}..."
+
+msgid "Creating SMS commands for datasets"
+msgstr "Creating SMS commands for datasets"
 
 msgid "Assessment creation completed"
 msgstr "Assessment creation completed"

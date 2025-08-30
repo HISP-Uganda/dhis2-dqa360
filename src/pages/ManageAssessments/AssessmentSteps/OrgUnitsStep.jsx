@@ -123,7 +123,10 @@ const OrgUnitsStep = ({
                                 {i18n.t('Parent')}
                             </th>
                             <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>
-                                {i18n.t('Path')}
+                                {i18n.t('OrgUnit UID')}
+                            </th>
+                            <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>
+                                {i18n.t('Parent UID')}
                             </th>
                         </tr>
                         </thead>
@@ -148,7 +151,8 @@ const OrgUnitsStep = ({
                                     <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{ou.code || '—'}</td>
                                     <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{ou.level ?? '—'}</td>
                                     <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{ou.parent?.name || '—'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', fontFamily: 'monospace' }}>{ou.path || '—'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', fontFamily: 'monospace' }}>{ou.id}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6', fontFamily: 'monospace' }}>{ou.parent?.id || '—'}</td>
                                 </tr>
                             )
                         })}

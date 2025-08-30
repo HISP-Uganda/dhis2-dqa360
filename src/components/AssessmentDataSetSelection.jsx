@@ -286,13 +286,14 @@ export const AssessmentDataSetSelection = ({
         }
     }
 
-    if (!dhis2Config?.configured) {
-        return (
-            <NoticeBox warning title={i18n.t('DHIS2 Connection Required')}>
-                {i18n.t('Please configure your DHIS2 connection first before selecting datasets.')}
-            </NoticeBox>
-        )
-    }
+    // Allow proceeding without connection test - will attempt to load datasets directly
+    // if (!dhis2Config?.configured) {
+    //     return (
+    //         <NoticeBox warning title={i18n.t('DHIS2 Connection Required')}>
+    //             {i18n.t('Please configure your DHIS2 connection first before selecting datasets.')}
+    //         </NoticeBox>
+    //     )
+    // }
 
     if (loading) {
         return (

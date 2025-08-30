@@ -1,4 +1,3 @@
-// src/D2App/pages/ManageAssessments/AssessmentSteps/ConnectionStep.jsx
 import React, { useEffect, useMemo, useState } from 'react'
 import {
     Button,
@@ -49,9 +48,19 @@ const base64 = (s) => {
  *      connectionStatus, version, lastTested
  *    }
  *  - setDhis2Config: fn(updater)
- *  - onSaveConnection?: fn() (optional callback when connection is saved)
+ *  - onSaveConnection?: fn()
+ *  - onPreloadDatasets?: fn()
+ *  - preloadedDatasets?: array
+ *  - preloadTimestamp?: number
  */
-const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
+const ConnectionStep = ({
+                            dhis2Config,
+                            setDhis2Config,
+                            onSaveConnection,
+                            onPreloadDatasets,
+                            preloadedDatasets,
+                            preloadTimestamp
+                        }) => {
     // ensure parent has a config object
     useEffect(() => {
         if (!dhis2Config && typeof setDhis2Config === 'function') {
@@ -73,16 +82,16 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
     const cfg = dhis2Config || {}
     const [testing, setTesting] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [preloading, setPreloading] = useState(false)
     const [error, setError] = useState(null)
     const [showPw, setShowPw] = useState(false)
     const [showToken, setShowToken] = useState(false)
 
-    const canTest = useMemo(() => {
+    // Credentials present == usable to load datasets (testing is optional)
+    const credsPresent = useMemo(() => {
         if (!isValidHttpUrl(cfg.baseUrl)) return false
-        const authType = (cfg.authType || 'basic').toLowerCase()
-        if (authType === 'token') {
-            return !!trim(cfg.token)
-        }
+        const mode = (cfg.authType || 'basic').toLowerCase()
+        if (mode === 'token') return !!trim(cfg.token)
         return !!trim(cfg.username) && !!trim(cfg.password)
     }, [cfg.baseUrl, cfg.authType, cfg.username, cfg.password, cfg.token])
 
@@ -115,6 +124,7 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
         return headers
     }
 
+    /** VALIDATION ONLY — does not gate dataset loading */
     const testConnection = async () => {
         setTesting(true)
         setError(null)
@@ -125,7 +135,6 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
             const res = await fetch(`${apiBase}${path}`, {
                 method: 'GET',
                 headers,
-                // never send cookies to foreign DHIS2
                 credentials: 'omit',
             })
             let json = null
@@ -136,15 +145,11 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
         try {
             let success = null
             let caughtError = null
-            // try all header variants
             for (const headers of headerVariations) {
-                // 1) /me
                 let r = await tryFetch('/me', headers)
                 if (r.ok) { success = { endpoint: 'me', json: r.json }; break }
-                // 2) /system/info (public on many servers)
                 r = await tryFetch('/system/info', headers)
                 if (r.ok) { success = { endpoint: 'system/info', json: r.json }; break }
-                // keep latest failure
                 caughtError = r
             }
 
@@ -164,18 +169,33 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
                 return
             }
 
-            // parse version information
             const info = success.json || {}
-            const version =
-                info.version || info.dhis2Version || info.displayName || ''
-            const userName = info.name || info.displayName || info.username || ''
+            const version = success.endpoint === 'system/info'
+                ? (info.version || info.dhis2Version || '')
+                : ''
+            const userName = success.endpoint === 'me'
+                ? (info.name || info.displayName || info.username || '')
+                : ''
 
             update({
                 connectionStatus: 'ok',
                 version,
-                apiVersion: trim(cfg.apiVersion || ''), // keep user's choice
+                userName,
+                apiVersion: trim(cfg.apiVersion || ''),
                 lastTested: new Date().toISOString()
             })
+
+            // Optional convenience: preload datasets, but not required for loading later
+            if (onPreloadDatasets && typeof onPreloadDatasets === 'function') {
+                try {
+                    setPreloading(true)
+                    await onPreloadDatasets()
+                } catch (preloadError) {
+                    console.log('Dataset preload failed:', preloadError?.message || preloadError)
+                } finally {
+                    setPreloading(false)
+                }
+            }
         } catch (e) {
             setError(e?.message || i18n.t('Unexpected error while testing connection'))
             update({ connectionStatus: 'failed', lastTested: new Date().toISOString() })
@@ -185,18 +205,15 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
     }
 
     const saveConnection = async () => {
-        if (!canTest) return
+        if (!credsPresent) return
         setSaving(true)
         setError(null)
         try {
-            // Just save the credentials without testing
-            // Mark as 'configured' to indicate credentials are saved but not tested
+            // Mark as saved but not verified
             update({
                 connectionStatus: 'configured',
                 lastTested: null
             })
-            
-            // Call the save callback
             if (typeof onSaveConnection === 'function') {
                 await onSaveConnection()
             }
@@ -311,12 +328,30 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
                 <ButtonStrip>
-                    <Button secondary onClick={testConnection} disabled={!canTest || testing || saving}>
-                        {testing ? i18n.t('Testing…') : i18n.t('Test connection')}
+                    <Button secondary onClick={testConnection} disabled={!credsPresent || testing || saving || preloading}>
+                        {testing ? i18n.t('Testing…') : preloading ? i18n.t('Testing & Preloading…') : i18n.t('Test connection')}
                     </Button>
-                    <Button primary onClick={saveConnection} disabled={!canTest || testing || saving}>
+                    <Button primary onClick={saveConnection} disabled={!credsPresent || testing || saving || preloading}>
                         {saving ? i18n.t('Saving…') : i18n.t('Save credentials')}
                     </Button>
+                    {cfg.connectionStatus === 'ok' && onPreloadDatasets && (
+                        <Button
+                            secondary
+                            onClick={async () => {
+                                try {
+                                    setPreloading(true)
+                                    await onPreloadDatasets()
+                                } catch (error) {
+                                    console.log('Manual preload failed:', error?.message)
+                                } finally {
+                                    setPreloading(false)
+                                }
+                            }}
+                            disabled={preloading || testing || saving}
+                        >
+                            {preloading ? i18n.t('Preloading…') : i18n.t('Preload datasets')}
+                        </Button>
+                    )}
                 </ButtonStrip>
                 <div>{statusChip}</div>
                 {cfg.version ? (
@@ -329,12 +364,18 @@ const ConnectionStep = ({ dhis2Config, setDhis2Config, onSaveConnection }) => {
                         {i18n.t('Last tested')}: {new Date(cfg.lastTested).toLocaleString()}
                     </div>
                 ) : null}
+                {preloadedDatasets && preloadTimestamp ? (
+                    <div style={{ fontSize: 12, opacity: 0.7, color: '#28a745' }}>
+                        {i18n.t('Datasets preloaded')}: {preloadedDatasets.length} {i18n.t('datasets')}
+                        ({Math.floor((Date.now() - preloadTimestamp) / 60000)} {i18n.t('min ago')})
+                    </div>
+                ) : null}
             </div>
 
             <div style={{ marginTop: 16 }}>
                 <Help>
                     {i18n.t(
-                        'Test the connection to verify it works before proceeding to the next step. The connection status must show "Connected" to load datasets in step 3.'
+                        'Testing validates credentials only. Datasets will load from the saved external connection if you choose it in the next step.'
                     )}
                 </Help>
             </div>

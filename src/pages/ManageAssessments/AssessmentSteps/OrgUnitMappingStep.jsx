@@ -22,6 +22,8 @@ import i18n from '@dhis2/d2-i18n'
  * - localOrgUnitsLoading?: boolean
  * - orgUnitMappings:  [{ source, target }]
  * - setOrgUnitMappings: (nextArray) => void
+ * - reportingLevel?: string (org unit level ID)
+ * - orgUnitLevels?: [{ id, name, level }]
  * - externalInfo?: { baseUrl?, apiVersion?, instanceName? }
  * - localInfo?:    { baseUrl?, instanceName? }
  */
@@ -32,6 +34,8 @@ const OrgUnitMappingStep = ({
                                 localOrgUnitsLoading = false,
                                 orgUnitMappings = [],
                                 setOrgUnitMappings,
+                                reportingLevel,
+                                orgUnitLevels = [],
                                 externalInfo = {},
                                 localInfo = {},
                             }) => {
@@ -42,6 +46,18 @@ const OrgUnitMappingStep = ({
         () => Array.isArray(localOrgUnits) ? localOrgUnits : [],
         [localOrgUnits]
     )
+
+    // Get target level info for display
+    const targetLevelInfo = useMemo(() => {
+        if (!reportingLevel || !orgUnitLevels.length) {
+            return { level: 3, name: 'Level 3' }
+        }
+        const levelObj = orgUnitLevels.find(l => l.id === reportingLevel)
+        return {
+            level: levelObj?.level || 3,
+            name: levelObj?.name || `Level ${levelObj?.level || 3}`
+        }
+    }, [reportingLevel, orgUnitLevels])
 
     // ---------- rows (always 1:1 with selected OUs) ----------
     const [rows, setRows] = useState([])
@@ -59,7 +75,33 @@ const OrgUnitMappingStep = ({
             return existing ? { source: existing.source, target: existing.target } : { source: ou.id, target: '' }
         })
         setRows(next)
+        // Immediately push enriched mappings upstream so downstream views have full target details
+        pushUpstream(next)
     }, [JSON.stringify(selectedOrgUnits), JSON.stringify(orgUnitMappings)])
+
+    // Clean up invalid target selections when local options change
+    useEffect(() => {
+        if (localOptions.length === 0) return
+        
+        const localIds = new Set(localOptions.map(ou => ou.id))
+        setRows(prev => {
+            const cleaned = prev.map(r => {
+                // If target is set but doesn't exist in local options, clear it
+                if (r.target && !localIds.has(r.target)) {
+                    return { ...r, target: '' }
+                }
+                return r
+            })
+            
+            // Only update if something changed
+            const hasChanges = cleaned.some((r, i) => r.target !== prev[i]?.target)
+            if (hasChanges) {
+                pushUpstream(cleaned)
+                return cleaned
+            }
+            return prev
+        })
+    }, [localOptions])
 
     // ---------- UI: search for the SOURCE list ----------
     const [search, setSearch] = useState('')
@@ -121,24 +163,60 @@ const OrgUnitMappingStep = ({
     }, [rows])
 
     const unmappedCount = (rows || []).filter(r => !r.target).length
-    const canSave = rows.length === totalRequired && duplicateTargets.length === 0 && !localOrgUnitsLoading
+    const canSave = rows.length === totalRequired && duplicateTargets.length === 0 && !localOrgUnitsLoading // kept for potential future use; autosave enabled
 
     // ---------- actions ----------
+    const pushUpstream = (nextRows) => {
+        // Enrich mappings with full target (local) OU details for downstream display
+        const enriched = (nextRows || []).map(r => {
+            const local = r.target ? localById.get(String(r.target)) : null
+            return local
+                ? {
+                    ...r,
+                    // Keep full details to use later in PreparationStep
+                    external: {
+                        id: local.id,
+                        name: local.name,
+                        displayName: local.displayName,
+                        code: local.code,
+                        level: local.level,
+                        parent: local.parent ? { id: local.parent.id, name: local.parent.name, displayName: local.parent.displayName } : undefined,
+                    },
+                }
+                : { ...r, external: null }
+        })
+        if (typeof setOrgUnitMappings === 'function') {
+            setOrgUnitMappings(enriched)
+        }
+    }
+
     const updateRow = (sourceId, targetId) => {
-        setRows(prev => (prev || []).map(r => (r.source === sourceId ? { ...r, target: targetId } : r)))
+        setRows(prev => {
+            const next = (prev || []).map(r => (r.source === sourceId ? { ...r, target: targetId } : r))
+            pushUpstream(next)
+            return next
+        })
     }
     const applySuggestion = (sourceId) => {
         const sug = suggestions.get(sourceId)
         if (sug) updateRow(sourceId, sug)
     }
     const applyAllSuggestions = () => {
-        setRows(prev => (prev || []).map(r => {
-            if (r.target) return r
-            const sug = suggestions.get(r.source)
-            return sug ? { ...r, target: sug } : r
-        }))
+        setRows(prev => {
+            const next = (prev || []).map(r => {
+                if (r.target) return r
+                const sug = suggestions.get(r.source)
+                return sug ? { ...r, target: sug } : r
+            })
+            pushUpstream(next)
+            return next
+        })
     }
-    const clearMappings = () => setRows(prev => (prev || []).map(r => ({ ...r, target: '' })))
+    const clearMappings = () => setRows(prev => {
+        const next = (prev || []).map(r => ({ ...r, target: '' }))
+        pushUpstream(next)
+        return next
+    })
     const saveRows = () => { if (typeof setOrgUnitMappings === 'function') setOrgUnitMappings(rows) }
 
     // ---------- helpers ----------
@@ -261,12 +339,48 @@ const OrgUnitMappingStep = ({
                     ? i18n.t('Map each externally selected organisation unit to its corresponding LOCAL organisation unit so IDs line up during data exchange.')
                     : i18n.t('Confirm each selected organisation unit is linked to the correct LOCAL org unit for consistent IDs and hierarchy.')
                 }
+                <div style={{ marginTop: 8, fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                    {i18n.t('Target mapping level: {{levelName}} (Level {{levelNumber}})', { 
+                        levelName: targetLevelInfo.name, 
+                        levelNumber: targetLevelInfo.level 
+                    })}
+                </div>
             </NoticeBox>
 
             {/* Loading local org units */}
             {localOrgUnitsLoading && (
                 <NoticeBox title={i18n.t('Loading local organisation units...')} style={{ marginBottom: 12 }}>
-                    {i18n.t('Please wait while we load the local organisation units for mapping targets.')}
+                    <div>
+                        {i18n.t('Please wait while we load the local organisation units for mapping targets.')}
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
+                        {i18n.t('Loading org units up to {{levelName}} (Level {{levelNumber}}) based on your reporting level selection.', {
+                            levelName: targetLevelInfo.name,
+                            levelNumber: targetLevelInfo.level
+                        })}
+                    </div>
+                </NoticeBox>
+            )}
+            
+            {/* Show org unit count when loaded */}
+            {!localOrgUnitsLoading && localOptions.length > 0 && (
+                <div style={{ marginBottom: 12, fontSize: '12px', color: '#666' }}>
+                    {i18n.t('{{count}} local organisation units available for mapping (up to {{levelName}})', { 
+                        count: localOptions.length,
+                        levelName: targetLevelInfo.name
+                    })}
+                    {localOptions.length >= 5000 && (
+                        <span style={{ marginLeft: 8, fontStyle: 'italic' }}>
+                            {i18n.t('(Limited to improve performance)')}
+                        </span>
+                    )}
+                </div>
+            )}
+            
+            {/* Help text for large hierarchies */}
+            {!localOrgUnitsLoading && localOptions.length > 0 && localOptions.length < 100 && (
+                <NoticeBox warning title={i18n.t('Limited organisation units loaded')} style={{ marginBottom: 12 }}>
+                    {i18n.t('Only higher-level organisation units were loaded for performance. If you need to map to facility-level units, please contact your system administrator to optimize the org unit hierarchy or use a more specific external selection.')}
                 </NoticeBox>
             )}
 
@@ -287,9 +401,6 @@ const OrgUnitMappingStep = ({
                     </Button>
                     <Button small onClick={clearMappings} disabled={localOrgUnitsLoading}>
                         {i18n.t('Clear mappings')}
-                    </Button>
-                    <Button primary onClick={saveRows} disabled={!canSave}>
-                        {localOrgUnitsLoading ? i18n.t('Loading...') : i18n.t('Save mappings')}
                     </Button>
                 </ButtonStrip>
             </div>
@@ -363,11 +474,21 @@ const OrgUnitMappingStep = ({
                                                 <SingleSelectField
                                                     dense
                                                     filterable
-                                                    selected={r.target}
+                                                    selected={(() => {
+                                                        // Ensure selected value exists in available options
+                                                        if (!r.target) return ''
+                                                        const availableOptions = (localOptions || [])
+                                                            .filter(ou => 
+                                                                // Show if not already mapped to another source, OR if it's the current selection
+                                                                !mappedTargetIds.has(ou.id) || ou.id === r.target
+                                                            )
+                                                        const hasOption = availableOptions.some(ou => ou.id === r.target)
+                                                        return hasOption ? r.target : ''
+                                                    })()}
                                                     onChange={({ selected }) => updateRow(r.source, selected)}
                                                     placeholder={i18n.t('Choose local org unit')}
                                                     validationText={hasDuplicate ? i18n.t('Duplicate target') : undefined}
-                                                    error={hasDuplicate}
+                                                    error={!!hasDuplicate}
                                                 >
                                                     {(localOptions || [])
                                                         .filter(ou => 

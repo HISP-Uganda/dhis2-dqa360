@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DQA360 Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { background: #ffe6e6; border-left: 4px solid #ff0000; }
+        .success { background: #e6ffe6; border-left: 4px solid #00aa00; }
+        .info { background: #e6f3ff; border-left: 4px solid #0066cc; }
+    </style>
+</head>
+<body>
+    <h1>DQA360 Debug Test</h1>
+    <p>This page helps debug the dataset loading and element derivation flow.</p>
+    
+    <div id="logs"></div>
+    
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        const logsDiv = document.getElementById('logs');
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            logsDiv.appendChild(div);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            // Filter for our specific logs
+            if (message.includes('📊') || message.includes('🔍') || message.includes('📋') || 
+                message.includes('🎯') || message.includes('✅') || message.includes('⚠️')) {
+                addLog(message, 'info');
+            }
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            addLog(message, 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            addLog(message, 'error');
+        };
+        
+        addLog('Debug logging started. Open the DQA360 app and watch for logs here.', 'success');
+        
+        // Instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = `
+            <h2>Instructions:</h2>
+            <ol>
+                <li>Open the DQA360 app in another tab: <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+                <li>Navigate to "Create Assessment"</li>
+                <li>Go through the steps: Details → Connection (if needed) → Datasets</li>
+                <li>Select some datasets and move to the Elements step</li>
+                <li>Watch the logs below to see what's happening</li>
+            </ol>
+        `;
+        document.body.insertBefore(instructions, logsDiv);
+    </script>
+</body>
+</html>

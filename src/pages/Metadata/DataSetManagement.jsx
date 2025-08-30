@@ -446,7 +446,7 @@ const DataSetDetailsModal = ({ dataSet, onClose, onUse }) => {
     const organisationUnits = dataSet.organisationUnits || []
 
     return (
-        <Modal large onClose={onClose}>
+        <Modal large onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>{i18n.t('Dataset Details: {{name}}', { name: dataSet.displayName })}</ModalTitle>
             <ModalContent>
                 <Box display="flex" flexDirection="column" gap="24px">

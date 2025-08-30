@@ -16,7 +16,11 @@
     "start:local": "d2-app-scripts start --proxy http://localhost:8080",
     "start:stable": "d2-app-scripts start --port 3000 --proxy https://play.im.dhis2.org/stable-2-40-8-2",
     "test": "d2-app-scripts test",
-    "deploy": "d2-app-scripts deploy"
+    "deploy": "d2-app-scripts deploy",
+    "dhis2:connect": "node scripts/dhis2-connect.js",
+    "dhis2:demo": "node scripts/dhis2-connect.js demo && npm start",
+    "dhis2:local": "node scripts/dhis2-connect.js local && npm start",
+    "dhis2:stable": "node scripts/dhis2-connect.js stable && npm start"
   },
   "devDependencies": {
     "@dhis2/cli-app-scripts": "^12.7.2"
@@ -41,7 +45,7 @@
     "styled-components": "^5.3.9",
     "styled-jsx": "^4.0.1",
     "typeface-roboto": "^1.1.13",
-    "uuid": "^9.0.0",
+    "uuid": "^9.0.1",
     "xlsx": "^0.18.5"
   }
 }

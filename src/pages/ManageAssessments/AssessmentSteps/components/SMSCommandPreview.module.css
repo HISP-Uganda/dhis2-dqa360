@@ -1,0 +1,30 @@
+.previewRoot { }
+.loaderWrap { text-align: center; padding: 20px; }
+.loaderText { margin-top: 8px; font-size: 12px; color: #6c757d; }
+.block { margin-bottom: 12px; }
+.deTags { margin-top: 4px; }
+.deTag { margin-right: 4px; margin-bottom: 4px; }
+.separatorConfig { margin-top: 4px; font-size: 12px; color: #6c757d; }
+.smsFormat { background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; margin-left: 8px; font-family: monospace; display: block; margin-top: 4px; word-break: break-all; }
+.smsExample { background-color: #d4edda; padding: 2px 6px; border-radius: 3px; margin-left: 8px; font-family: monospace; display: block; margin-top: 4px; word-break: break-all; }
+.blockSmallText { font-size: 12px; color: #6c757d; }
+.breakdownList { margin-top: 8px; max-height: 300px; overflow-y: auto; }
+.breakdownItem { margin-bottom: 12px; padding: 10px; background-color: white; border-radius: 6px; border: 1px solid #e9ecef; }
+.breakdownTitle { font-weight: bold; margin-bottom: 6px; color: #495057; }
+.breakdownMeta { margin-bottom: 6px; font-size: 11px; color: #6c757d; }
+.inlineCode { background-color: #f8f9fa; padding: 1px 3px; border-radius: 2px; }
+.expandedHeader { margin-bottom: 4px; font-size: 11px; font-weight: bold; color: #495057; }
+.realBadge { margin-left: 8px; font-size: 9px; color: #155724; background-color: #d4edda; padding: 1px 4px; border-radius: 2px; border: 1px solid #c3e6cb; }
+.previewBadge { margin-left: 8px; font-size: 9px; color: #856404; background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; border: 1px solid #ffeaa7; }
+.codesGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px; }
+.codeTileReal { font-size: 10px; background-color: #e8f5e8; padding: 4px 6px; border-radius: 3px; border: 1px solid #c3e6cb; display: flex; align-items: center; gap: 4px; }
+.codeTilePreview { font-size: 10px; background-color: #e3f2fd; padding: 4px 6px; border-radius: 3px; border: 1px solid #bbdefb; display: flex; align-items: center; gap: 4px; }
+.codeTag { font-size: 9px; padding: 1px 4px; }
+.codeLabel { flex: 1; font-size: 9px; }
+.noteSmall { margin-top: 4px; font-size: 10px; color: #6c757d; font-style: italic; }
+.defaultCocWrap { padding: 6px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6; }
+.logicBox { margin-top: 12px; padding: 8px; background-color: #fff3cd; border-radius: 4px; border: 1px solid #ffeaa7; }
+.logicTitle { font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #856404; }
+.logicText { font-size: 10px; color: #856404; }
+.logicGreen { color: #155724; }
+.logicYellow { color: #856404; }

@@ -517,11 +517,43 @@ export const DQAMetadataManager = ({
     const importMetadata = async (metadataPayload) => {
         addProgress('📤 Importing metadata to DHIS2...', 'info')
         
+        const preflightFilterConflicts = async (payload) => {
+            const dsList = Array.isArray(payload?.dataSets) ? payload.dataSets : []
+            if (dsList.length === 0) return { payload, reused: [] }
+            const keep = []
+            const reused = []
+            for (const ds of dsList) {
+                const code = (ds?.code || '').trim()
+                const name = (ds?.name || '').trim()
+                let existing = null
+                try {
+                    const res = await engine.query({
+                        list: {
+                            resource: 'dataSets',
+                            params: { fields: 'id,name,code', filter: code ? `code:eq:${code}` : `name:eq:${name}`, pageSize: 1 }
+                        }
+                    })
+                    const arr = Array.isArray(res?.list?.dataSets) ? res.list.dataSets : []
+                    existing = arr[0] || null
+                } catch {}
+                if (existing?.id) {
+                    addProgress(`♻️ Reusing existing dataset: ${existing.name} (${existing.id})`, 'info')
+                    reused.push(existing)
+                } else {
+                    keep.push(ds)
+                }
+            }
+            return { payload: { ...payload, dataSets: keep }, reused }
+        }
+
         try {
+            // Preflight: filter out datasets that already exist by code/name
+            const { payload: filteredPayload } = await preflightFilterConflicts(metadataPayload)
+
             const importMutation = {
                 resource: 'metadata',
                 type: 'create',
-                data: metadataPayload,
+                data: filteredPayload,
                 params: {
                     importMode: 'COMMIT',
                     identifier: 'UID',
@@ -536,19 +568,68 @@ export const DQAMetadataManager = ({
                     async: false
                 }
             }
-            
+
             const result = await engine.mutate(importMutation)
-            
+
             if (result.status === 'OK') {
                 addProgress('✅ Metadata imported successfully!', 'success')
                 return result
             } else {
                 throw new Error(`Import failed with status: ${result.status}`)
             }
-            
+
         } catch (err) {
-            addProgress(`❌ Import failed: ${err.message}`, 'error')
-            throw err
+            const msg = (err?.details?.message || err?.message || '').toLowerCase()
+            const is409 = msg.includes('409') || msg.includes('conflict') || msg.includes('already')
+            if (!is409) {
+                addProgress(`❌ Import failed: ${err.message}`, 'error')
+                throw err
+            }
+
+            addProgress('⚠️ 409 Conflict during import — attempting automatic resolution…', 'warning')
+
+            // Second attempt: adjust conflicting dataset codes and retry
+            try {
+                const suffix = Date.now().toString(36).slice(-5).toUpperCase()
+                const adjustCodes = (list) => (Array.isArray(list) ? list.map(ds => ({
+                    ...ds,
+                    id: ds.id, // keep id as provided
+                    code: ds.code ? `${String(ds.code).slice(0, 45)}_${suffix}` : undefined,
+                })) : list)
+
+                // Re-run preflight to get the current filtered payload
+                const { payload: filteredPayload } = await preflightFilterConflicts(metadataPayload)
+                const retryPayload = { ...filteredPayload, dataSets: adjustCodes(filteredPayload.dataSets) }
+
+                const retryMutation = {
+                    resource: 'metadata',
+                    type: 'create',
+                    data: retryPayload,
+                    params: {
+                        importMode: 'COMMIT',
+                        identifier: 'UID',
+                        importReportMode: 'FULL',
+                        preheatCache: false,
+                        importStrategy: 'CREATE_AND_UPDATE',
+                        atomicMode: 'NONE',
+                        mergeMode: 'REPLACE',
+                        flushMode: 'AUTO',
+                        skipSharing: false,
+                        skipValidation: false,
+                        async: false
+                    }
+                }
+
+                const retryResult = await engine.mutate(retryMutation)
+                if (retryResult.status === 'OK') {
+                    addProgress('✅ Import succeeded after resolving conflicts', 'success')
+                    return retryResult
+                }
+                throw new Error(`Retry import failed with status: ${retryResult.status}`)
+            } catch (e2) {
+                addProgress(`❌ Conflict handling failed: ${e2.message}`, 'error')
+                throw e2
+            }
         }
     }
 
@@ -748,7 +829,7 @@ export const DQAMetadataManager = ({
     if (!open) return null
 
     return (
-        <Modal large onClose={onClose}>
+        <Modal large onClose={onClose} style={{ background: '#fff' }}>
             <ModalTitle>
                 🏗️ {i18n.t('DQA Metadata Manager')}
             </ModalTitle>

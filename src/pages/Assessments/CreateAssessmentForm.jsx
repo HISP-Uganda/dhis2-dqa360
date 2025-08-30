@@ -502,7 +502,9 @@ export const CreateAssessmentForm = ({ onClose, editingAssessment = null }) => {
                             <ManualDatasetCreator
                                 value={field.value}
                                 onChange={field.onChange}
-                                error={errors.manualDataset?.message}
+                                error={!!errors.manualDataset}
+                                errorMessage={errors.manualDataset?.message}
+                                fullCategoryCombos={externalConnection?.fullCategoryCombos || []}
                             />
                         )}
                     />
@@ -518,7 +520,8 @@ export const CreateAssessmentForm = ({ onClose, editingAssessment = null }) => {
                             <ExternalDHIS2Connector
                                 value={field.value}
                                 onChange={field.onChange}
-                                error={errors.externalConnection?.message}
+                                error={!!errors.externalConnection}
+                                errorMessage={errors.externalConnection?.message}
                             />
                         )}
                     />
@@ -537,7 +540,8 @@ export const CreateAssessmentForm = ({ onClose, editingAssessment = null }) => {
                                 value={field.value}
                                 onChange={field.onChange}
                                 dataElements={getDataElementsForResolution()}
-                                error={errors.dataConflictResolution?.message}
+                                error={!!errors.dataConflictResolution}
+                                errorMessage={errors.dataConflictResolution?.message}
                             />
                         )}
                     />
@@ -565,7 +569,8 @@ export const CreateAssessmentForm = ({ onClose, editingAssessment = null }) => {
                                         validationText={errors.period?.message}
                                     >
                                         <SingleSelect
-                                            {...field}
+                                            selected={field.value}
+                                            onChange={({ selected }) => field.onChange(selected)}
                                             placeholder={i18n.t('Select period')}
                                         >
                                             <SingleSelectOption value="2024Q4" label="2024 Q4" />
@@ -589,7 +594,8 @@ export const CreateAssessmentForm = ({ onClose, editingAssessment = null }) => {
                                         validationText={errors.organisationUnits?.message}
                                     >
                                         <MultiSelect
-                                            {...field}
+                                            selected={field.value || []}
+                                            onChange={({ selected }) => field.onChange(selected)}
                                             placeholder={i18n.t('Select facilities')}
                                             filterable
                                             noMatchText={i18n.t('No facilities match the search')}

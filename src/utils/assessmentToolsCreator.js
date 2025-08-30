@@ -1,5 +1,8 @@
 import i18n from '@dhis2/d2-i18n'
 import { useDataEngine } from '@dhis2/app-runtime'
+import { createMetadataWithRecovery, validateMetadataObject, cleanMetadataObject, findExistingObject } from './metadataErrorRecovery'
+import { createWithConflictResolution, fixMissingCategoryComboReferences } from './conflictResolver'
+import { smsService } from '../services/smsService'
 
 // Assessment tool configurations
 const ASSESSMENT_TOOLS = [
@@ -24,6 +27,35 @@ const ASSESSMENT_TOOLS = [
         description: 'Data correction tool for identified discrepancies and adjustments'
     }
 ]
+
+/**
+ * Check if an object exists in DHIS2 by code
+ * @param {Object} dataEngine - DHIS2 data engine
+ * @param {string} resource - DHIS2 resource type (dataSets, dataElements, etc.)
+ * @param {string} code - Object code to check
+ * @returns {Promise<Object|null>} Existing object or null
+ */
+const checkObjectExists = async (dataEngine, resource, code) => {
+    try {
+        const query = {
+            objects: {
+                resource,
+                params: {
+                    fields: 'id,name,code',
+                    filter: `code:eq:${code}`,
+                    pageSize: 1
+                }
+            }
+        }
+        
+        const result = await dataEngine.query(query)
+        const objects = result.objects?.[resource] || []
+        return objects.length > 0 ? objects[0] : null
+    } catch (error) {
+        console.warn(`Could not check if ${resource} with code ${code} exists:`, error.message)
+        return null
+    }
+}
 
 // Default category combo ID (this should be configurable)
 /**
@@ -768,8 +800,36 @@ export const createAssessmentTools = async (config) => {
             }
         }
 
+        // Step: Create SMS Commands for successfully created datasets
+        if (results.createdDatasets.length > 0) {
+            console.log('=== Creating SMS Commands ===')
+            updateProgress(ASSESSMENT_TOOLS.length + 1, ASSESSMENT_TOOLS.length + 2, 
+                i18n.t('Creating SMS commands for datasets'))
+            
+            try {
+                const smsResults = await createSmsCommandsForDatasets(dataEngine, results.createdDatasets)
+                console.log('📱 SMS Commands Created:', smsResults)
+                
+                // Add SMS results to dataset info
+                results.createdDatasets.forEach(dataset => {
+                    const smsResult = smsResults.find(r => r.datasetId === dataset.id)
+                    if (smsResult) {
+                        dataset.smsCommand = {
+                            keyword: smsResult.keyword,
+                            codes: smsResult.codes,
+                            elementCount: smsResult.elementCount,
+                            status: smsResult.status
+                        }
+                    }
+                })
+            } catch (smsError) {
+                console.warn('⚠️ SMS command creation failed:', smsError)
+                results.smsError = smsError.message || smsError
+            }
+        }
+
         // Final step
-        updateProgress(ASSESSMENT_TOOLS.length + 1, ASSESSMENT_TOOLS.length + 1, 
+        updateProgress(ASSESSMENT_TOOLS.length + 2, ASSESSMENT_TOOLS.length + 2, 
             i18n.t('Assessment creation completed'))
 
         // Determine overall success
@@ -839,7 +899,33 @@ const createSingleDataset = async ({ toolConfig, selectedDataSet, dataElements, 
             onProgress
         )
 
-        // Step 3: Create dataset object with verified data elements and category combos
+        // Step 3: Check if dataset already exists
+        if (onProgress) {
+            onProgress({ message: 'Checking if dataset already exists...', step: 'datasetCheck' })
+        }
+        
+        const existingDataset = await checkObjectExists(dataEngine, 'dataSets', dataSetCode)
+        if (existingDataset) {
+            console.log(`✅ Dataset ${dataSetCode} already exists, reusing: ${existingDataset.id}`)
+            if (onProgress) {
+                onProgress({ message: `Reusing existing dataset: ${existingDataset.name}`, step: 'datasetReuse' })
+            }
+            
+            return {
+                success: true,
+                datasetId: existingDataset.id,
+                datasetName: existingDataset.name,
+                datasetCode: existingDataset.code,
+                datasetApiUrl: `/api/dataSets/${existingDataset.id}`,
+                toolType: toolConfig.suffix,
+                dataElementCount: verifiedDataElements.length,
+                createdAt: new Date().toISOString(),
+                status: 'reused',
+                isExisting: true
+            }
+        }
+
+        // Step 4: Create dataset object with verified data elements and category combos
         const dataSet = {
             name: dataSetName,
             shortName: uniqueShortName,
@@ -905,9 +991,20 @@ const createSingleDataset = async ({ toolConfig, selectedDataSet, dataElements, 
     } catch (error) {
         console.error(`Error creating dataset for ${toolConfig.name}:`, error)
         
+        // Enhanced error logging
+        if (error.details) {
+            console.error('Error details:', error.details)
+        }
+        if (error.response) {
+            console.error('Error response:', error.response)
+        }
+        
         // Handle specific DHIS2 errors
         if (error.status === 409 || error.httpStatusCode === 409) {
             console.log(`409 Conflict detected for ${toolConfig.name}, trying with more unique identifiers...`)
+            
+            // Wait a bit before retry to avoid rapid successive conflicts
+            await new Promise(resolve => setTimeout(resolve, 1000))
             
             try {
                 // Generate more unique identifiers for retry
@@ -1285,24 +1382,22 @@ const createDataSet = async ({ dataSet, dataEngine }) => {
             console.log(`📝 Generated DHIS2 UID: ${dataSet.id}`)
         }
         
-        // Create the dataset in DHIS2
-        const mutation = {
-            resource: 'dataSets',
-            type: 'create',
-            data: dataSet
-        }
+        // Fix any missing category combo references first
+        const fixedDataSet = await fixMissingCategoryComboReferences(dataEngine, dataSet)
         
-        const result = await dataEngine.mutate(mutation)
+        // Create the dataset with conflict resolution (reuse existing if found)
+        const result = await createWithConflictResolution(dataEngine, 'dataSets', fixedDataSet)
         
-        if (result.status === 'OK' || result.response?.uid) {
-            const dhis2Id = result.response?.uid || dataSet.id
+        if (result.success && (result.status === 'OK' || result.response?.uid)) {
+            const dhis2Id = result.response?.uid || fixedDataSet.id
             
             // Generate the dataset URL for DHIS2 UI access
             const baseUrl = window.location.origin
             const datasetUrl = `${baseUrl}/dhis-web-maintenance/#/list/dataSetSection/dataSet`
             const datasetApiUrl = `${baseUrl}/api/dataSets/${dhis2Id}`
             
-            console.log(`✅ Dataset created successfully in DHIS2`)
+            const actionText = result.reused ? 'reused existing' : 'created new'
+            console.log(`✅ Dataset ${actionText} successfully in DHIS2`)
             console.log(`📊 Dataset ID: ${dhis2Id}`)
             console.log(`🔗 Dataset URL: ${datasetUrl}`)
             console.log(`🔗 API URL: ${datasetApiUrl}`)
@@ -1313,8 +1408,10 @@ const createDataSet = async ({ dataSet, dataEngine }) => {
                     uid: dhis2Id,
                     datasetUrl: datasetUrl,
                     datasetApiUrl: datasetApiUrl,
-                    name: dataSet.name,
-                    created: new Date().toISOString()
+                    name: result.object?.name || fixedDataSet.name,
+                    created: new Date().toISOString(),
+                    reused: result.reused || false,
+                    conflictResolved: result.conflictResolved || false
                 }
             }
         } else {
@@ -1333,4 +1430,149 @@ const createDataSet = async ({ dataSet, dataEngine }) => {
             httpStatusCode: error.httpStatusCode || error.status || 500
         }
     }
+}
+
+/**
+ * Create SMS commands for successfully created datasets
+ */
+const createSmsCommandsForDatasets = async (dataEngine, createdDatasets) => {
+    const results = []
+    
+    for (const dataset of createdDatasets) {
+        try {
+            // Only create SMS commands for DHIS2 datasets (not local ones)
+            if (!dataset.dhis2Id || dataset.isLocal) {
+                console.log(`⏭️ Skipping SMS command for local dataset: ${dataset.name}`)
+                continue
+            }
+            
+            // Check if this dataset should have SMS commands
+            const datasetName = (dataset.name || '').toLowerCase()
+            const shouldGenerateSms = datasetName.includes('register') || 
+                                    datasetName.includes('summary') || 
+                                    datasetName.includes('correction') ||
+                                    datasetName.includes('primary') ||
+                                    datasetName.includes('dqa')
+            
+            if (!shouldGenerateSms) {
+                console.log(`⏭️ Skipping SMS command for dataset: ${dataset.name} (not a data collection dataset)`)
+                continue
+            }
+            
+            // Get dataset with elements for SMS code generation
+            const fullDataset = await smsService.getDatasetWithElements(dataEngine, dataset.dhis2Id)
+            
+            if (!fullDataset || !fullDataset.dataSetElements || fullDataset.dataSetElements.length === 0) {
+                console.warn(`⚠️ No data elements found for dataset: ${dataset.name}`)
+                continue
+            }
+            
+            // Generate SMS keyword from dataset name/code
+            const keyword = generateSmsKeyword(dataset.name, dataset.code)
+            
+            // Auto-generate SMS codes for data elements
+            const codes = autoMapSmsCodes(fullDataset.dataSetElements)
+            
+            console.log(`📱 Creating SMS command for dataset: ${dataset.name}`)
+            console.log(`   Keyword: ${keyword}`)
+            console.log(`   Elements: ${Object.keys(codes).length}`)
+            
+            // Create or update SMS command
+            const existing = await smsService.findSmsCommandByDataset(dataEngine, dataset.dhis2Id)
+            let smsResult
+            
+            if (existing?.id) {
+                console.log(`📱 Updating existing SMS command: ${existing.name}`)
+                smsResult = await smsService.updateSmsCommand(dataEngine, existing.id, {
+                    name: `${dataset.name} SMS`,
+                    separator: ',',
+                    smsCodes: Object.entries(codes).map(([code, deId]) => ({ code, dataElement: { id: deId } }))
+                })
+            } else {
+                console.log(`📱 Creating new SMS command: ${dataset.name} SMS`)
+                smsResult = await smsService.createSmsCommand(dataEngine, {
+                    datasetId: dataset.dhis2Id,
+                    name: `${dataset.name} SMS`,
+                    keyword: keyword,
+                    codes: codes,
+                    separator: ','
+                })
+            }
+            
+            results.push({
+                datasetId: dataset.dhis2Id,
+                datasetName: dataset.name,
+                keyword: keyword,
+                codes: codes,
+                elementCount: Object.keys(codes).length,
+                status: smsResult?.status || 'OK',
+                smsCommandId: existing?.id || smsResult?.response?.uid
+            })
+            
+            console.log(`✅ SMS command created/updated for: ${dataset.name}`)
+            
+        } catch (error) {
+            console.error(`❌ Failed to create SMS command for dataset ${dataset.name}:`, error)
+            results.push({
+                datasetId: dataset.dhis2Id || dataset.id,
+                datasetName: dataset.name,
+                status: 'ERROR',
+                error: error.message || error
+            })
+        }
+    }
+    
+    return results
+}
+
+/**
+ * Generate SMS keyword from dataset name and code
+ */
+const generateSmsKeyword = (name, code) => {
+    if (code && code.length <= 6) {
+        return code.toUpperCase()
+    }
+    
+    if (!name) return 'DSET'
+    
+    // Extract meaningful parts from name
+    const words = name.split(' ').filter(word => 
+        word.length > 2 && 
+        !['the', 'and', 'for', 'tool', 'data'].includes(word.toLowerCase())
+    )
+    
+    if (words.length === 1) {
+        return words[0].substring(0, 6).toUpperCase()
+    }
+    
+    // Use first letters of meaningful words
+    return words.map(word => word.charAt(0)).join('').substring(0, 6).toUpperCase()
+}
+
+/**
+ * Auto-generate SMS codes for data elements
+ */
+const autoMapSmsCodes = (dataSetElements) => {
+    const elements = (dataSetElements || []).map(e => e?.dataElement?.id).filter(Boolean)
+    const codes = {}
+    
+    // Generate short codes: a, b, c, ..., z, aa, ab, ac, ...
+    const letters = 'abcdefghijklmnopqrstuvwxyz'
+    let codeIndex = 0
+    
+    const generateCode = (index) => {
+        if (index < 26) {
+            return letters[index]
+        }
+        const firstLetter = Math.floor((index - 26) / 26)
+        const secondLetter = (index - 26) % 26
+        return letters[firstLetter] + letters[secondLetter]
+    }
+    
+    elements.forEach((deId) => {
+        codes[generateCode(codeIndex)] = deId
+        codeIndex++
+    })
+    
+    return codes
 }

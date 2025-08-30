@@ -1,0 +1,310 @@
+/* ConceptMappingManager Styles */
+
+.conceptMappingManager {
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.headerContent h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.autoGroupingToggle {
+    display: flex;
+    align-items: center;
+    margin-right: 12px;
+}
+
+.conceptsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Concept Card Styles */
+
+.conceptCard {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+    transition: box-shadow 0.2s ease;
+}
+
+.conceptCard:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.conceptHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.conceptHeader:hover {
+    background: #e9ecef;
+}
+
+.conceptHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.conceptInfo {
+    flex: 1;
+}
+
+.conceptName {
+    font-size: 16px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 4px;
+}
+
+.conceptMeta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.conceptMeta code {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.conceptActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.conceptDetails {
+    padding: 16px;
+    background: white;
+}
+
+.editForm {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Bindings Styles */
+
+.bindings {
+    margin-top: 16px;
+}
+
+.bindingsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.bindingsHeader h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.bindingCard {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.bindingHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.bindingInfo strong {
+    font-size: 14px;
+    color: #212529;
+}
+
+.bindingMeta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.sourceElements {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.sourceElement {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+.sourceElement code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    color: #0d6efd;
+}
+
+.expression {
+    margin-top: 2px;
+    font-size: 10px;
+    color: #6c757d;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.noBindings {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    font-style: italic;
+    background: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 4px;
+}
+
+/* Create Form Styles */
+
+.createForm {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 400px;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .conceptHeader {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .conceptHeaderLeft {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .formRow {
+        grid-template-columns: 1fr;
+    }
+    
+    .bindingHeader {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .sourceElements {
+        flex-direction: column;
+    }
+}
+
+/* Animation for expand/collapse */
+
+.conceptDetails {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 1000px;
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+}
+
+/* Focus and accessibility styles */
+
+.conceptHeader:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: -2px;
+}
+
+.conceptCard:focus-within {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Status indicators */
+
+.conceptCard[data-has-errors="true"] {
+    border-color: #dc3545;
+}
+
+.conceptCard[data-has-errors="true"] .conceptHeader {
+    background: #f8d7da;
+}
+
+.conceptCard[data-complete="true"] {
+    border-color: #198754;
+}
+
+.conceptCard[data-complete="true"] .conceptHeader {
+    background: #d1e7dd;
+}

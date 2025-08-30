@@ -19,7 +19,8 @@ const config = {
     // Development configuration
     development: {
         port: 3000,
-        proxy: 'https://play.im.dhis2.org/stable-2-40-8-2'
+        // Default proxy - can be overridden with DHIS2_BASE_URL environment variable
+        proxy: process.env.DHIS2_BASE_URL || 'https://play.im.dhis2.org/stable-2-40-8-2'
     }
 }
 
