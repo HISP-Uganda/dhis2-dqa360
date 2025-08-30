@@ -1,0 +1,399 @@
+{
+  "id": "assessment_1234567890",
+  "version": "3.0.0",
+  "structure": "nested",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "lastUpdated": "2024-01-15T14:45:00.000Z",
+  "metadataSource": "local",
+  
+  "Info": {
+    "name": "Q1 2024 Health Facility Assessment",
+    "description": "Comprehensive data quality assessment for health facilities",
+    "objectives": "Assess completeness, timeliness, and accuracy of health data",
+    "scope": "All health facilities in selected districts",
+    "assessmentType": "baseline",
+    "priority": "high",
+    "methodology": "automated",
+    "frequency": "monthly",
+    "reportingLevel": "facility",
+    "startDate": "2024-01-01",
+    "endDate": "2024-03-31",
+    "period": "202401;202402;202403",
+    "dataQualityDimensions": ["completeness", "timeliness", "accuracy", "consistency"],
+    "dataDimensionsQuality": ["completeness", "timeliness", "accuracy", "consistency"],
+    "stakeholders": ["Data Manager", "M&E Officer", "Program Coordinator"],
+    "riskFactors": ["Staff turnover", "System downtime", "Training gaps"],
+    "successCriteria": "Achieve 95% completeness and 90% timeliness",
+    "successCriteriaPredefined": ["completeness_95", "timeliness_90"],
+    "notes": "Focus on maternal health indicators",
+    "notifications": true,
+    "autoSync": true,
+    "validationAlerts": false,
+    "historicalComparison": true,
+    "confidentialityLevel": "internal",
+    "dataRetentionPeriod": "5years",
+    "publicAccess": false,
+    "status": "active",
+    "tags": ["maternal-health", "quarterly", "priority"],
+    "customFields": {
+      "budget": "50000",
+      "sponsor": "Global Health Initiative"
+    },
+    "baselineAssessmentId": null,
+    
+    "createdBy": {
+      "id": "user123",
+      "username": "jdoe",
+      "displayName": "John Doe",
+      "firstName": "John",
+      "surname": "Doe"
+    },
+    "lastModifiedBy": {
+      "id": "user123",
+      "username": "jdoe",
+      "displayName": "John Doe",
+      "firstName": "John",
+      "surname": "Doe"
+    },
+    
+    "Dhis2config": {
+      "info": {
+        "baseUrl": "https://dhis2.local.instance.org",
+        "version": "2.40.1",
+        "username": "admin",
+        "authenticated": true
+      },
+      "datasetsSelected": [
+        {
+          "id": "BfMAe6Itzgt",
+          "name": "ANC 1st visit",
+          "code": "DS_ANC1",
+          "periodType": "Monthly"
+        }
+      ],
+      "orgUnitMapping": []
+    },
+    
+    "smsConfig": {
+      "enabled": true,
+      "gateway": "generic",
+      "commands": [
+        {
+          "id": "sms_cmd_001",
+          "name": "DQA Register Data Collection",
+          "parser": "KEY_VALUE_PARSER",
+          "separator": " ",
+          "dataset": {
+            "id": "ds_register_001"
+          },
+          "codes": [
+            {
+              "code": "anc1",
+              "dataElement": {
+                "id": "de_anc1_001"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  
+  "localDatasetsCreated": [
+    {
+      "id": "ds_register_001",
+      "name": "DQA Register Dataset - Q1 2024",
+      "code": "DQA_REG_Q1_2024",
+      "datasetType": "register",
+      "alias": "dsA",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "periodType": "Monthly",
+      "sms": {
+        "id": "sms_cmd_001",
+        "name": "DQA Register Data Collection",
+        "parser": "KEY_VALUE_PARSER"
+      },
+      "dataElements": [
+        {
+          "id": "de_anc1_001",
+          "name": "ANC 1st visit",
+          "code": "ANC1",
+          "shortName": "ANC1",
+          "valueType": "INTEGER",
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        }
+      ],
+      "orgUnits": [
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "sharing": {
+        "public": "rwrw----",
+        "external": false
+      },
+      "shortName": "DQA Register Q1",
+      "formName": "DQA Register Dataset - Q1 2024",
+      "description": "Register dataset for data quality assessment",
+      "timelyDays": 15,
+      "openFuturePeriods": 0,
+      "expiryDays": 0,
+      "openPeriodsAfterCoEndDate": 0,
+      "version": 1,
+      "formType": "DEFAULT",
+      "status": "completed",
+      "elementsCount": 1,
+      "orgUnitsCount": 1
+    },
+    {
+      "id": "ds_summary_001",
+      "name": "DQA Summary Dataset - Q1 2024",
+      "code": "DQA_SUM_Q1_2024",
+      "datasetType": "summary",
+      "alias": "dsB",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "periodType": "Monthly",
+      "sms": null,
+      "dataElements": [
+        {
+          "id": "de_sum_001",
+          "name": "Total ANC visits",
+          "code": "ANC_TOTAL",
+          "shortName": "ANC Total",
+          "valueType": "INTEGER",
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        }
+      ],
+      "orgUnits": [
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "sharing": {
+        "public": "rwrw----",
+        "external": false
+      },
+      "shortName": "DQA Summary Q1",
+      "formName": "DQA Summary Dataset - Q1 2024",
+      "description": "Summary dataset for data quality assessment",
+      "timelyDays": 15,
+      "openFuturePeriods": 0,
+      "expiryDays": 0,
+      "openPeriodsAfterCoEndDate": 0,
+      "version": 1,
+      "formType": "DEFAULT",
+      "status": "completed",
+      "elementsCount": 1,
+      "orgUnitsCount": 1
+    },
+    {
+      "id": "ds_reported_001",
+      "name": "DQA Reported Dataset - Q1 2024",
+      "code": "DQA_REP_Q1_2024",
+      "datasetType": "reported",
+      "alias": "dsC",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "periodType": "Monthly",
+      "sms": null,
+      "dataElements": [
+        {
+          "id": "de_rep_001",
+          "name": "Reported ANC visits",
+          "code": "ANC_REPORTED",
+          "shortName": "ANC Reported",
+          "valueType": "INTEGER",
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        }
+      ],
+      "orgUnits": [
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "sharing": {
+        "public": "rwrw----",
+        "external": false
+      },
+      "shortName": "DQA Reported Q1",
+      "formName": "DQA Reported Dataset - Q1 2024",
+      "description": "Reported dataset for data quality assessment",
+      "timelyDays": 15,
+      "openFuturePeriods": 0,
+      "expiryDays": 0,
+      "openPeriodsAfterCoEndDate": 0,
+      "version": 1,
+      "formType": "DEFAULT",
+      "status": "completed",
+      "elementsCount": 1,
+      "orgUnitsCount": 1
+    },
+    {
+      "id": "ds_corrected_001",
+      "name": "DQA Corrected Dataset - Q1 2024",
+      "code": "DQA_COR_Q1_2024",
+      "datasetType": "corrected",
+      "alias": "dsD",
+      "categoryCombo": {
+        "id": "bjDvmb4bfuf"
+      },
+      "periodType": "Monthly",
+      "sms": null,
+      "dataElements": [
+        {
+          "id": "de_cor_001",
+          "name": "Corrected ANC visits",
+          "code": "ANC_CORRECTED",
+          "shortName": "ANC Corrected",
+          "valueType": "INTEGER",
+          "categoryCombo": {
+            "id": "bjDvmb4bfuf"
+          }
+        }
+      ],
+      "orgUnits": [
+        {
+          "id": "O6uvpzGd5pu"
+        }
+      ],
+      "sharing": {
+        "public": "rwrw----",
+        "external": false
+      },
+      "shortName": "DQA Corrected Q1",
+      "formName": "DQA Corrected Dataset - Q1 2024",
+      "description": "Corrected dataset for data quality assessment",
+      "timelyDays": 15,
+      "openFuturePeriods": 0,
+      "expiryDays": 0,
+      "openPeriodsAfterCoEndDate": 0,
+      "version": 1,
+      "formType": "DEFAULT",
+      "status": "completed",
+      "elementsCount": 1,
+      "orgUnitsCount": 1
+    }
+  ],
+  
+  "elementMappings": [
+    {
+      "mappingId": "mapping_001",
+      "dataElementName": "ANC 1st visit",
+      "valueType": "INTEGER",
+      "mappings": [
+        {
+          "dataset": {
+            "type": "register",
+            "alias": "dsA",
+            "id": "ds_register_001"
+          },
+          "dataElements": [
+            {
+              "id": "de_anc1_001",
+              "name": "ANC 1st visit",
+              "code": "ANC1",
+              "categoryOptionCombo": {
+                "id": "HllvX50cXC0"
+              },
+              "expression": "#{de_anc1_001.HllvX50cXC0}"
+            }
+          ]
+        },
+        {
+          "dataset": {
+            "type": "summary",
+            "alias": "dsB",
+            "id": "ds_summary_001"
+          },
+          "dataElements": [
+            {
+              "id": "de_sum_001",
+              "name": "Total ANC visits",
+              "code": "ANC_TOTAL",
+              "categoryOptionCombo": {
+                "id": "HllvX50cXC0"
+              },
+              "expression": "#{de_sum_001.HllvX50cXC0}"
+            }
+          ],
+          "transform": {
+            "type": "sum",
+            "expr": "#{de_anc1_001.HllvX50cXC0}"
+          }
+        },
+        {
+          "dataset": {
+            "type": "reported",
+            "alias": "dsC",
+            "id": "ds_reported_001"
+          },
+          "dataElements": [
+            {
+              "id": "de_rep_001",
+              "name": "Reported ANC visits",
+              "code": "ANC_REPORTED",
+              "categoryOptionCombo": {
+                "id": "HllvX50cXC0"
+              },
+              "expression": "#{de_rep_001.HllvX50cXC0}"
+            }
+          ]
+        },
+        {
+          "dataset": {
+            "type": "corrected",
+            "alias": "dsD",
+            "id": "ds_corrected_001"
+          },
+          "dataElements": [
+            {
+              "id": "de_cor_001",
+              "name": "Corrected ANC visits",
+              "code": "ANC_CORRECTED",
+              "categoryOptionCombo": {
+                "id": "HllvX50cXC0"
+              },
+              "expression": "#{de_cor_001.HllvX50cXC0}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  
+  "orgUnitMappings": [
+    {
+      "external": {
+        "id": "ImspTQPwCqd",
+        "uid": "ImspTQPwCqd",
+        "name": "Sierra Leone",
+        "code": "SL",
+        "parent": {
+          "id": "YuQRtpLP10I",
+          "name": "Global"
+        }
+      },
+      "local": {
+        "id": "O6uvpzGd5pu",
+        "uid": "O6uvpzGd5pu",
+        "name": "Bo",
+        "code": "BO",
+        "parent": {
+          "id": "ImspTQPwCqd",
+          "name": "Sierra Leone"
+        }
+      }
+    }
+  ]
+}
