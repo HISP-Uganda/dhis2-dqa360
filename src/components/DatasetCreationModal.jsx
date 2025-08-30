@@ -1009,7 +1009,7 @@ const DatasetCreationModal = ({
                                 categoryOptionCombo: { id: coc.id },
                                 formula: null,
                             }
-                            addLog(`${s('D')} SMS: expanded code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                            addLog(`${s('D2')} SMS: expanded code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
                             smsCodes.push(smsCode)
                         })
                     } else {
@@ -1020,7 +1020,7 @@ const DatasetCreationModal = ({
                             categoryOptionCombo: { id: DEFAULT_COC },
                             formula: null,
                         }
-                        addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                        addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
                         smsCodes.push(smsCode)
                     }
                 } catch (error) {
@@ -1128,7 +1128,7 @@ const DatasetCreationModal = ({
                             categoryOptionCombo: { id: DEFAULT_COC },
                             formula: null,
                         }
-                        addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC}`, 'info', datasetType)
+                        addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC}`, 'info', datasetType)
                         smsCodes.push(smsCode)
                     }
                 }
@@ -1145,14 +1145,14 @@ const DatasetCreationModal = ({
             }
         }
         
-        addLog(`${s('D')} SMS: generated ${smsCodes.length} total SMS codes`, 'info', datasetType)
+        addLog(`${s('D2')} SMS: generated ${smsCodes.length} total SMS codes`, 'info', datasetType)
         return smsCodes
     }
 
     // -------------------------- Refresh SMS Command COCs --------------------------
     const refreshSmsCommandCOCs = async (smsCommandId, datasetId, deList, addLog) => {
         try {
-            addLog(`${s('D')} SMS: refreshing COCs for command ${smsCommandId}`, 'info', 'refresh')
+            addLog(`${s('D2')} SMS: refreshing COCs for command ${smsCommandId}`, 'info', 'refresh')
             
             // Generate fresh SMS codes with proper COCs
             const freshSmsCodes = await generateFallbackSmsCodes(deList, 'refresh', addLog, de)
@@ -1168,11 +1168,11 @@ const DatasetCreationModal = ({
             
             // Update the SMS command using smsService
             await smsService.updateSmsCommand(de, smsCommandId, { smsCodes: codes })
-            addLog(`${s('D')} SMS: refreshed COCs for command ${smsCommandId}`, 'success', 'refresh')
+            addLog(`${s('D2')} SMS: refreshed COCs for command ${smsCommandId}`, 'success', 'refresh')
             
             return freshSmsCodes
         } catch (error) {
-            addLog(`${s('D')} SMS: failed to refresh COCs for command ${smsCommandId}: ${error.message}`, 'error', 'refresh')
+            addLog(`${s('D2')} SMS: failed to refresh COCs for command ${smsCommandId}: ${error.message}`, 'error', 'refresh')
             throw error
         }
     }
@@ -1183,11 +1183,11 @@ const DatasetCreationModal = ({
         const flatEnabled = cfg?.smsEnabled === true
         const enabled = (nested.enabled === true) || flatEnabled
         if (!enabled) {
-            addLog(`${s('D')} SMS: disabled`, 'info', datasetType)
+            addLog(`${s('D2')} SMS: disabled`, 'info', datasetType)
             return null
         }
         if (!datasetId) {
-            addLog(`${s('D')} SMS: skipped (dataset id missing)`, 'warning', datasetType)
+            addLog(`${s('D2')} SMS: skipped (dataset id missing)`, 'warning', datasetType)
             return null
         }
         const keyword = nested.keyword || cfg?.smsKeyword || `${datasetType}`.toUpperCase()
@@ -1195,7 +1195,7 @@ const DatasetCreationModal = ({
         const commandName = nested.name || cfg?.smsCommandName || `${cfg.name} SMS`
 
         // Always generate proper SMS codes with correct COCs, regardless of preview state
-        addLog(`${s('D')} SMS: generating proper codes for ${deList.length} data elements`, 'info', datasetType)
+        addLog(`${s('D2')} SMS: generating proper codes for ${deList.length} data elements`, 'info', datasetType)
         const smsCodes = await generateProperSmsCodes(deList, datasetType, addLog, de)
 
         const body = {
@@ -1217,19 +1217,19 @@ const DatasetCreationModal = ({
                 optionId: smsCode.categoryOptionCombo
             })),
         }
-        addLog(`${s('D')} SMS: creating command with ${smsCodes.length} codes`, 'info', datasetType)
+        addLog(`${s('D2')} SMS: creating command with ${smsCodes.length} codes`, 'info', datasetType)
         try {
             // If a command already exists with same dataset+name, treat as reuse for a clean flow
             await de.mutate(metadataQueries.createSmsCommand, { variables: { body } })
-            addLog(`${s('D')} SMS: created (keyword ${keyword})`, 'success', datasetType)
+            addLog(`${s('D2')} SMS: created (keyword ${keyword})`, 'success', datasetType)
             return { keyword, separator, created: true, smsCodes, datasetType }
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
             if (/409|already exists|duplicate/i.test(msg)) {
-                addLog(`${s('D')} SMS: exists → reuse`, 'info', datasetType)
+                addLog(`${s('D2')} SMS: exists → reuse`, 'info', datasetType)
                 return { keyword, separator, created: false, smsCodes, datasetType }
             }
-            addLog(`${s('D')} SMS: create failed ${msg}`, 'warning', datasetType)
+            addLog(`${s('D2')} SMS: create failed ${msg}`, 'warning', datasetType)
             return { keyword, separator, created: false, smsCodes, datasetType }
         }
     }
