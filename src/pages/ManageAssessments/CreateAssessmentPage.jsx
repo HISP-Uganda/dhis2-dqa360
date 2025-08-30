@@ -377,19 +377,26 @@ export const CreateAssessmentPage = () => {
         frequency: '',
         reportingLevel: '',
         dataQualityDimensions: ['accuracy'],
+        dataDimensionsQuality: ['accuracy'], // Add this for compatibility
         successCriteriaPredefined: [],
         successCriteria: '',
         confidentialityLevel: 'internal',
         dataRetentionPeriod: '5years',
-        autoSave: true,
+        notifications: true, // Add missing field
         autoSync: true,
-        validationAlerts: true,
+        validationAlerts: false, // Fix default value
         historicalComparison: false,
         publicAccess: false,
         startDate: '',
         endDate: '',
         baselineAssessmentId: '',
         period: '',
+        status: 'draft', // Add missing field
+        tags: [], // Add missing field
+        customFields: {}, // Add missing field
+        stakeholders: [], // Add missing field
+        riskFactors: [], // Add missing field
+        notes: '', // Add missing field
     })
 
     // datasets
@@ -478,7 +485,29 @@ export const CreateAssessmentPage = () => {
     }
 
     const handleDateChange = (field, value) => {
-        setAssessmentData(prev => ({ ...prev, [field]: value }))
+        setAssessmentData(prev => {
+            const updated = { ...prev, [field]: value }
+            
+            // Auto-generate period when both dates are available
+            const startDate = field === 'startDate' ? value : prev.startDate
+            const endDate = field === 'endDate' ? value : prev.endDate
+            
+            if (startDate && endDate) {
+                try {
+                    const start = new Date(startDate)
+                    const end = new Date(endDate)
+                    const startStr = start.toLocaleDateString()
+                    const endStr = end.toLocaleDateString()
+                    updated.period = `${startStr} - ${endStr}`
+                } catch (error) {
+                    // If date parsing fails, keep existing period
+                    console.warn('Failed to generate period from dates:', error)
+                }
+            }
+            
+            return updated
+        })
+        
         setDateErrors(prevErrs => {
             const next = { ...prevErrs }
             const s = field === 'startDate' ? value : assessmentData.startDate
@@ -1605,11 +1634,19 @@ export const CreateAssessmentPage = () => {
                                 name: dse.dataElement.name,
                                 code: dse.dataElement.code || '',
                                 valueType: dse.dataElement.valueType || 'TEXT',
+                                categoryCombo: dse?.dataElement?.categoryCombo ? {
+                                    id: dse.dataElement.categoryCombo.id,
+                                    name: dse.dataElement.categoryCombo.name,
+                                } : undefined,
                             } : null,
-                            categoryCombo: dse?.categoryCombo ? {
+                            // Prefer element-level categoryCombo; fallback to pair-level if present
+                            categoryCombo: dse?.dataElement?.categoryCombo ? {
+                                id: dse.dataElement.categoryCombo.id,
+                                name: dse.dataElement.categoryCombo.name,
+                            } : (dse?.categoryCombo ? {
                                 id: dse.categoryCombo.id,
                                 name: dse.categoryCombo.name,
-                            } : null
+                            } : null)
                         }))
                     }
                 }),
@@ -1977,6 +2014,7 @@ export const CreateAssessmentPage = () => {
                         buildPayload={buildAssessmentPayload}
                         selectedDataElements={selectedDataElements}
                         selectedDataSets={selectedDatasetObjects}
+                        userInfo={userInfo}
                     />
                 )
             default:

@@ -22,6 +22,7 @@ import SMSCommandPreview from './components/SMSCommandPreview'
 
 // ---------- helpers (existing) ----------
 const datasetTypes = ['register', 'summary', 'reported', 'corrected']
+const DEFAULT_COC = 'HllvX50cXC0' // Default category option combo ID
 
 const getDatasetTypePrefix = (datasetType) =>
     ({ register: 'REG', summary: 'SUM', reported: 'RPT', corrected: 'COR' }[datasetType] || 'GEN')
@@ -158,7 +159,7 @@ const expandSmsCodesForCategoryOptions = (dataElement, realCOCs = null) => {
         return [
             {
                 smsCode: dataElement.smsCode,
-                categoryOptionCombo: null,
+                categoryOptionCombo: { id: DEFAULT_COC, name: 'default', code: 'default' },
                 displayName: dataElement.displayName || dataElement.name,
                 dataElement,
             },

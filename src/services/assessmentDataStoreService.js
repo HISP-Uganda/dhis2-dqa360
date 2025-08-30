@@ -6,21 +6,25 @@ import { handleDatastoreError, withSuppressed404s } from '../utils/errorHandler'
  * Implements the well-nested structure as specified:
  * 
  * Assessment_XX: {
- *   Info: { all attributes },
- *   Dhis2config: {
- *     info: { all attributes for dhis2 configs },
- *     datasetsSelected: [{
- *       info: { all datasets attributes },
- *       dataElements: [{ all attributes specified }],
- *       organisationUnits: [{ all attributes }]
- *     }],
- *     orgUnitMapping: [ mapping details ]
+ *   Info: { 
+ *     all attributes,
+ *     Dhis2config: {
+ *       info: { all attributes for dhis2 configs },
+ *       datasetsSelected: [{
+ *         info: { all datasets attributes },
+ *         dataElements: [{ all attributes specified }],
+ *         organisationUnits: [{ all attributes }]
+ *       }],
+ *       orgUnitMapping: [ mapping details ]
+ *     }
  *   },
  *   localDatasetsCreated: [{
- *     info: { all attributes },
- *     dataElements: [],
- *     orgUnits: [],
- *     sharingSettings: []
+ *     id, name, code, datasetType, alias, categoryCombo, periodType,
+ *     dataElements: [], orgUnits: [], sharing: null, sms: {}
+ *   }],
+ *   elementMappings: [{
+ *     mappingId, dataElementName, valueType,
+ *     mappings: [{ dataset: {}, dataElements: [], transform?: {} }]
  *   }]
  * }
  */
@@ -158,70 +162,9 @@ export const useAssessmentDataStore = () => {
                 
                 // Additional Notes
                 notes: assessmentData.notes || '',
-                
-                // SMS Reporting Configuration
-                smsConfig: assessmentData.smsConfig ? {
-                    enabled: assessmentData.smsConfig.enabled || false,
-                    autoGenerate: assessmentData.smsConfig.autoGenerate || true,
-                    separator: assessmentData.smsConfig.separator || ',',
-                    commands: assessmentData.smsConfig.commands || [],
-                    notifications: {
-                        enabled: assessmentData.smsConfig.notifications?.enabled || true,
-                        recipients: assessmentData.smsConfig.notifications?.recipients || [],
-                        events: assessmentData.smsConfig.notifications?.events || ['data_received', 'validation_failed', 'completion_reminder']
-                    },
-                    messages: {
-                        // Backward-compatible defaults
-                        defaultMessage: assessmentData.smsConfig.messages?.defaultMessage || 'Thanks! SMS received.',
-                        successMessage: assessmentData.smsConfig.messages?.successMessage || 'Saved.',
-                        wrongFormatMessage: assessmentData.smsConfig.messages?.wrongFormatMessage || 'Wrong format.',
-                        noUserMessage: assessmentData.smsConfig.messages?.noUserMessage || 'Phone not linked to any user.',
-                        moreThanOneOrgUnitMessage: assessmentData.smsConfig.messages?.moreThanOneOrgUnitMessage || 'Multiple org units linked to your user; please contact admin.',
-                        // New defaults
-                        emptyCodesMessage: assessmentData.smsConfig.messages?.emptyCodesMessage || 'No codes provided. Please include data codes.',
-                        commandOnlyMessage: assessmentData.smsConfig.messages?.commandOnlyMessage || 'Command received without data. Please include codes.',
-                        defaultReplyMessage: assessmentData.smsConfig.messages?.defaultReplyMessage || 'Thanks! SMS received.'
-                    },
-                    // Default command names (based on dataset type); callers can override
-                    defaultCommandName: assessmentData.smsConfig.defaultCommandName || 'DQA_REGISTER',
-                    defaultCommandNamesByType: assessmentData.smsConfig.defaultCommandNamesByType || {
-                        register: 'DQA_REGISTER',
-                        summary: 'DQA_SUMMARY',
-                        reported: 'DQA_REPORTED',
-                        corrected: 'DQA_CORRECTED'
-                    },
-                    lastGenerated: assessmentData.smsConfig.lastGenerated || null,
-                    generatedBy: userInfo?.username || 'system'
-                } : {
-                    enabled: false,
-                    autoGenerate: true,
-                    separator: ',',
-                    commands: [],
-                    notifications: { enabled: true, recipients: [], events: [] },
-                    messages: {
-                        defaultMessage: 'Thanks! SMS received.',
-                        successMessage: 'Saved.',
-                        wrongFormatMessage: 'Wrong format.',
-                        noUserMessage: 'Phone not linked to any user.',
-                        moreThanOneOrgUnitMessage: 'Multiple org units linked to your user; please contact admin.',
-                        emptyCodesMessage: 'No codes provided. Please include data codes.',
-                        commandOnlyMessage: 'Command received without data. Please include codes.',
-                        defaultReplyMessage: 'Thanks! SMS received.'
-                    },
-                    defaultCommandName: 'DQA_REGISTER',
-                    defaultCommandNamesByType: {
-                        register: 'DQA_REGISTER',
-                        summary: 'DQA_SUMMARY',
-                        reported: 'DQA_REPORTED',
-                        corrected: 'DQA_CORRECTED'
-                    },
-                    lastGenerated: null,
-                    generatedBy: null
-                }
-            },
 
-            // Tab 2: DHIS2 Connection Configuration (moved under Info for new structure)
-            Dhis2config: {
+                // Tab 2: DHIS2 Connection Configuration (nested under Info)
+                Dhis2config: {
                 // Connection Information
                 info: {
                     baseUrl: dhis2Config?.baseUrl || '',
@@ -264,7 +207,11 @@ export const useAssessmentDataStore = () => {
                         
                         // Dataset Configuration
                         periodType: dataset.periodType || 'Monthly',
-                        categoryCombo: dataset.categoryCombo || { id: 'default', name: 'default' },
+                        categoryCombo: (dataset.categoryCombo && (dataset.categoryCombo.id || dataset.categoryCombo.name))
+                            ? { id: dataset.categoryCombo.id, name: dataset.categoryCombo.name || dataset.categoryCombo.displayName }
+                            : (Array.isArray(dataset.dataSetElements) && dataset.dataSetElements[0]?.categoryCombo
+                                ? { id: dataset.dataSetElements[0].categoryCombo.id, name: dataset.dataSetElements[0].categoryCombo.name }
+                                : { id: 'default', name: 'default' }),
                         
                         // Dataset Properties
                         openFuturePeriods: dataset.openFuturePeriods || 0,
@@ -315,7 +262,14 @@ export const useAssessmentDataStore = () => {
                             aggregationType: dataElement.aggregationType || 'SUM',
                             
                             // Categories and Options
-                            categoryCombo: dataElement.categoryCombo || { id: 'default', name: 'default' },
+                            categoryCombo: dataElement.categoryCombo && (dataElement.categoryCombo.id || dataElement.categoryCombo.name)
+                                ? { id: dataElement.categoryCombo.id, name: dataElement.categoryCombo.name || dataElement.categoryCombo.displayName }
+                                : (dataset.dataSetElements?.find(dse => dse?.dataElement?.id === dataElement.id)?.categoryCombo
+                                    ? {
+                                        id: dataset.dataSetElements.find(dse => dse?.dataElement?.id === dataElement.id).categoryCombo.id,
+                                        name: dataset.dataSetElements.find(dse => dse?.dataElement?.id === dataElement.id).categoryCombo.name
+                                      }
+                                    : (dataset.categoryCombo ? { id: dataset.categoryCombo.id, name: dataset.categoryCombo.name } : { id: 'default', name: 'default' })),
                             optionSet: dataElement.optionSet || null,
                             commentOptionSet: dataElement.commentOptionSet || null,
                             
@@ -397,204 +351,189 @@ export const useAssessmentDataStore = () => {
                     }))
                 })),
 
-                // Organisation Unit Mapping Details
+                // Organisation Unit Mapping Details (IDs required; include names/codes; add parentId if discoverable)
                 orgUnitMapping: (Array.isArray(orgUnitMappings) ? orgUnitMappings : [])
-                    .filter(mapping => mapping && typeof mapping === 'object' && mapping.mapped)
-                    .map(mapping => ({
-                        // External (Local) Organisation Unit
-                        external: {
-                            id: mapping.external?.id || '',
-                            name: mapping.external?.displayName || mapping.external?.name || '',
-                            code: mapping.external?.code || '',
-                            level: mapping.external?.level || 1,
-                            path: mapping.external?.path || ''
-                        },
-                        
-                        // DHIS2 Organisation Unit
-                        dhis2: {
-                            id: mapping.local?.id || '',
-                            name: mapping.local?.displayName || mapping.local?.name || '',
-                            code: mapping.local?.code || '',
-                            level: mapping.local?.level || 1,
-                            path: mapping.local?.path || ''
-                        },
-                        
-                        // Mapping Details
-                        mappingType: mapping.mappingType || 'manual',
-                        confidence: mapping.confidence || 1.0,
-                        status: mapping.status || 'active',
-                        
-                        // Metadata
-                        createdAt: mapping.createdAt || currentTime,
-                        createdBy: userInfo?.username || 'system',
-                        lastModified: currentTime,
-                        modifiedBy: userInfo?.username || 'system',
-                        
-                        // Validation
-                        validated: mapping.validated !== undefined ? mapping.validated : false,
-                        validatedBy: mapping.validatedBy || null,
-                        validatedAt: mapping.validatedAt || null,
-                        
-                        // Notes
-                        notes: mapping.notes || '',
-                        issues: mapping.issues || []
-                    }))
+                    .map(m => {
+                        if (!m || typeof m !== 'object') return null
+                        const ext = m.external || m.source || {}
+                        const dh = m.local || m.target || {}
+                        if (!ext.id || !dh.id) return null
+                        const sourcePath = ext.path || ''
+                        const sourceParentId = ext.parent?.id || (sourcePath ? sourcePath.split('/').filter(Boolean).slice(-2, -1)[0] || null : null)
+                        const targetPath = dh.path || ''
+                        const targetParentId = dh.parent?.id || (targetPath ? targetPath.split('/').filter(Boolean).slice(-2, -1)[0] || null : null)
+                        const obj = {
+                            sourceId: ext.id,
+                            targetId: dh.id,
+                            ...(ext.displayName || ext.name ? { sourceName: ext.displayName || ext.name } : {}),
+                            ...(ext.code ? { sourceCode: ext.code } : {}),
+                            ...(typeof ext.level === 'number' ? { sourceLevel: ext.level } : {}),
+                            ...(sourcePath ? { sourcePath } : {}),
+                            ...(sourceParentId ? { sourceParentId } : {}),
+                            ...(dh.displayName || dh.name ? { targetName: dh.displayName || dh.name } : {}),
+                            ...(dh.code ? { targetCode: dh.code } : {}),
+                            ...(typeof dh.level === 'number' ? { targetLevel: dh.level } : {}),
+                            ...(targetPath ? { targetPath } : {}),
+                            ...(targetParentId ? { targetParentId } : {})
+                        }
+                        return obj
+                    })
+                    .filter(Boolean)
+                }
             },
 
             // Tab 3: Local Datasets Created
             localDatasetsCreated: (Array.isArray(localDatasets) ? localDatasets : [])
                 .filter(localDataset => localDataset && typeof localDataset === 'object')
                 .map(localDataset => {
-                console.log('🔍 Processing local dataset:', {
-                    id: localDataset.id,
-                    name: localDataset.name,
-                    dhis2Id: localDataset.dhis2Id,
-                    dataElementsCount: localDataset.dataElements?.length || 0,
-                    orgUnitsCount: localDataset.orgUnits?.length || 0,
-                    fallbackDataElementsCount: selectedDataElements?.length || 0,
-                    fallbackOrgUnitsCount: selectedOrgUnits?.length || 0
-                })
+                    console.log('🔍 Processing local dataset:', {
+                        id: localDataset.id,
+                        name: localDataset.name,
+                        dhis2Id: localDataset.dhis2Id,
+                        dataElementsCount: localDataset.dataElements?.length || 0,
+                        orgUnitsCount: localDataset.orgUnits?.length || 0,
+                        fallbackDataElementsCount: selectedDataElements?.length || 0,
+                        fallbackOrgUnitsCount: selectedOrgUnits?.length || 0
+                    })
+
+                    const datasetType = localDataset.datasetType || localDataset.type || ''
+                    const alias = localDataset.alias
+                        || (datasetType === 'register' ? 'REG'
+                            : datasetType === 'summary' ? 'SUM'
+                            : datasetType === 'reported' ? 'RPT'
+                            : datasetType === 'corrected' ? 'COR'
+                            : 'GEN')
+
+                    return {
+                        id: localDataset.id || `local_ds_${Date.now()}`,
+                        name: localDataset.name || '',
+                        code: localDataset.code || '',
+                        datasetType,
+                        alias,
+                        categoryCombo: localDataset.categoryCombo || { id: 'bjDvmb4bfuf', name: 'default' },
+                        periodType: localDataset.periodType || assessmentData.frequency || 'Monthly',
+
+                        dataElements: (Array.isArray(localDataset.dataElements) ? localDataset.dataElements : Array.isArray(selectedDataElements) ? selectedDataElements : [])
+                            .filter(de => de && typeof de === 'object' && de.id)
+                            .map(de => ({
+                                id: de.id || '',
+                                code: de.code || '',
+                                name: de.name || de.displayName || '',
+                                valueType: de.valueType || 'TEXT',
+                                categoryCombo: de.categoryCombo?.id ? { id: de.categoryCombo.id } : { id: 'bjDvmb4bfuf' }
+                            })),
+
+                        orgUnits: (Array.isArray(localDataset.orgUnits) ? localDataset.orgUnits : Array.isArray(selectedOrgUnits) ? selectedOrgUnits : [])
+                            .filter(ou => ou && typeof ou === 'object' && ou.id)
+                            .map(ou => ({ id: ou.id, name: ou.name || ou.displayName || '', path: ou.path || `/${ou.id}` })),
+
+                        sharing: localDataset.sharing || null,
+
+                        sms: (() => {
+                            const smsRaw = localDataset.sms || localDataset.smsCommand || null
+                            const DEFAULT_CC = 'bjDvmb4bfuf'
+                            const typeToKeyword = (t) => ({ register: 'DQA_REGISTER', summary: 'DQA_SUMMARY', reported: 'DQA_REPORTED', corrected: 'DQA_CORRECTED' }[String(t||'').toLowerCase()] || String(t||'').toUpperCase())
+                            if (!smsRaw && (!Array.isArray(localDataset.dataElements) || localDataset.dataElements.length === 0)) return null
+                            const baseCodes = Array.isArray(smsRaw?.smsCodes) ? smsRaw.smsCodes : []
+                            const fallbackCodes = (Array.isArray(localDataset.dataElements) ? localDataset.dataElements : [])
+                                .slice(0, 70)
+                                .map((d, i) => ({
+                                    code: String.fromCharCode(65 + (i % 26)),
+                                    dataElement: { id: d.id },
+                                    categoryOptionCombo: { id: DEFAULT_CC },
+                                    formula: null,
+                                }))
+                            const smsCodes = (baseCodes.length ? baseCodes : fallbackCodes)
+                                .map(c => ({
+                                    code: c.code,
+                                    dataElement: { id: c?.dataElement?.id || c?.dataElementId },
+                                    categoryOptionCombo: c?.categoryOptionCombo?.id ? { id: c.categoryOptionCombo.id } : { id: DEFAULT_CC },
+                                    formula: c?.formula ?? null,
+                                }))
+                            return {
+                                name: smsRaw?.name || typeToKeyword(datasetType),
+                                keyword: smsRaw?.keyword || typeToKeyword(datasetType),
+                                separator: smsRaw?.separator || ',',
+                                codeSeparator: smsRaw?.codeSeparator || '.',
+                                codeValueSeparator: smsRaw?.codeValueSeparator || '.',
+                                successMessage: smsRaw?.successMessage || 'Saved.',
+                                wrongFormatMessage: smsRaw?.wrongFormatMessage || 'Wrong format.',
+                                noUserMessage: smsRaw?.noUserMessage || 'Phone not linked to any user.',
+                                moreThanOneOrgUnitMessage: smsRaw?.moreThanOneOrgUnitMessage || 'Multiple org units linked to your user; please contact admin.',
+                                noCodesMessage: smsRaw?.noCodesMessage || 'No codes provided. Please include data codes.',
+                                dataset: { id: localDataset.id || '' },
+                                smsCodes
+                            }
+                        })()
+                    }
+                }),
+
+            // Element Mappings - mapping between different dataset types
+            elementMappings: (() => {
+                // Generate element mappings based on selected data elements and local datasets
+                const mappings = []
                 
-                return {
-                // Dataset Information
-                info: {
-                    id: localDataset.id || `local_ds_${Date.now()}`,
-                    name: localDataset.name || '',
-                    displayName: localDataset.displayName || localDataset.name || '',
-                    code: localDataset.code || '',
-                    description: localDataset.description || '',
-                    
-                    // Dataset Type and Purpose
-                    type: localDataset.type || 'assessment',
-                    purpose: localDataset.purpose || 'data_quality_assessment',
-                    category: localDataset.category || 'dqa360',
-                    
-                    // DHIS2 Integration
-                    dhis2Id: localDataset.dhis2Id || null,
-                    dhis2Created: localDataset.dhis2Created !== undefined ? localDataset.dhis2Created : false,
-                    dhis2CreatedAt: localDataset.dhis2CreatedAt || null,
-                    
-                    // Configuration
-                    periodType: localDataset.periodType || assessmentData.frequency || 'Monthly',
-                    categoryCombo: localDataset.categoryCombo || 'default',
-                    
-                    // Workflow
-                    workflow: localDataset.workflow || null,
-                    approvalWorkflow: localDataset.approvalWorkflow || null,
-                    
-                    // Properties
-                    openFuturePeriods: localDataset.openFuturePeriods || 0,
-                    expiryDays: localDataset.expiryDays || 0,
-                    timelyDays: localDataset.timelyDays || 15,
-                    
-                    // Status
-                    status: localDataset.status || 'draft',
-                    active: localDataset.active !== undefined ? localDataset.active : true,
-                    
-                    // Metadata
-                    created: localDataset.created || currentTime,
-                    lastUpdated: currentTime,
-                    createdBy: userInfo?.username || 'system',
-                    lastModifiedBy: userInfo?.username || 'system',
-                    
-                    // Version Control
-                    version: localDataset.version || 1,
-                    versionHistory: localDataset.versionHistory || []
-                },
+                if (Array.isArray(selectedDataElements) && selectedDataElements.length > 0) {
+                    selectedDataElements.forEach(dataElement => {
+                        const mappingId = dataElement.code || dataElement.id
+                        const mapping = {
+                            mappingId,
+                            dataElementName: dataElement.name || dataElement.displayName || '',
+                            valueType: dataElement.valueType || 'INTEGER',
+                            mappings: []
+                        }
 
-                // Data Elements
-                dataElements: (Array.isArray(localDataset.dataElements) ? localDataset.dataElements : 
-                              Array.isArray(selectedDataElements) ? selectedDataElements : [])
-                    .filter(de => de && typeof de === 'object' && de.id)
-                    .map(de => ({
-                    id: de.id || '',
-                    name: de.name || de.displayName || '',
-                    displayName: de.displayName || de.name || '',
-                    code: de.code || '',
-                    valueType: de.valueType || 'TEXT',
-                    domainType: de.domainType || 'AGGREGATE',
-                    aggregationType: de.aggregationType || 'SUM',
-                    categoryCombo: de.categoryCombo || 'default',
-                    
-                    // DQA360 Specific Properties
-                    qualityDimensions: de.qualityDimensions || ['completeness'],
-                    assessmentWeight: de.assessmentWeight || 1.0,
-                    criticalIndicator: de.criticalIndicator !== undefined ? de.criticalIndicator : false,
-                    
-                    // Inclusion Details
-                    includedAt: currentTime,
-                    includedBy: userInfo?.username || 'system',
-                    inclusionReason: de.inclusionReason || 'selected_for_assessment'
-                })),
+                        // Add mappings for each local dataset type
+                        if (Array.isArray(localDatasets)) {
+                            localDatasets.forEach(localDataset => {
+                                const datasetType = localDataset.datasetType || localDataset.type || ''
+                                const alias = localDataset.alias || 
+                                    (datasetType === 'register' ? 'REG' :
+                                     datasetType === 'summary' ? 'SUM' :
+                                     datasetType === 'reported' ? 'RPT' :
+                                     datasetType === 'corrected' ? 'COR' : 'GEN')
 
-                // Organisation Units
-                orgUnits: (Array.isArray(localDataset.orgUnits) ? localDataset.orgUnits : 
-                          Array.isArray(selectedOrgUnits) ? selectedOrgUnits : [])
-                    .filter(ou => ou && typeof ou === 'object' && ou.id)
-                    .map(ou => ({
-                    id: ou.id || '',
-                    name: ou.name || ou.displayName || '',
-                    displayName: ou.displayName || ou.name || '',
-                    code: ou.code || '',
-                    level: ou.level || 1,
-                    path: ou.path || `/${ou.id}`,
-                    
-                    // Assignment Details
-                    assignedAt: currentTime,
-                    assignedBy: userInfo?.username || 'system',
-                    assignmentType: ou.assignmentType || 'data_collection',
-                    reportingResponsibility: ou.reportingResponsibility !== undefined ? ou.reportingResponsibility : true
-                })),
+                                // Find corresponding data element in this dataset
+                                const correspondingDE = localDataset.dataElements?.find(de => 
+                                    de.id === dataElement.id || de.code === dataElement.code
+                                )
 
-                // Sharing Settings
-                sharingSettings: localDataset.sharingSettings || [{
-                    // Public Access
-                    publicAccess: localDataset.publicAccess || 'r-------',
-                    
-                    // User Access
-                    userAccesses: localDataset.userAccesses || [],
-                    
-                    // User Group Access
-                    userGroupAccesses: localDataset.userGroupAccesses || [],
-                    
-                    // External Access
-                    externalAccess: localDataset.externalAccess !== undefined ? localDataset.externalAccess : false,
-                    
-                    // Sharing Configuration
-                    sharingConfiguration: {
-                        allowPublicAccess: localDataset.allowPublicAccess !== undefined ? localDataset.allowPublicAccess : false,
-                        allowExternalAccess: localDataset.allowExternalAccess !== undefined ? localDataset.allowExternalAccess : false,
-                        inheritFromParent: localDataset.inheritFromParent !== undefined ? localDataset.inheritFromParent : true
-                    },
-                    
-                    // Metadata
-                    lastModified: currentTime,
-                    modifiedBy: userInfo?.username || 'system'
-                }],
+                                if (correspondingDE || datasetType === 'register') {
+                                    const datasetMapping = {
+                                        dataset: {
+                                            id: localDataset.id || '',
+                                            type: datasetType,
+                                            alias
+                                        },
+                                        dataElements: [{
+                                            id: correspondingDE?.id || dataElement.id,
+                                            code: correspondingDE?.code || dataElement.code,
+                                            name: correspondingDE?.name || dataElement.name || dataElement.displayName || '',
+                                            valueType: correspondingDE?.valueType || dataElement.valueType || 'INTEGER',
+                                            categoryCombo: correspondingDE?.categoryCombo || dataElement.categoryCombo || { id: 'bjDvmb4bfuf' },
+                                            categoryOptionCombo: null,
+                                            expression: `#{${correspondingDE?.id || dataElement.id}}`
+                                        }]
+                                    }
 
-                // SMS Configuration for dataset-level operations
-                smsConfig: localDataset.smsConfig || {
-                    enabled: false,
-                    autoGenerate: true,
-                    separator: ',',
-                    commands: [],
-                    notifications: { enabled: true, recipients: [], events: ['data_received', 'validation_failed', 'completion_reminder'] },
-                    messages: {
-                        defaultMessage: 'Thanks! SMS received.',
-                        successMessage: 'Saved.',
-                        wrongFormatMessage: 'Wrong format.',
-                        noUserMessage: 'Phone not linked to any user.',
-                        moreThanOneOrgUnitMessage: 'Multiple org units linked to your user; please contact admin.',
-                        emptyCodesMessage: 'No codes provided. Please include data codes.',
-                        commandOnlyMessage: 'Command received without data. Please include codes.',
-                        defaultReplyMessage: 'Thanks! SMS received.'
-                    },
-                    defaultCommandName: 'DQA_REGISTER',
-                    lastGenerated: null,
-                    generatedBy: userInfo?.username || 'system'
+                                    // Add transform for summary type
+                                    if (datasetType === 'summary') {
+                                        datasetMapping.transform = { type: 'sum' }
+                                    }
+
+                                    mapping.mappings.push(datasetMapping)
+                                }
+                            })
+                        }
+
+                        if (mapping.mappings.length > 0) {
+                            mappings.push(mapping)
+                        }
+                    })
                 }
-            }
-        })
+
+                return mappings
+            })()
         }
     }
 
@@ -607,28 +546,130 @@ export const useAssessmentDataStore = () => {
             
             await initializeDataStore()
             
-            // Create the nested structure
-            const assessment = createAssessmentStructure(
-                assessmentData, 
-                dhis2Config, 
-                selectedDataSets, 
-                selectedDataElements, 
-                selectedOrgUnits, 
-                orgUnitMappings, 
-                localDatasets, 
-                userInfo
-            )
-            
-            // Ensure new structure has Info.Dhis2config for compatibility, then remove top-level
-            if (!assessment.Info?.Dhis2config && assessment.Dhis2config) {
-                assessment.Info = assessment.Info || {}
-                assessment.Info.Dhis2config = assessment.Dhis2config
+            // Create or normalize the nested structure
+            let assessment
+            if (assessmentData?.Info) {
+                // Already nested v3 structure
+                assessment = { ...assessmentData }
+            } else if (assessmentData?.info || assessmentData?.details || assessmentData?.basicInfo) {
+                // Map legacy/flat payloads (e.g., CreateAssessmentPage) into nested inputs
+                const details = assessmentData.info || assessmentData.details || assessmentData.basicInfo || {}
+
+                // Derive fields expected by createAssessmentStructure
+                const mappedAssessmentData = {
+                    ...details,
+                    // Preserve id if present
+                    id: assessmentData.id || details.id,
+                    // SMS config compatibility
+                    smsConfig: assessmentData.smsConfig || assessmentData.sms,
+                    // Metadata source
+                    metadataSource: assessmentData.metadataSource || (assessmentData.externalConfig ? 'external' : 'local'),
+                }
+
+                const mappedDhis2Config = assessmentData.externalConfig
+                    || assessmentData.dhis2Config
+                    || assessmentData.connection?.info
+                    || assessmentData.connection
+                    || {}
+
+                const mappedSelectedDataSets = assessmentData.datasets?.selected
+                    || assessmentData.selectedDatasets
+                    || assessmentData.selectedDataSets
+                    || assessmentData.datasetsSelected
+                    || []
+
+                const mappedSelectedDataElements = assessmentData.dataElements?.selected
+                    || assessmentData.dataElementsSelected
+                    || []
+
+                const mappedSelectedOrgUnits = assessmentData.orgUnits?.selected
+                    || assessmentData.organisationUnitsSelected
+                    || assessmentData.selectedOrgUnits
+                    || []
+
+                const mappedOrgUnitMappings = assessmentData.orgUnitMapping?.mappings
+                    || assessmentData.orgUnitMapping
+                    || assessmentData.selectedOrgUnitMappings
+                    || []
+
+                const mappedLocalDatasets = assessmentData.localDatasets?.createdDatasets
+                    || assessmentData.createdDatasets
+                    || []
+
+                assessment = createAssessmentStructure(
+                    mappedAssessmentData,
+                    mappedDhis2Config,
+                    mappedSelectedDataSets,
+                    mappedSelectedDataElements,
+                    mappedSelectedOrgUnits,
+                    mappedOrgUnitMappings,
+                    mappedLocalDatasets,
+                    userInfo
+                )
+
+                // Carry over element mappings if present
+                if (Array.isArray(assessmentData.elementMappings)) {
+                    assessment.elementMappings = assessmentData.elementMappings
+                } else if (Array.isArray(assessmentData.creationPayload?.elementMappings)) {
+                    assessment.elementMappings = assessmentData.creationPayload.elementMappings
+                }
+            } else {
+                // Build from explicit arguments
+                assessment = createAssessmentStructure(
+                    assessmentData,
+                    dhis2Config,
+                    selectedDataSets,
+                    selectedDataElements,
+                    selectedOrgUnits,
+                    orgUnitMappings,
+                    localDatasets,
+                    userInfo
+                )
             }
-            if (assessment.Dhis2config) {
-                delete assessment.Dhis2config
+            
+            // Ensure Dhis2config is properly nested under Info (structure is already correct from createAssessmentStructure)
+
+            // Hydrate localDatasetsCreated from known sources if missing
+            if (!Array.isArray(assessment.localDatasetsCreated) || assessment.localDatasetsCreated.length === 0) {
+                const mapDataset = (d, typeKey) => ({
+                    id: d?.id || d?.datasetId || '',
+                    name: d?.name || d?.payload?.name || '',
+                    code: d?.code || d?.payload?.code || '',
+                    datasetType: d?.datasetType || typeKey || d?.type || '',
+                    alias: d?.alias || d?.payload?.alias || '',
+                    categoryCombo: d?.categoryCombo || d?.payload?.categoryCombo || undefined,
+                    periodType: d?.periodType || d?.payload?.periodType || 'Monthly',
+                    sms: d?.sms || d?.smsCommand || null,
+                    dataElements: d?.dataElements || d?.payload?.dataSetElements || [],
+                    orgUnits: d?.orgUnits || d?.payload?.organisationUnits || [],
+                    sharing: d?.sharing || d?.payload?.sharing || null,
+                })
+
+                const fromLocal = assessment?.localDatasets?.createdDatasets
+                if (Array.isArray(fromLocal) && fromLocal.length) {
+                    assessment.localDatasetsCreated = fromLocal.map((d) => mapDataset(d))
+                } else {
+                    const cp = assessment?.creationPayload || assessment?.creation || {}
+                    const ds = cp?.datasets || {}
+                    const keys = Object.keys(ds || {})
+                    if (keys.length) {
+                        assessment.localDatasetsCreated = keys
+                            .map((k) => mapDataset(ds[k], k))
+                            .filter((x) => x.id)
+                    }
+                }
+
+                // Element mappings
+                if (!Array.isArray(assessment.elementMappings) || assessment.elementMappings.length === 0) {
+                    const mp = assessment?.creationPayload?.mappingPayload?.elementsMapping
+                        || assessment?.mappingPayload?.elementsMapping
+                        || assessment?.creationPayload?.elementMappings
+                        || []
+                    if (Array.isArray(mp) && mp.length) assessment.elementMappings = mp
+                }
             }
 
-            const _dhCfg = (assessment.Info && assessment.Info.Dhis2config) ? assessment.Info.Dhis2config : { info: {}, datasetsSelected: [] }
+            const _dhCfg = assessment.Info?.Dhis2config || { info: {}, datasetsSelected: [] }
             console.log('📋 Assessment structure:', {
                 id: assessment.id,
                 version: assessment.version,
@@ -636,7 +677,8 @@ export const useAssessmentDataStore = () => {
                 infoFields: Object.keys(assessment.Info || {}).length,
                 dhis2ConfigFields: Object.keys(_dhCfg.info || {}).length,
                 datasetsSelected: (_dhCfg.datasetsSelected || []).length,
-                localDatasetsCreated: (assessment.localDatasetsCreated || []).length
+                localDatasetsCreated: (assessment.localDatasetsCreated || []).length,
+                elementMappings: (assessment.elementMappings || []).length
             })
             
             // Save to dataStore
@@ -1013,15 +1055,8 @@ export const useAssessmentDataStore = () => {
                 assessmentKey
             })
             
-            // Normalize structure: ensure Info.Dhis2config exists and remove top-level Dhis2config
+            // Normalize structure: ensure proper nested structure
             const normalized = response.data || {}
-            if (normalized.Dhis2config) {
-                normalized.Info = normalized.Info || {}
-                if (!normalized.Info.Dhis2config) {
-                    normalized.Info.Dhis2config = normalized.Dhis2config
-                }
-                delete normalized.Dhis2config
-            }
             // Ensure Info.dataDimensionsQuality exists (fallback to dataQualityDimensions)
             if (normalized.Info) {
                 normalized.Info.dataDimensionsQuality = normalized.Info.dataDimensionsQuality || normalized.Info.dataQualityDimensions || ['completeness', 'timeliness']

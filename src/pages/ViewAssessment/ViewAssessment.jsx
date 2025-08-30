@@ -146,7 +146,7 @@ export const ViewAssessment = () => {
 
     // Extract assessment information
     const assessmentInfo = assessment.Info || assessment
-    const dhis2Config = assessment.Dhis2config || assessment.dhis2Config || {}
+    const dhis2Config = assessment.Info?.Dhis2config || assessment.Dhis2config || assessment.dhis2Config || {}
     const localDatasets = assessment.localDatasetsCreated || []
 
     return (
@@ -531,7 +531,7 @@ const OverviewTab = ({ assessment, assessmentInfo }) => {
     const localDatasets = assessment.localDatasets?.createdDatasets || []
     const localDataElements = assessment.localDataElementsCreated || []
     const localOrgUnits = assessment.localOrgUnitsCreated || []
-    const dhis2Config = assessment.Dhis2config || assessment.dhis2Config || {}
+    const dhis2Config = assessment.Info?.Dhis2config || assessment.Dhis2config || assessment.dhis2Config || {}
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>

@@ -4,6 +4,8 @@ import i18n from '@dhis2/d2-i18n'
 import styles from './SMSCommandPreview.module.css'
 import jsPDF from 'jspdf'
 
+const DEFAULT_COC = 'HllvX50cXC0' // Default category option combo ID
+
 // Externalized SMS Preview with support for real COCs
 const SMSCommandPreview = ({
     currentElements,
@@ -172,10 +174,10 @@ const SMSCommandPreview = ({
                     code: c.smsCode,
                     dataElement: { id: c?.dataElement?.id },
                     categoryOptionCombo: c.categoryOptionCombo ? {
-                        id: c.categoryOptionCombo.id || 'bjDvmb4bfuf',
+                        id: c.categoryOptionCombo.id || DEFAULT_COC,
                         name: c.categoryOptionCombo.name,
                         code: c.categoryOptionCombo.code,
-                    } : { id: 'bjDvmb4bfuf' }
+                    } : { id: DEFAULT_COC }
                 }))
             }
             onComputed(command)
@@ -624,7 +626,7 @@ const SMSCommandPreview = ({
                         : rawDeName
 
                     // For itemized lines: A1: REG - <DE name (no prefix)> <COC name>
-                    const lines = (deExpanded.length > 0 ? deExpanded : [{ smsCode: de.smsCode, categoryOptionCombo: null }])
+                    const lines = (deExpanded.length > 0 ? deExpanded : [{ smsCode: de.smsCode, categoryOptionCombo: { id: DEFAULT_COC, name: 'default', code: 'default' } }])
                         .map(c => {
                             const cocName = c.categoryOptionCombo ? (c.categoryOptionCombo.name || c.categoryOptionCombo.displayName || 'default') : 'default'
                             return `${c.smsCode}: ${typeShort} - ${deNameNoPrefix} ${cocName}`

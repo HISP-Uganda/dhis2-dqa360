@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-29T18:30:58.331Z\n"
-"PO-Revision-Date: 2025-08-29T18:30:58.332Z\n"
+"POT-Creation-Date: 2025-08-30T10:28:54.140Z\n"
+"PO-Revision-Date: 2025-08-30T10:28:54.140Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -1706,47 +1706,41 @@ msgstr "No period set"
 msgid "Not specified"
 msgstr "Not specified"
 
+msgid "None specified"
+msgstr "None specified"
+
 msgid "No datasets selected"
 msgstr "No datasets selected"
+
+msgid "None created"
+msgstr "None created"
 
 msgid "Untitled Assessment"
 msgstr "Untitled Assessment"
 
-msgid "Created by"
-msgstr "Created by"
+msgid "Period & Scope"
+msgstr "Period & Scope"
 
-msgid "Frequency"
-msgstr "Frequency"
+msgid "Assessment Config"
+msgstr "Assessment Config"
 
-msgid "Assessment Type"
-msgstr "Assessment Type"
-
-msgid "Priority"
-msgstr "Priority"
-
-msgid "Method"
-msgstr "Method"
-
-msgid "Facilities"
-msgstr "Facilities"
+msgid "Data Quality Dimensions"
+msgstr "Data Quality Dimensions"
 
 msgid "DHIS2 Connection"
 msgstr "DHIS2 Connection"
 
-msgid "Configured"
-msgstr "Configured"
-
-msgid "Not Configured"
-msgstr "Not Configured"
-
-msgid "mappings"
-msgstr "mappings"
+msgid "facilities"
+msgstr "facilities"
 
 msgid "No mappings"
 msgstr "No mappings"
 
-msgid "Local datasets created"
-msgstr "Local datasets created"
+msgid "Local Datasets Created"
+msgstr "Local Datasets Created"
+
+msgid "Element Mappings"
+msgstr "Element Mappings"
 
 msgid "Error loading form data"
 msgstr "Error loading form data"
@@ -1837,6 +1831,9 @@ msgstr "Select period"
 
 msgid "At least one facility must be selected"
 msgstr "At least one facility must be selected"
+
+msgid "Facilities"
+msgstr "Facilities"
 
 msgid "Select facilities"
 msgstr "Select facilities"
@@ -2074,6 +2071,9 @@ msgstr "DQ Summary"
 
 msgid "DQ Details"
 msgstr "DQ Details"
+
+msgid "Frequency"
+msgstr "Frequency"
 
 msgid "Period Configuration"
 msgstr "Period Configuration"
@@ -2469,6 +2469,9 @@ msgstr "Manage and view immutable snapshots of Reported data pulls"
 msgid "Label"
 msgstr "Label"
 
+msgid "Created by"
+msgstr "Created by"
+
 msgid "Ready"
 msgstr "Ready"
 
@@ -2804,6 +2807,9 @@ msgstr "Unexpected error while testing connection"
 msgid "Failed to save connection"
 msgstr "Failed to save connection"
 
+msgid "Configured"
+msgstr "Configured"
+
 msgid "Failed"
 msgstr "Failed"
 
@@ -2964,6 +2970,9 @@ msgstr "Connect next"
 msgid "Using this instance"
 msgstr "Using this instance"
 
+msgid "Assessment Type"
+msgstr "Assessment Type"
+
 msgid "Start Date"
 msgstr "Start Date"
 
@@ -2975,6 +2984,9 @@ msgstr "End Date"
 
 msgid "Select end date"
 msgstr "Select end date"
+
+msgid "Priority"
+msgstr "Priority"
 
 msgid "Methodology"
 msgstr "Methodology"
@@ -2990,9 +3002,6 @@ msgstr "Reporting Level"
 
 msgid "Organisation unit levels"
 msgstr "Organisation unit levels"
-
-msgid "Data Quality Dimensions"
-msgstr "Data Quality Dimensions"
 
 msgid "Start with Accuracy; add other dimensions used in DQA"
 msgstr "Start with Accuracy; add other dimensions used in DQA"
@@ -3056,6 +3065,47 @@ msgstr "Additional Success Criteria"
 
 msgid "Define any specific or custom success criteria for this assessment..."
 msgstr "Define any specific or custom success criteria for this assessment..."
+
+msgid "Stakeholders"
+msgstr "Stakeholders"
+
+msgid ""
+"List key stakeholders involved in this assessment (e.g., Data Manager, M&E "
+"Officer, Program Manager)..."
+msgstr ""
+"List key stakeholders involved in this assessment (e.g., Data Manager, M&E "
+"Officer, Program Manager)..."
+
+msgid "Separate multiple stakeholders with commas"
+msgstr "Separate multiple stakeholders with commas"
+
+msgid "Risk Factors"
+msgstr "Risk Factors"
+
+msgid ""
+"Identify potential risks that could affect this assessment (e.g., data "
+"quality issues, resource constraints, technical challenges)..."
+msgstr ""
+"Identify potential risks that could affect this assessment (e.g., data "
+"quality issues, resource constraints, technical challenges)..."
+
+msgid "Separate multiple risk factors with commas"
+msgstr "Separate multiple risk factors with commas"
+
+msgid "Tags"
+msgstr "Tags"
+
+msgid "Add tags for categorization (e.g., quarterly, facility-level, pilot)"
+msgstr "Add tags for categorization (e.g., quarterly, facility-level, pilot)"
+
+msgid "Separate multiple tags with commas"
+msgstr "Separate multiple tags with commas"
+
+msgid "Additional Notes"
+msgstr "Additional Notes"
+
+msgid "Any additional notes or comments about this assessment..."
+msgstr "Any additional notes or comments about this assessment..."
 
 msgid "Confidentiality Level"
 msgstr "Confidentiality Level"
@@ -4740,3 +4790,11 @@ msgstr "Creating SMS commands for datasets"
 
 msgid "Assessment creation completed"
 msgstr "Assessment creation completed"
+
+msgctxt "Application title"
+msgid "__MANIFEST_APP_TITLE"
+msgstr "DQA360 - Data Quality Assessment"
+
+msgctxt "Application description"
+msgid "__MANIFEST_APP_DESCRIPTION"
+msgstr "A comprehensive data quality assessment platform for DHIS2"

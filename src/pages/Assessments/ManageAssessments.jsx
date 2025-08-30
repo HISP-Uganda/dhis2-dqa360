@@ -40,15 +40,27 @@ const DQSummaryModal = ({ assessment, onClose }) => {
         { key: 'correction', label: 'Correction', color: '#9c27b0', icon: '✏️' }
     ]
 
+    // Extract data from nested structure
+    const info = assessment.Info || assessment
+    const dhis2Config = info.Dhis2config || assessment.Dhis2config || assessment.dhis2Config || {}
+    const dsSelected = Array.isArray(dhis2Config.datasetsSelected) ? dhis2Config.datasetsSelected : []
+    const localDatasets = Array.isArray(assessment.localDatasetsCreated) ? assessment.localDatasetsCreated : []
+    const orgUnitMapping = Array.isArray(dhis2Config.orgUnitMapping) ? dhis2Config.orgUnitMapping : []
+    const elementMappings = Array.isArray(assessment.elementMappings) ? assessment.elementMappings : []
+
+    // Calculate totals
+    const totalDataElements = dsSelected.reduce((total, ds) => total + (ds?.dataElements?.length || 0), 0)
+    const totalOrgUnits = orgUnitMapping.length || dsSelected.reduce((total, ds) => total + (ds?.organisationUnits?.length || 0), 0)
+
     return (
         <Box position="fixed" top={0} left={0} width="100vw" height="100vh" bgcolor="rgba(0,0,0,0.5)" zIndex={3000} display="flex" alignItems="center" justifyContent="center" padding="24px">
             <Box width="900px" maxWidth="95vw" maxHeight="90vh" bgcolor="#fff" borderRadius="8px" boxShadow="0 4px 12px rgba(0,0,0,0.15)" padding="32px" overflow="auto">
                 <Box marginBottom="24px">
                     <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '500', color: '#212934' }}>
-                        {i18n.t('Assessment Details')} - {assessment.name}
+                        {i18n.t('Assessment Details')} - {info.name || assessment.name}
                     </h2>
                     <Box marginTop="8px" fontSize="14px" color="#6c757d">
-                        {assessment.metadataSource === 'dhis2' ? '🔗 External DHIS2 instance' : '🏠 Local (This instance)'}
+                        {(info.metadataSource || assessment.metadataSource) === 'dhis2' ? '🔗 External DHIS2 instance' : '🏠 Local (This instance)'}
                     </Box>
                 </Box>
 
@@ -60,24 +72,24 @@ const DQSummaryModal = ({ assessment, onClose }) => {
                     <Box display="grid" gridTemplateColumns="1fr 1fr" gap="16px">
                         <Box padding="16px" backgroundColor="#f8f9fa" borderRadius="8px">
                             <Box fontSize="14px" color="#6c757d" marginBottom="4px">{i18n.t('Period')}</Box>
-                            <Box fontSize="16px" fontWeight="500">{assessment.period}</Box>
-                            {assessment.frequency && (
+                            <Box fontSize="16px" fontWeight="500">{info.period || assessment.period}</Box>
+                            {(info.frequency || assessment.frequency) && (
                                 <Box fontSize="12px" color="#6c757d" marginTop="4px">
-                                    {i18n.t('Frequency')}: {assessment.frequency}
+                                    {i18n.t('Frequency')}: {info.frequency || assessment.frequency}
                                 </Box>
                             )}
                         </Box>
                         <Box padding="16px" backgroundColor="#f8f9fa" borderRadius="8px">
                             <Box fontSize="14px" color="#6c757d" marginBottom="4px">{i18n.t('Status')}</Box>
-                            <Box>{getStatusTag(assessment.status)}</Box>
+                            <Box>{getStatusTag(info.status || assessment.status)}</Box>
                         </Box>
                         <Box padding="16px" backgroundColor="#f8f9fa" borderRadius="8px">
                             <Box fontSize="14px" color="#6c757d" marginBottom="4px">{i18n.t('Data Elements')}</Box>
-                            <Box fontSize="16px" fontWeight="500">{assessment.dataElements?.length || 0}</Box>
+                            <Box fontSize="16px" fontWeight="500">{totalDataElements}</Box>
                         </Box>
                         <Box padding="16px" backgroundColor="#f8f9fa" borderRadius="8px">
                             <Box fontSize="14px" color="#6c757d" marginBottom="4px">{i18n.t('Facilities')}</Box>
-                            <Box fontSize="16px" fontWeight="500">{assessment.orgUnits?.length || 0}</Box>
+                            <Box fontSize="16px" fontWeight="500">{totalOrgUnits}</Box>
                         </Box>
                     </Box>
 

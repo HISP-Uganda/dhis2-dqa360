@@ -4,6 +4,7 @@ import i18n from '@dhis2/d2-i18n'
 import { useDataEngine } from '@dhis2/app-runtime'
 import jsPDF from 'jspdf'
 import { useNavigate } from 'react-router-dom'
+import SmsCommandFixer from '../../../components/SmsCommandFixer'
 
 /**
  * ReviewStep (no cards/rounded UI)
@@ -49,8 +50,12 @@ const ElementCell = ({ mappingForType }) => {
     return (
         <div>
             {list.map((de, i) => {
-                const coc = de?.categoryOptionCombo?.id ? `@${de.categoryOptionCombo.id}` : ''
-                const expr = de?.expression || (de?.id ? `#{${de.id}${coc ? `.${de.categoryOptionCombo.id}` : ''}}` : '')
+                // Handle categoryOptionCombo safely - it could be an object with id, or just a string id
+                const cocId = typeof de?.categoryOptionCombo === 'object' 
+                    ? de.categoryOptionCombo?.id 
+                    : de?.categoryOptionCombo
+                const coc = cocId ? `@${cocId}` : ''
+                const expr = de?.expression || (de?.id ? `#{${de.id}${cocId ? `.${cocId}` : ''}}` : '')
                 return (
                     <div key={i} style={{ marginBottom: 6 }}>
                         <div><code>{de.code}</code>{coc && <code>{coc}</code>} — “{de.name || '—'}”</div>
@@ -85,6 +90,7 @@ const ReviewStep = ({
                         onPrint,
                         onSave,                 // parent-provided save handler (preferred)
                         buildPayload,          // parent-provided payload builder (preferred)
+                        userInfo,              // user information for created/modified metadata
                     }) => {
     const [saveStatus, setSaveStatus] = useState(null) // success, error, null
     const [saveMessage, setSaveMessage] = useState('')
@@ -129,43 +135,99 @@ const ReviewStep = ({
 
         return {
             id: assessmentData?.id || `assessment_${Date.now()}`,
+            version: '3.0.0',
+            structure: 'nested',
             createdAt: assessmentData?.createdAt || now,
             lastUpdated: now,
             metadataSource: metaSource, // local | external
 
-            // 1. Details
-            details: {
+            // Nested Info as required by list and datastore
+            Info: {
                 name: assessmentData?.name || '',
                 description: assessmentData?.description || '',
-                period: assessmentData?.period || '',
+                objectives: assessmentData?.objectives || '',
+                scope: assessmentData?.scope || '',
+                assessmentType: assessmentData?.assessmentType || 'baseline',
+                priority: assessmentData?.priority || 'medium',
+                methodology: assessmentData?.methodology || 'automated',
                 frequency: assessmentData?.frequency || 'monthly',
+                reportingLevel: assessmentData?.reportingLevel || 'facility',
                 startDate: assessmentData?.startDate || '',
                 endDate: assessmentData?.endDate || '',
-                reportingLevel: assessmentData?.reportingLevel || 'facility',
+                period: assessmentData?.period || '',
+                dataQualityDimensions: assessmentData?.dataQualityDimensions || ['completeness', 'timeliness'],
+                dataDimensionsQuality: assessmentData?.dataDimensionsQuality || assessmentData?.dataQualityDimensions || ['completeness', 'timeliness'],
+                stakeholders: assessmentData?.stakeholders || [],
+                riskFactors: assessmentData?.riskFactors || [],
+                successCriteria: assessmentData?.successCriteria || '',
+                successCriteriaPredefined: assessmentData?.successCriteriaPredefined || [],
+                notes: assessmentData?.notes || '',
+                notifications: assessmentData?.notifications !== undefined ? assessmentData.notifications : true,
+                autoSync: assessmentData?.autoSync !== undefined ? assessmentData.autoSync : true,
+                validationAlerts: assessmentData?.validationAlerts !== undefined ? assessmentData.validationAlerts : false,
+                historicalComparison: assessmentData?.historicalComparison !== undefined ? assessmentData.historicalComparison : false,
+                confidentialityLevel: assessmentData?.confidentialityLevel || 'internal',
+                dataRetentionPeriod: assessmentData?.dataRetentionPeriod || '5years',
+                publicAccess: assessmentData?.publicAccess !== undefined ? assessmentData.publicAccess : false,
                 status: assessmentData?.status || 'draft',
                 tags: assessmentData?.tags || [],
+                customFields: assessmentData?.customFields || {},
+                baselineAssessmentId: assessmentData?.baselineAssessmentId || null,
+                // User information for tracking
+                createdBy: userInfo ? {
+                    id: userInfo.id,
+                    username: userInfo.username,
+                    displayName: userInfo.displayName || `${userInfo.firstName || ''} ${userInfo.surname || ''}`.trim() || userInfo.username,
+                    firstName: userInfo.firstName,
+                    surname: userInfo.surname
+                } : null,
+                lastModifiedBy: userInfo ? {
+                    id: userInfo.id,
+                    username: userInfo.username,
+                    displayName: userInfo.displayName || `${userInfo.firstName || ''} ${userInfo.surname || ''}`.trim() || userInfo.username,
+                    firstName: userInfo.firstName,
+                    surname: userInfo.surname
+                } : null,
+                // Connection + selections nested under Dhis2config
+                Dhis2config: {
+                    info: assessmentData?.externalConfig || assessmentData?.dhis2Config?.info || {},
+                    datasetsSelected: dsSel,
+                    orgUnitMapping: ouMap,
+                },
+                smsConfig: {
+                    ...(assessmentData?.smsConfig || {}),
+                    commands: smsCommands || [],
+                },
             },
 
-            // 2. Connection (Local or External)
-            connection: {
-                type: metaSource, // local | external
-                info: assessmentData?.dhis2Config?.info || assessmentData?.connection || null,
-            },
-
-            // 3. Datasets Selected
-            datasetsSelected: dsSel,
-            // 4. DataElements Selected
-            dataElementsSelected: deSel,
-            // 5. OrganisationUnits Selected
-            organisationUnitsSelected: ouSel,
-            // 6. OrgUnit Mapping
-            orgUnitMapping: ouMap,
-            // 7. Datasets Created
-            datasetsCreated: created || [],
-            // 8. DataElementsMappings
-            dataElementsMappings: rows,
-            // 9. SMS Commands Created
-            smsCommandsCreated: smsCommands || [],
+            // Created datasets and mappings
+            localDatasetsCreated: (created || []).map(d => ({
+                id: d.id,
+                name: d.name,
+                code: d.code,
+                datasetType: d.datasetType,
+                alias: d.alias,
+                categoryCombo: d.categoryCombo,
+                periodType: d.periodType || 'Monthly',
+                sms: d.sms || null,
+                dataElements: d.dataElements || [],
+                orgUnits: d.orgUnits || [],
+                sharing: d.sharing || null,
+                // Additional metadata from enhanced DatasetCreationModal
+                shortName: d.shortName || '',
+                formName: d.formName || '',
+                description: d.description || '',
+                timelyDays: d.timelyDays ?? 15,
+                openFuturePeriods: d.openFuturePeriods ?? 0,
+                expiryDays: d.expiryDays ?? 0,
+                openPeriodsAfterCoEndDate: d.openPeriodsAfterCoEndDate ?? 0,
+                version: d.version ?? 1,
+                formType: d.formType || 'DEFAULT',
+                status: d.status || 'unknown',
+                elementsCount: d.elementsCount || (d.dataElements || []).length,
+                orgUnitsCount: d.orgUnitsCount || (d.orgUnits || []).length,
+            })),
+            elementMappings: rows,
         }
     }
 
@@ -194,7 +256,7 @@ const ReviewStep = ({
             
             // Enhanced filename with timestamp
             const timestamp = new Date().toISOString().split('T')[0]
-            const safeName = (payload.details?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
+            const safeName = (payload.Info?.name || payload.details?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
             a.download = `DQA360_${safeName}_${timestamp}.json`
             
             a.href = url
@@ -230,7 +292,7 @@ const ReviewStep = ({
             if (typeof onSave === 'function') {
                 await onSave(payload)
                 setSaveStatus('success')
-                setSaveMessage(`Assessment "${payload.details?.name}" saved successfully!`)
+                setSaveMessage(`Assessment "${payload.Info?.name || payload.details?.name}" saved successfully!`)
                 navigate('/administration/assessments')
                 return
             }
@@ -239,7 +301,7 @@ const ReviewStep = ({
             if (typeof saveAssessmentPayload === 'function') {
                 await saveAssessmentPayload(payload)
                 setSaveStatus('success')
-                setSaveMessage(`Assessment "${payload.details?.name}" saved successfully!`)
+                setSaveMessage(`Assessment "${payload.Info?.name || payload.details?.name}" saved successfully!`)
                 navigate('/administration/assessments')
                 return
             }
@@ -844,20 +906,20 @@ const ReviewStep = ({
                             let entries = []
                             if (Array.isArray(c.smsCodes)) {
                                 entries = c.smsCodes.map(sc => ({
-                                    code: sc.code,
-                                    deName: sc.dataElement?.name || sc.dataElement?.displayName || sc.dataElement?.shortName || '',
-                                    cocName: sc.categoryOptionCombo?.displayName || sc.categoryOptionCombo?.name || ''
+                                    code: String(sc.code || ''),
+                                    deName: String(sc.dataElement?.name || sc.dataElement?.displayName || sc.dataElement?.shortName || ''),
+                                    cocName: String(sc.categoryOptionCombo?.displayName || sc.categoryOptionCombo?.name || '')
                                 }))
                             } else if (Array.isArray(c.expandedCodes)) {
                                 entries = c.expandedCodes.map(ec => ({
-                                    code: ec.code || ec.smsCode,
-                                    deName: ec.dataElement?.name || ec.dataElement?.displayName || '',
-                                    cocName: ec.categoryOptionCombo?.name || ''
+                                    code: String(ec.code || ec.smsCode || ''),
+                                    deName: String(ec.dataElement?.name || ec.dataElement?.displayName || ''),
+                                    cocName: String(ec.categoryOptionCombo?.name || '')
                                 }))
                             } else if (Array.isArray(c.codes)) {
-                                entries = c.codes.map(k => ({ code: k }))
+                                entries = c.codes.map(k => ({ code: String(k || '') }))
                             } else if (c.codes && typeof c.codes === 'object') {
-                                entries = Object.keys(c.codes).map(k => ({ code: k }))
+                                entries = Object.keys(c.codes).map(k => ({ code: String(k || '') }))
                             }
 
                             // For backwards compatibility: if createdDatasets[].sms.smsCodes exists, merge into entries when same datasetType
@@ -865,9 +927,9 @@ const ReviewStep = ({
                                 const match = created.find(d => d?.sms?.smsCodes && (!c.datasetType || d.datasetType === c.datasetType))
                                 if (match?.sms?.smsCodes) {
                                     entries = match.sms.smsCodes.map(sc => ({
-                                        code: sc.code,
-                                        deName: sc.dataElement?.name || '',
-                                        cocName: sc.categoryOptionCombo?.name || ''
+                                        code: String(sc.code || ''),
+                                        deName: String(sc.dataElement?.name || ''),
+                                        cocName: String(sc.categoryOptionCombo?.name || '')
                                     }))
                                 }
                             }
@@ -897,7 +959,7 @@ const ReviewStep = ({
                                     </td>
                                     <td style={td}>
                                         {codeList.length}
-                                        {codeList.length ? ` (${entries.slice(0, 6).map(e => e.cocName ? `${e.code}→${e.cocName}` : e.code).join(', ')}${codeList.length > 6 ? ', …' : ''})` : ''}
+                                        {codeList.length ? ` (${entries.slice(0, 6).map(e => e.cocName ? `${String(e.code)}→${String(e.cocName)}` : String(e.code)).join(', ')}${codeList.length > 6 ? ', …' : ''})` : ''}
                                     </td>
                                     <td style={td}>{c.created ? '✅ created' : '❌ failed'}</td>
                                 </tr>
@@ -906,6 +968,17 @@ const ReviewStep = ({
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {/* SMS Command COC Fixer */}
+            {created && created.length > 0 && smsCommands && smsCommands.length > 0 && (
+                <SmsCommandFixer 
+                    createdDatasets={created}
+                    onFixed={(results) => {
+                        console.log('SMS commands fixed:', results)
+                        // Optionally refresh the assessment data or show a success message
+                    }}
+                />
             )}
 
             {/* Status Messages */}

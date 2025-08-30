@@ -356,6 +356,61 @@ const DetailsStep = ({
                 />
             </div>
 
+            {/* Stakeholders */}
+            <div style={{ marginBottom: 12 }}>
+                <TextAreaField
+                    label={i18n.t('Stakeholders')}
+                    placeholder={i18n.t('List key stakeholders involved in this assessment (e.g., Data Manager, M&E Officer, Program Manager)...')}
+                    value={Array.isArray(assessmentData.stakeholders) ? assessmentData.stakeholders.join(', ') : (assessmentData.stakeholders || '')}
+                    onChange={({ value }) => {
+                        const stakeholdersList = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+                        setAssessmentData(prev => ({ ...prev, stakeholders: stakeholdersList }))
+                    }}
+                    rows={2}
+                    helpText={i18n.t('Separate multiple stakeholders with commas')}
+                />
+            </div>
+
+            {/* Risk Factors */}
+            <div style={{ marginBottom: 12 }}>
+                <TextAreaField
+                    label={i18n.t('Risk Factors')}
+                    placeholder={i18n.t('Identify potential risks that could affect this assessment (e.g., data quality issues, resource constraints, technical challenges)...')}
+                    value={Array.isArray(assessmentData.riskFactors) ? assessmentData.riskFactors.join(', ') : (assessmentData.riskFactors || '')}
+                    onChange={({ value }) => {
+                        const risksList = value ? value.split(',').map(r => r.trim()).filter(Boolean) : []
+                        setAssessmentData(prev => ({ ...prev, riskFactors: risksList }))
+                    }}
+                    rows={2}
+                    helpText={i18n.t('Separate multiple risk factors with commas')}
+                />
+            </div>
+
+            {/* Tags */}
+            <div style={{ marginBottom: 12 }}>
+                <InputField
+                    label={i18n.t('Tags')}
+                    placeholder={i18n.t('Add tags for categorization (e.g., quarterly, facility-level, pilot)')}
+                    value={Array.isArray(assessmentData.tags) ? assessmentData.tags.join(', ') : (assessmentData.tags || '')}
+                    onChange={({ value }) => {
+                        const tagsList = value ? value.split(',').map(t => t.trim()).filter(Boolean) : []
+                        setAssessmentData(prev => ({ ...prev, tags: tagsList }))
+                    }}
+                    helpText={i18n.t('Separate multiple tags with commas')}
+                />
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: 12 }}>
+                <TextAreaField
+                    label={i18n.t('Additional Notes')}
+                    placeholder={i18n.t('Any additional notes or comments about this assessment...')}
+                    value={assessmentData.notes}
+                    onChange={({ value }) => setAssessmentData(prev => ({ ...prev, notes: value }))}
+                    rows={3}
+                />
+            </div>
+
             {/* Confidentiality & Data retention */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 12 }}>
                 <SingleSelectField

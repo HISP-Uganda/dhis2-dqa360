@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDataEngine } from '@dhis2/app-runtime'
 import { Modal, ModalTitle, ModalContent, ModalActions, Button, LinearLoader, NoticeBox } from '@dhis2/ui'
+import { smsService } from '../services/smsService'
 
 /**
  * DatasetCreationModal (per-dataset, inner requirements)
@@ -14,19 +15,21 @@ import { Modal, ModalTitle, ModalContent, ModalActions, Button, LinearLoader, No
  *      A5. Summary
  *   B. Organisation units (local only; map external -> local)
  *   C. Dataset (create/reuse; category combo from cfg.fullCategoryCombo if provided)
- *   D. Sharing settings + SMS
+ *   D1. Sharing settings
+ *   D2. SMS
  * Repeat for all dataset types (Register, Summary, Reported, Corrected)
  */
 
 const DATASET_TYPES = ['register', 'summary', 'reported', 'corrected']
-const DEFAULT_CC = 'bjDvmb4bfuf'
+const DEFAULT_CC = 'bjDvmb4bfuf'  // Default category combo ID
+const DEFAULT_COC = 'HllvX50cXC0' // Default category option combo ID
 const TYPE_ALIAS = { register: 'dsA', summary: 'dsB', reported: 'dsC', corrected: 'dsD' }
 const DATASET_UID_ATTRIBUTE_CODE = 'DQA360_DATASET_UID'
 
 // tidy logging sections
-const STEP = { A1: 'A1', A2: 'A2', A3: 'A3', A4: 'A4', A5: 'A5', B: 'B', C: 'C', D: 'D' }
+const STEP = { A1: 'A1', A2: 'A2', A3: 'A3', A4: 'A4', A5: 'A5', B: 'B', C: 'C', D1: 'D1', D2: 'D2' }
 // Expand abbreviations in logs for clarity
-const STEP_LABEL = { A1: 'Category options', A2: 'Categories', A3: 'Category combos', A4: 'Data elements', A5: 'Summary', B: 'Organisation units', C: 'Datasets', D: 'Sharing & SMS' }
+const STEP_LABEL = { A1: 'Category options', A2: 'Categories', A3: 'Category combos', A4: 'Data elements', A5: 'Summary', B: 'Organisation units', C: 'Datasets', D1: 'Sharing settings', D2: 'SMS' }
 const s = (k) => `[${STEP[k]} ${STEP_LABEL[k] ? '- ' + STEP_LABEL[k] : ''}]`
 
 // helpers
@@ -98,7 +101,8 @@ const DatasetCreationModal = ({
             'Manage data elements & category combos (category options / categories / category combos / data elements)',
             'Resolve organisation units',
             'Create or reuse dataset',
-            'Sharing settings & SMS',
+            'Sharing settings',
+            'SMS commands',
             'Finalize',
         ]
         return base
@@ -640,7 +644,7 @@ const DatasetCreationModal = ({
 
                 // For external: do not pre-fetch DEs; try create first, then handle 409 by lookup
                 let existing = null
-                const enhancedFields = 'id,name,code,categoryCombo[id,name,code]'
+                const enhancedFields = 'id,name,code,categoryCombo[id,name,code,categoryOptionCombos[id,name,code,categoryOptions[id,name,code]]]'
                 if (metadataSource !== 'external') {
                     try { existing = await findOne('dataElements', { code: baseCode, fields: enhancedFields }) } catch {}
                     if (!existing) { try { existing = await findOne('dataElements', { name, fields: enhancedFields }) } catch {} }
@@ -654,7 +658,7 @@ const DatasetCreationModal = ({
                         code: existing.code,
                         valueType,
                         categoryCombo: existing.categoryCombo || { id: cc.id },
-                        fullCategoryCombo: existing.categoryCombo,
+                        fullCategoryCombo: existing.categoryCombo, // Now includes COCs
                     })
                     await sleep(4)
                     continue
@@ -685,7 +689,7 @@ const DatasetCreationModal = ({
                             code: check.code,
                             valueType,
                             categoryCombo: check.categoryCombo || { id: cc.id },
-                            fullCategoryCombo: check.categoryCombo,
+                            fullCategoryCombo: check.categoryCombo, // Now includes COCs
                         })
                     } else {
                         // On inconsistent state, do not rely on local draft references
@@ -705,7 +709,7 @@ const DatasetCreationModal = ({
                                 code: maybe.code,
                                 valueType,
                                 categoryCombo: maybe.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: maybe.categoryCombo,
+                                fullCategoryCombo: maybe.categoryCombo, // Now includes COCs
                             })
                             continue
                         }
@@ -719,7 +723,7 @@ const DatasetCreationModal = ({
                                 code: maybeByName.code,
                                 valueType,
                                 categoryCombo: maybeByName.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: maybeByName.categoryCombo,
+                                fullCategoryCombo: maybeByName.categoryCombo, // Now includes COCs
                             })
                             continue
                         }
@@ -737,7 +741,7 @@ const DatasetCreationModal = ({
                                 code: fallback.code,
                                 valueType,
                                 categoryCombo: fallback.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: fallback.categoryCombo,
+                                fullCategoryCombo: fallback.categoryCombo, // Now includes COCs
                             })
                             continue
                         }
@@ -977,6 +981,202 @@ const DatasetCreationModal = ({
         }
     }
 
+    // -------------------------- Fallback SMS code generation --------------------------
+    const generateFallbackSmsCodes = async (deList, datasetType, addLog, engine) => {
+        const smsCodes = []
+        
+        for (let i = 0; i < (deList || []).length && i < 70; i++) {
+            const de = deList[i]
+            const baseCode = String.fromCharCode(97 + (i % 26)) // a, b, c, ...
+            
+            // Check if this data element has a non-default category combo
+            const hasCategoryCombo = de?.categoryCombo?.id && de.categoryCombo.id !== DEFAULT_CC
+            
+            if (hasCategoryCombo) {
+                try {
+                    // Fetch the full category combo to get category option combos
+                    const ccResponse = await engine.query(metadataQueries.getCategoryCombo, {
+                        variables: { id: de.categoryCombo.id }
+                    })
+                    
+                    const fullCC = ccResponse?.categoryCombo
+                    if (fullCC?.categoryOptionCombos?.length > 0) {
+                        // Generate SMS codes for each category option combo
+                        fullCC.categoryOptionCombos.forEach((coc, cocIdx) => {
+                            const smsCode = {
+                                code: `${baseCode.toUpperCase()}${cocIdx + 1}`, // A1, A2, A3, A4
+                                dataElement: { id: de.id },
+                                categoryOptionCombo: { id: coc.id },
+                                formula: null,
+                            }
+                            addLog(`${s('D')} SMS: expanded code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                            smsCodes.push(smsCode)
+                        })
+                    } else {
+                        // Fallback to default COC if no category option combos found
+                        const smsCode = {
+                            code: baseCode,
+                            dataElement: { id: de.id },
+                            categoryOptionCombo: { id: DEFAULT_COC },
+                            formula: null,
+                        }
+                        addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                        smsCodes.push(smsCode)
+                    }
+                } catch (error) {
+                    // If fetching category combo fails, use default COC
+                    const smsCode = {
+                        code: baseCode,
+                        dataElement: { id: de.id },
+                        categoryOptionCombo: { id: DEFAULT_COC },
+                        formula: null,
+                    }
+                    addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                    smsCodes.push(smsCode)
+                }
+            } else {
+                // Data element uses default category combo
+                const smsCode = {
+                    code: baseCode,
+                    dataElement: { id: de.id },
+                    categoryOptionCombo: { id: DEFAULT_COC },
+                    formula: null,
+                }
+                addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
+                smsCodes.push(smsCode)
+            }
+        }
+        
+        return smsCodes
+    }
+
+    // -------------------------- Generate Proper SMS Codes --------------------------
+    const generateProperSmsCodes = async (deList, datasetType, addLog, engine) => {
+        const smsCodes = []
+        
+        for (let i = 0; i < deList.length && i < 70; i++) {
+            const de = deList[i]
+            const baseCode = String.fromCharCode(97 + (i % 26)) // a, b, c, ...
+            
+            // Check if this data element has a non-default category combo
+            const hasCategoryCombo = de?.categoryCombo?.id && de.categoryCombo.id !== DEFAULT_CC
+            
+            if (hasCategoryCombo) {
+                // Use pre-fetched COC information from fullCategoryCombo
+                const fullCC = de.fullCategoryCombo
+                if (fullCC?.categoryOptionCombos?.length > 0) {
+                    addLog(`${s('D2')} SMS: using pre-fetched ${fullCC.categoryOptionCombos.length} COCs for DE ${de.id} (CC: ${de.categoryCombo.id} "${de.categoryCombo.name || fullCC.name || 'unnamed'}")`, 'info', datasetType)
+                    // Generate SMS codes for each category option combo
+                    fullCC.categoryOptionCombos.forEach((coc, cocIdx) => {
+                        const smsCode = {
+                            code: `${baseCode.toUpperCase()}${cocIdx + 1}`, // A1, A2, A3, A4
+                            dataElement: { id: de.id },
+                            categoryOptionCombo: { id: coc.id },
+                            formula: null,
+                        }
+                        // Build category option names for better visibility
+                        const categoryOptionNames = coc.categoryOptions?.map(co => co.name || co.code || co.id).join(', ') || 'default'
+                        addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${de.id} COC:${coc.id} "${coc.name || 'unnamed'}" [${categoryOptionNames}]`, 'info', datasetType)
+                        smsCodes.push(smsCode)
+                    })
+                } else {
+                    // Fallback: try to fetch COCs if not available in pre-fetched data
+                    addLog(`${s('D2')} SMS: no pre-fetched COCs, attempting API fetch for DE ${de.id}`, 'warning', datasetType)
+                    try {
+                        const ccResponse = await engine.query({
+                            categoryCombo: {
+                                resource: 'categoryCombos',
+                                id: de.categoryCombo.id,
+                                params: {
+                                    fields: 'id,name,categoryOptionCombos[id,name,code,categoryOptions[id,name,code]]'
+                                }
+                            }
+                        })
+                        
+                        const fetchedCC = ccResponse?.categoryCombo
+                        if (fetchedCC?.categoryOptionCombos?.length > 0) {
+                            addLog(`${s('D2')} SMS: fetched ${fetchedCC.categoryOptionCombos.length} COCs for DE ${de.id} (CC: ${de.categoryCombo.id} "${fetchedCC.name || 'unnamed'}")`, 'info', datasetType)
+                            fetchedCC.categoryOptionCombos.forEach((coc, cocIdx) => {
+                                const smsCode = {
+                                    code: `${baseCode.toUpperCase()}${cocIdx + 1}`,
+                                    dataElement: { id: de.id },
+                                    categoryOptionCombo: { id: coc.id },
+                                    formula: null,
+                                }
+                                // Build category option names for better visibility
+                        const categoryOptionNames = coc.categoryOptions?.map(co => co.name || co.code || co.id).join(', ') || 'default'
+                        addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${de.id} COC:${coc.id} "${coc.name || 'unnamed'}" [${categoryOptionNames}]`, 'info', datasetType)
+                                smsCodes.push(smsCode)
+                            })
+                        } else {
+                            // Final fallback to default COC
+                            const smsCode = {
+                                code: baseCode,
+                                dataElement: { id: de.id },
+                                categoryOptionCombo: { id: DEFAULT_COC },
+                                formula: null,
+                            }
+                            addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC} "default" [default]`, 'info', datasetType)
+                            smsCodes.push(smsCode)
+                        }
+                    } catch (error) {
+                        addLog(`${s('D2')} SMS: failed to fetch category combo for DE ${de.id}: ${error.message}`, 'warning', datasetType)
+                        // If fetching category combo fails, use default COC
+                        const smsCode = {
+                            code: baseCode,
+                            dataElement: { id: de.id },
+                            categoryOptionCombo: { id: DEFAULT_COC },
+                            formula: null,
+                        }
+                        addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC}`, 'info', datasetType)
+                        smsCodes.push(smsCode)
+                    }
+                }
+            } else {
+                // Data element uses default category combo
+                const smsCode = {
+                    code: baseCode,
+                    dataElement: { id: de.id },
+                    categoryOptionCombo: { id: DEFAULT_COC },
+                    formula: null,
+                }
+                addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id} "default" [default]`, 'info', datasetType)
+                smsCodes.push(smsCode)
+            }
+        }
+        
+        addLog(`${s('D')} SMS: generated ${smsCodes.length} total SMS codes`, 'info', datasetType)
+        return smsCodes
+    }
+
+    // -------------------------- Refresh SMS Command COCs --------------------------
+    const refreshSmsCommandCOCs = async (smsCommandId, datasetId, deList, addLog) => {
+        try {
+            addLog(`${s('D')} SMS: refreshing COCs for command ${smsCommandId}`, 'info', 'refresh')
+            
+            // Generate fresh SMS codes with proper COCs
+            const freshSmsCodes = await generateFallbackSmsCodes(deList, 'refresh', addLog, de)
+            
+            // Convert to the format expected by smsService
+            const codes = {}
+            freshSmsCodes.forEach(sc => {
+                codes[sc.code] = {
+                    dataElement: sc.dataElement.id,
+                    categoryOptionCombo: sc.categoryOptionCombo.id
+                }
+            })
+            
+            // Update the SMS command using smsService
+            await smsService.updateSmsCommand(de, smsCommandId, { smsCodes: codes })
+            addLog(`${s('D')} SMS: refreshed COCs for command ${smsCommandId}`, 'success', 'refresh')
+            
+            return freshSmsCodes
+        } catch (error) {
+            addLog(`${s('D')} SMS: failed to refresh COCs for command ${smsCommandId}: ${error.message}`, 'error', 'refresh')
+            throw error
+        }
+    }
+
     // -------------------------- SMS command (optional) --------------------------
     const createSmsForDataset = async (datasetType, cfg, datasetId, deList) => {
         const nested = cfg?.sms || {}
@@ -994,33 +1194,30 @@ const DatasetCreationModal = ({
         const separator = nested.separator || cfg?.smsSeparator || ' '
         const commandName = nested.name || cfg?.smsCommandName || `${cfg.name} SMS`
 
-        const preparedCodes = Array.isArray(cfg?.computedSmsCodes) ? cfg.computedSmsCodes : []
-        const smsCodes = preparedCodes.length
-            ? preparedCodes.map(sc => ({
-                code: sc.code || sc.smsCode,
-                dataElement: { id: sc?.dataElement?.id || sc?.dataElementId },
-                categoryOptionCombo: sc?.categoryOptionCombo ? { id: sc.categoryOptionCombo.id || DEFAULT_CC } : { id: DEFAULT_CC },
-                formula: null,
-            }))
-            : (deList || []).slice(0, 70).map((d, i) => ({
-                code: String.fromCharCode(97 + (i % 26)),
-                dataElement: { id: d.id },
-                categoryOptionCombo: { id: DEFAULT_CC },
-                formula: null,
-            }))
+        // Always generate proper SMS codes with correct COCs, regardless of preview state
+        addLog(`${s('D')} SMS: generating proper codes for ${deList.length} data elements`, 'info', datasetType)
+        const smsCodes = await generateProperSmsCodes(deList, datasetType, addLog, de)
 
         const body = {
             name: commandName,
             parserType: (cfg?.smsParser || 'KEY_VALUE_PARSER'),
             dataset: { id: datasetId },
             separator,
-            defaultMessage: `${keyword} <key${separator}value,...>`,
-            wrongFormatMessage: cfg?.smsWrongFormatMessage || 'Wrong format.',
-            noUserMessage: cfg?.smsNoUserMessage || 'Phone not linked to any user.',
-            moreThanOneOrgUnitMessage: cfg?.smsMoreThanOneOrgUnitMessage || 'Multiple org units linked to your user.',
-            successMessage: cfg?.smsSuccessMessage || 'Saved.',
-            smsCodes,
+            completenessMethod: 'AT_LEAST_ONE_DATAVALUE',
+            defaultMessage: `${keyword} <key:value${separator}key:value,...>`,
+            receivedMessage: cfg?.smsReceivedMessage || 'Command has been processed successfully',
+            wrongFormatMessage: cfg?.smsWrongFormatMessage || 'Wrong format. Please use the correct SMS structure.',
+            noUserMessage: cfg?.smsNoUserMessage || 'No DHIS2 user is linked to your number.',
+            moreThanOneOrgUnitMessage: cfg?.smsMoreThanOneOrgUnitMessage || 'Multiple org units found. Please contact support.',
+            successMessage: cfg?.smsSuccessMessage || 'Thank you! Your data was received successfully.',
+            smsCodes: smsCodes.map(smsCode => ({
+                code: smsCode.code,
+                compulsory: false,
+                dataElement: smsCode.dataElement,
+                optionId: smsCode.categoryOptionCombo
+            })),
         }
+        addLog(`${s('D')} SMS: creating command with ${smsCodes.length} codes`, 'info', datasetType)
         try {
             // If a command already exists with same dataset+name, treat as reuse for a clean flow
             await de.mutate(metadataQueries.createSmsCommand, { variables: { body } })
@@ -1066,8 +1263,8 @@ const DatasetCreationModal = ({
                     dataElements: [{
                         id: de.id, code: de.code, name: de.name, valueType: de.valueType || 'NUMBER',
                         categoryCombo: { id: de?.categoryCombo?.id || DEFAULT_CC },
-                        categoryOptionCombo: null,
-                        expression: `#{${de.id}}`,
+                        categoryOptionCombo: { id: DEFAULT_COC },
+                        expression: `#{${de.id}.${DEFAULT_COC}}`,
                     }],
                 })
             }
@@ -1145,22 +1342,60 @@ const DatasetCreationModal = ({
             addLog('Building mapping payload…', 'info')
             const mappingPayload = buildMappingPayload(results)
 
-            const createdDatasets = DATASET_TYPES.map((t) => ({
-                id: results?.[t]?.datasetId || null,
-                datasetType: t,
-                name: datasets?.[t]?.name || '',
-                code: datasets?.[t]?.code || '',
-                periodType: datasets?.[t]?.periodType || 'Monthly',
-                elements: (results?.[t]?.de || []).length,
-                orgUnits: (results?.[t]?.payload?.organisationUnits || []).length,
-                status: results?.[t]?.datasetId ? 'completed' : 'failed',
-                sms: results?.[t]?.sms || null,
-            }))
+            const createdDatasets = DATASET_TYPES.map((t) => {
+                const result = results?.[t] || {}
+                const cfg = datasets?.[t] || {}
+                const payload = result?.payload || {}
+                
+                return {
+                    id: result?.datasetId || null,
+                    name: payload?.name || cfg?.name || '',
+                    code: payload?.code || cfg?.code || '',
+                    datasetType: t,
+                    alias: TYPE_ALIAS[t] || t,
+                    categoryCombo: payload?.categoryCombo || { id: DEFAULT_CC },
+                    periodType: payload?.periodType || cfg?.periodType || 'Monthly',
+                    sms: result?.sms || null,
+                    dataElements: (result?.de || []).map(de => ({
+                        id: de.id,
+                        name: de.name,
+                        code: de.code,
+                        shortName: de.shortName,
+                        valueType: de.valueType,
+                        categoryCombo: de.categoryCombo
+                    })),
+                    orgUnits: (payload?.organisationUnits || []).map(ou => ({
+                        id: ou.id
+                    })),
+                    sharing: payload?.sharing || null,
+                    // Additional metadata for ReviewStep
+                    shortName: payload?.shortName || cfg?.shortName || '',
+                    formName: payload?.formName || cfg?.formName || '',
+                    description: payload?.description || cfg?.description || '',
+                    timelyDays: payload?.timelyDays ?? cfg?.timelyDays ?? 15,
+                    openFuturePeriods: payload?.openFuturePeriods ?? cfg?.openFuturePeriods ?? 0,
+                    expiryDays: payload?.expiryDays ?? cfg?.expiryDays ?? 0,
+                    openPeriodsAfterCoEndDate: payload?.openPeriodsAfterCoEndDate ?? cfg?.openPeriodsAfterCoEndDate ?? 0,
+                    version: payload?.version ?? cfg?.version ?? 1,
+                    formType: payload?.formType || cfg?.formType || 'DEFAULT',
+                    status: result?.datasetId ? 'completed' : 'failed',
+                    elementsCount: (result?.de || []).length,
+                    orgUnitsCount: (payload?.organisationUnits || []).length,
+                }
+            })
 
             const handoff = {
                 report: { results, startedAt: null, finishedAt: null },
                 mappingPayload,
                 createdDatasets,
+                elementMappings: mappingPayload?.elementsMapping || [],
+                elementMappingsFlat: (mappingPayload?.elementsMapping || []).map(m => ({
+                    mappingId: m.mappingId,
+                    dataElementName: m.dataElementName,
+                    valueType: m.valueType,
+                    datasets: m.mappings.map(x => ({ type: x.dataset.type, alias: x.dataset.alias, id: x.dataset.id })),
+                })),
+                localDatasets: { createdDatasets, elementMappings: mappingPayload?.elementsMapping || [] },
                 sms: { commands: DATASET_TYPES.map((t) => results?.[t]?.sms).filter(Boolean) },
             }
 
