@@ -16,7 +16,7 @@ import {
 } from '@dhis2/ui'
 import i18n from '@dhis2/d2-i18n'
 import DatasetCreationModal from '../../../components/DatasetCreationModal'
-import { dhis2Service } from '../../../services/dhis2Service'
+
 import styles from '../../Metadata/DatasetPreparation.module.css'
 import SMSCommandPreview from './components/SMSCommandPreview'
 
@@ -83,6 +83,8 @@ const datastoreQueries = {
         data: ({ data }) => data,
     },
 }
+
+
 
 // fetch COCs (local or external)
 const fetchCategoryOptionCombos = async (categoryComboId, dataEngine, externalConfig = null) => {
@@ -450,7 +452,7 @@ const DatasetPreparationPorted = ({
         lastMappingSigRef.current = mappingRowsSig
         setAssessmentData((prev) => ({
             ...(prev || {}),
-            elementMappings: mappingRows,
+            dataElementMappings: mappingRows,
             mappingPayload: {
                 ...(prev?.mappingPayload || {}),
                 elementsMapping: mappingRows,
@@ -528,6 +530,8 @@ const DatasetPreparationPorted = ({
             return []
         }
     }
+
+
 
     const updateDataset = (datasetType, field, value) => {
         setDatasets((prev) => ({ ...prev, [datasetType]: { ...prev[datasetType], [field]: value } }))
@@ -778,6 +782,7 @@ const DatasetPreparationPorted = ({
 
             setDatasets(initialDatasets)
             setDatasetDataElements(initialDataElements)
+
         } catch (err) {
             setError(i18n.t('Failed to initialize datasets: {{msg}}', { msg: err.message }))
         } finally {
@@ -1366,9 +1371,12 @@ const DatasetPreparationPorted = ({
                             []
 
                         const mappings =
+                            result?.handoff?.dataElementMappings ||
+                            result?.dataElementMappings ||
                             result?.handoff?.elementMappingsFlat ||
                             result?.elementMappingsFlat ||
                             result?.handoff?.elementMappings ||
+                            result?.savedPayload?.localDatasets?.dataElementMappings ||
                             result?.savedPayload?.localDatasets?.elementMappings ||
                             []
 
@@ -1378,58 +1386,11 @@ const DatasetPreparationPorted = ({
                         if (typeof setAssessmentData === 'function') {
                             setAssessmentData((prev) => ({
                                 ...(prev || {}),
-                                localDatasets: { createdDatasets: created, elementMappings: mappings },
-                                elementMappings: Array.isArray(mappings) ? mappings : Object.values(mappings || {}).flat(),
-                                createdDatasets: created,
+                                dqaDatasetsCreated: created,
+                                dataElementMappings: Array.isArray(mappings) ? mappings : Object.values(mappings || {}).flat(),
+                                orgUnitMappings: orgUnitMappings || [],
                                 sms: { ...(prev?.sms || {}), commands: smsCmds },
                             }))
-                        }
-                    }}
-                    saveAssessmentPayload={async (payload) => {
-                        try {
-                            const assessmentPayload = {
-                                id: assessmentId,
-                                name: assessmentName,
-                                datasets,
-                                dataElements: datasetDataElements,
-                                orgUnits: selectedOrgUnits,
-                                period,
-                                frequency,
-                                creationPayload: payload,
-                                elementMappings: payload.elementMappings || [],
-                                createdDatasets: payload.localDatasets?.createdDatasets || [],
-                                lastModified: new Date().toISOString(),
-                            }
-
-                            if (assessmentData?.externalConnection) assessmentPayload.externalConnection = assessmentData.externalConnection
-
-                            await (async (assessmentDataToSave) => {
-                                try {
-                                    await dhis2Service.saveAssessment(dataEngine, assessmentDataToSave)
-                                } catch (error) {
-                                    if (error.details?.httpStatusCode === 404 || error.httpStatusCode === 404) {
-                                        await dhis2Service.createAssessment(dataEngine, assessmentDataToSave)
-                                    } else {
-                                        throw error
-                                    }
-                                }
-                            })(assessmentPayload)
-
-                            if (typeof setAssessmentData === 'function') {
-                                setAssessmentData((prevData) => ({
-                                    ...prevData,
-                                    ...assessmentPayload,
-                                    creationPayload: payload,
-                                    mappingPayload: payload.mappingPayload,
-                                    createdDatasets: payload.localDatasets?.createdDatasets || [],
-                                    elementMappings: payload.elementMappings || [],
-                                    lastModified: new Date().toISOString(),
-                                }))
-                            }
-
-                            return assessmentPayload
-                        } catch {
-                            // non-fatal in UI
                         }
                     }}
                 />

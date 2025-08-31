@@ -145,9 +145,9 @@ export const ViewAssessment = () => {
     }
 
     // Extract assessment information
-    const assessmentInfo = assessment.Info || assessment
-    const dhis2Config = assessment.Info?.Dhis2config || assessment.Dhis2config || assessment.dhis2Config || {}
-    const localDatasets = assessment.localDatasetsCreated || []
+    const assessmentInfo = assessment.details || assessment
+    const dhis2Config = assessment.connection || assessment.Dhis2config || assessment.dhis2Config || {}
+    const localDatasets = assessment.dqaDatasetsCreated || []
 
     return (
         <div style={{

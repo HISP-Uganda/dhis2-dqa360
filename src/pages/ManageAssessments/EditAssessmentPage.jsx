@@ -572,57 +572,26 @@ export const EditAssessmentPage = () => {
     }
 
     // Handle save assessment
-    const handleSaveAssessment = async () => {
+    const handleSaveAssessment = async (payloadFromReview) => {
         try {
             setSaving(true)
             setError(null)
 
-            // Prepare assessment data for saving
-            const assessmentToSave = {
-                ...assessmentData,
-                lastUpdated: new Date().toISOString(),
-                lastUpdatedBy: 'Current User', // TODO: Get from DHIS2 context
-
-                // Include local datasets metadata
-                localDatasetsMetadata: {
-                    ...assessmentData.localDatasetsMetadata,
-                    createdDatasets: selectedDataSets,
-                    dataElementsMetadata: selectedDataElements.length > 0 ? [
-                        {
-                            name: 'Data Elements',
-                            dataElements: selectedDataElements
-                        }
-                    ] : [],
-                    organisationUnitsMetadata: selectedOrgUnits,
-                    categoryOptions,
-                    categories,
-                    categoryCombos,
-                    attributes,
-                    optionSets
-                },
-
-                // Update DHIS2 configuration if set
-                dhis2Configuration: dhis2Config,
-
-                // Include metadata source and organization unit mappings
-                metadataSource,
-                orgUnitMappings
-            }
-
-            console.log('Saving updated assessment:', assessmentToSave)
+            // Use ReviewStep's final payload (already normalized nested structure)
+            const payload = payloadFromReview
 
             // Save to datastore
-            await saveAssessment(assessmentToSave)
+            await saveAssessment(payload)
 
             setSuccessMessage('Assessment updated successfully!')
             setHasUnsavedChanges(false)
-            setOriginalData(JSON.parse(JSON.stringify(assessmentToSave)))
+            setOriginalData(JSON.parse(JSON.stringify(payload)))
 
             // Navigate back to manage assessments with success message
             setTimeout(() => {
                 navigate('/administration/assessments', {
                     state: {
-                        message: `Assessment "${assessmentData.name}" updated successfully!`
+                        message: `Assessment "${(payload.details?.name || assessmentData.name)}" updated successfully!`
                     }
                 })
             }, 1500)
@@ -734,150 +703,7 @@ export const EditAssessmentPage = () => {
         }
     }
 
-    // Render tab content (matching CreateAssessmentPage design)
-    // Build payload similar to CreateAssessmentPage
-    const buildAssessmentPayload = () => {
-        const now = new Date().toISOString()
 
-        const materializedDEs = selectedDataElements || []
-        const materializedOUs = selectedOrgUnits || []
-
-        // Derive datasets structure from selectedDataSets (which may be full objects already)
-        const dsArray = (selectedDataSets || []).map(ds => (typeof ds === 'string' ? { id: ds } : ds))
-
-        return {
-            id: assessmentData.id || `assessment_${Date.now()}`,
-            version: '2.0.0',
-            createdAt: assessmentData.createdAt || now,
-            lastUpdated: now,
-            info: {
-                name: assessmentData.name?.trim() || '',
-                description: assessmentData.description || '',
-                objectives: assessmentData.objectives || '',
-                scope: assessmentData.scope || '',
-                frequency: assessmentData.frequency || 'Monthly',
-                period: assessmentData.period || generatePeriodFromFrequency(assessmentData.frequency),
-                status: assessmentData.status || 'draft',
-                createdBy: assessmentData.createdBy || formatUserInfo(userInfo),
-                lastModifiedBy: formatUserInfo(userInfo),
-                assessmentType: assessmentData.assessmentType || 'baseline',
-                priority: assessmentData.priority || 'medium',
-                methodology: assessmentData.methodology || 'automated',
-                startDate: assessmentData.startDate || '',
-                endDate: assessmentData.endDate || '',
-                reportingLevel: assessmentData.reportingLevel || '',
-                dataQualityDimensions: assessmentData.dataQualityDimensions || ['accuracy'],
-                successCriteriaPredefined: assessmentData.successCriteriaPredefined || [],
-                successCriteria: assessmentData.successCriteria || '',
-                confidentialityLevel: assessmentData.confidentialityLevel || 'internal',
-                dataRetentionPeriod: assessmentData.dataRetentionPeriod || '5years',
-                baselineAssessmentId: assessmentData.baselineAssessmentId || '',
-                options: {
-                    autoSave: !!assessmentData.autoSave,
-                    autoSync: !!assessmentData.autoSync,
-                    validationAlerts: !!assessmentData.validationAlerts,
-                    historicalComparison: !!assessmentData.historicalComparison,
-                    publicAccess: !!assessmentData.publicAccess,
-                },
-            },
-            sms: {
-                enabled: !!assessmentData?.smsConfig?.enabled,
-                senderId: assessmentData?.smsConfig?.senderId || '',
-                reportKeyword: assessmentData?.smsConfig?.reportKeyword || 'DQA',
-                phonePattern: assessmentData?.smsConfig?.phonePattern || '',
-                previewMessage: assessmentData?.smsConfig?.previewMessage || 'DQA {{period}} {{orgUnit}} {{status}}',
-                commands: assessmentData?.smsConfig?.commands || [],
-            },
-            datasets: {
-                selected: dsArray.map(ds => ({
-                    id: ds.id,
-                    name: ds.name || ds.id,
-                    code: ds.code || '',
-                    periodType: ds.periodType || 'Monthly',
-                    organisationUnits: (
-                        Array.isArray(ds.organisationUnits)
-                            ? ds.organisationUnits
-                            : (Array.isArray(ds?.organisationUnits?.selected) ? ds.organisationUnits.selected : [])
-                    ).map(ou => ({
-                        id: ou.id, name: ou.name, code: ou.code || '', level: ou.level,
-                        path: ou.path, parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : null
-                    })),
-                    dataSetElements: (Array.isArray(ds.dataSetElements) ? ds.dataSetElements : []).map(dse => ({
-                        dataElement: dse?.dataElement ? {
-                            id: dse.dataElement.id,
-                            name: dse.dataElement.name,
-                            code: dse.dataElement.code || '',
-                            valueType: dse.dataElement.valueType || 'TEXT',
-                        } : null,
-                        categoryCombo: dse?.categoryCombo ? {
-                            id: dse.categoryCombo.id,
-                            name: dse.categoryCombo.name,
-                        } : null
-                    }))
-                })),
-                metadata: { totalSelected: dsArray.length, source: metadataSource || 'dhis2', lastUpdated: now },
-            },
-            dataElements: {
-                selected: materializedDEs.map(de => ({
-                    id: de.id,
-                    name: de.name,
-                    code: de.code || '',
-                    valueType: de.valueType,
-                    categoryCombo: de.categoryCombo ? { id: de.categoryCombo.id, name: de.categoryCombo.name } : undefined,
-                    categories: (de.categories || []).map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        code: c.code || '',
-                        categoryOptions: (c.options || []).map(o => ({ id: o.id, name: o.name, code: o.code || '' }))
-                    })),
-                    categoryOptionCount: de.categoryOptionCount || 0,
-                })),
-                metadata: { totalSelected: materializedDEs.length, lastUpdated: now, source: 'derived-from-datasets' },
-            },
-            orgUnits: {
-                selected: materializedOUs.map(ou => ({ id: ou.id, name: ou.name, level: ou.level || 1, path: ou.path || `/${ou.id}` })),
-                metadata: { totalSelected: materializedOUs.length, lastUpdated: now },
-            },
-            orgUnitMapping: {
-                mappings: (orgUnitMappings || []).map(m => ({ sourceId: m.source || m.external, targetId: m.target || m.local })).filter(m => m.sourceId && m.targetId),
-            },
-            localDatasets: {
-                info: {
-                    creationStatus: datasetPreparationComplete ? 'completed' : 'pending',
-                    createdAt: datasetPreparationComplete ? now : null,
-                    lastModified: datasetPreparationComplete ? now : null,
-                },
-                createdDatasets: (() => {
-                    const cp = assessmentData?.creationPayload
-                    if (!cp?.datasets) return []
-                    return Object.keys(cp.datasets).map(type => {
-                        const entry = cp.datasets[type] || {}
-                        const p = entry.payload || {}
-                        return {
-                            id: entry.datasetId || p.id || '',
-                            type,
-                            name: p.name || '',
-                            code: p.code || '',
-                            periodType: p.periodType || 'Monthly',
-                            elements: Array.isArray(p.dataSetElements) ? p.dataSetElements.length : 0,
-                            orgUnits: Array.isArray(p.organisationUnits) ? p.organisationUnits.length : 0,
-                            // Attach SMS command per dataset (if any)
-                            sms: entry.smsCommand || null,
-                            // Carry sharing snapshot that went to DHIS2
-                            sharing: p.sharing || null,
-                            // Persist the dataset payload itself as requested
-                            payload: p || null,
-                        }
-                    }).filter(d => d.id)
-                })(),
-                // Use new top-level elementMappings array if present; fallback to object map for older runs
-                elementMappings: Array.isArray(assessmentData?.creationPayload?.elementMappings)
-                    ? assessmentData.creationPayload.elementMappings
-                    : (assessmentData?.elementMappings || assessmentData?.creationPayload?.localDatasets?.elementMappings || []),
-            },
-            metadataSource: metadataSource || 'dhis2',
-        }
-    }
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -1742,26 +1568,9 @@ export const EditAssessmentPage = () => {
                             setSmsConfig={(cfg) => setAssessmentData(prev => ({ ...prev, smsConfig: cfg }))}
                             prereqsOk={true}
                             onBack={() => setActiveTab('preparation')}
-                            onDownload={() => {
-                                const payload = buildAssessmentPayload()
-                                const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2))
-                                const a = document.createElement('a')
-                                a.href = dataStr
-                                a.download = `${payload.info.name || 'assessment'}.json`
-                                document.body.appendChild(a)
-                                a.click()
-                                a.remove()
-                            }}
-                            onPrint={() => {
-                                const payload = buildAssessmentPayload()
-                                const w = window.open('', '_blank', 'width=900,height=700')
-                                if (!w) return
-                                w.document.write(`<pre>${JSON.stringify(payload, null, 2)}</pre>`)
-                                w.document.close()
-                            }}
+
                             onSave={handleSaveAssessment}
                             saving={saving}
-                            buildPayload={buildAssessmentPayload}
                         />
                     </div>
                 )
@@ -1771,6 +1580,7 @@ export const EditAssessmentPage = () => {
                 return <div>{i18n.t('Tab content not found')}</div>
         }
     }
+
 
     // Navigation component (matching CreateAssessmentPage)
     const renderNavigation = (position = 'bottom') => (

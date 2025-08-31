@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Button, NoticeBox, Tag, AlertBar } from '@dhis2/ui'
+import { Button, NoticeBox, Tag, AlertBar, Modal, ModalTitle, ModalContent, ModalActions } from '@dhis2/ui'
 import i18n from '@dhis2/d2-i18n'
 import { useDataEngine } from '@dhis2/app-runtime'
 import jsPDF from 'jspdf'
@@ -25,7 +25,7 @@ const prettyType = (t) => {
 const gatherFrom = (data) => {
     const creation = data?.creationPayload || {}
     const mp = creation?.mappingPayload || data?.mappingPayload || data?.handoff?.mappingPayload || data?.savedPayload?.mappingPayload || {}
-    const elementsMapping = mp?.elementsMapping || data?.elementMappings || creation?.elementMappings || []
+    const elementsMapping = mp?.elementsMapping || data?.dataElementMappings || creation?.dataElementMappings || []
     const created = creation?.localDatasets?.createdDatasets || data?.createdDatasets || []
     const smsCommands =
         (data?.sms?.commands) ||
@@ -85,12 +85,8 @@ const cellNoItem = {
 const ReviewStep = ({
                         assessmentData,
                         onBack,
-                        saveAssessmentPayload,
                         saving,
-                        onDownload,
-                        onPrint,
                         onSave,
-                        buildPayload,
                         userInfo,
                     }) => {
     const [saveStatus, setSaveStatus] = useState(null)
@@ -98,6 +94,8 @@ const ReviewStep = ({
     const [isDownloading, setIsDownloading] = useState(false)
     const [isPrinting, setIsPrinting] = useState(false)
     const [isSavingLocal, setIsSavingLocal] = useState(false)
+    const [showPreview, setShowPreview] = useState(false)
+    const [previewText, setPreviewText] = useState('')
 
     const {
         elementsMapping,
@@ -125,102 +123,141 @@ const ReviewStep = ({
 
     const buildFinalPayload = () => {
         const now = new Date().toISOString()
-        const metaSource = (assessmentData?.metadataSource || 'local').toLowerCase()
         const dsSel = Array.isArray(selectedDatasets?.selected) ? selectedDatasets.selected : (Array.isArray(selectedDatasets) ? selectedDatasets : [])
-        const deSel = Array.isArray(selectedDataElements?.selected) ? selectedDataElements.selected : (Array.isArray(selectedDataElements) ? selectedDataElements : [])
         const ouSel = Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : (Array.isArray(selectedOrgUnits) ? selectedOrgUnits : [])
-        const ouMap = metaSource === 'external' ? (assessmentData?.orgUnitMapping?.mappings || assessmentData?.orgUnitMappings || []) : 'N/A'
+        const externalCfg = assessmentData?.externalConfig || assessmentData?.dhis2Config?.info || {}
+        
+        // Map created datasets to dqaDatasetsCreated shape (correct structure)
+        const dqaDatasetsCreated = (created || []).map(d => ({
+            id: d.id,
+            code: d.code,
+            name: d.name,
+            datasetType: d.datasetType,
+            alias: d.alias || d.name,
+            periodType: d.periodType || 'Monthly',
+            categoryCombo: d.categoryCombo,
+            version: d.version ?? 1,
+            description: d.description || '',
+            formType: d.formType || 'DEFAULT',
+            formName: d.formName || d.name,
+            timelyDays: d.timelyDays ?? 15,
+            openFuturePeriods: d.openFuturePeriods ?? 0,
+            expiryDays: d.expiryDays ?? 0,
+            openPeriodsAfterCoEndDate: d.openPeriodsAfterCoEndDate ?? 0,
+            aggregationType: d.aggregationType || 'SUM',
+            dataElements: d.dataElements || [],
+            orgUnits: d.orgUnits || [],
+            sharing: d.sharing || {
+                publicAccess: 'rw------',
+                externalAccess: false,
+                userAccesses: [],
+                userGroupAccesses: []
+            },
+            // SMS command structure for new format
+            sms: d.sms || {}
+        }))
 
+        // Convert mapping rows to dataElementMappings shape (correct structure)
+        const dataElementMappings = rows.map((row, idx) => ({
+            mappingId: row.mappingId || `map_${idx}`,
+            mappingName: row.mappingName || row.dataElementName || row.name || 'Mapping',
+            dataElementName: row.dataElementName || row.name || '—',
+            valueType: row.valueType || 'NUMBER',
+            mappings: (row.mappings || row.map || []).map(m => ({
+                dataset: m.dataset || { type: m.datasetType, alias: m.alias, id: m.id },
+                dataElements: m.dataElements || [],
+                transform: m.transform
+            }))
+        }))
+
+        // Build the new nested structure
         return {
             id: assessmentData?.id || `assessment_${Date.now()}`,
-            version: '3.0.0',
             structure: 'nested',
+            version: '3.0.0',
             createdAt: assessmentData?.createdAt || now,
             lastUpdated: now,
-            metadataSource: metaSource,
+            metadataSource: assessmentData?.metadataSource || 'local',
 
-            Info: {
+            // Main details section (correct structure)
+            details: {
                 name: assessmentData?.name || '',
                 description: assessmentData?.description || '',
-                objectives: assessmentData?.objectives || '',
-                scope: assessmentData?.scope || '',
                 assessmentType: assessmentData?.assessmentType || 'baseline',
+                status: 'finished', // Always set to finished when saving
                 priority: assessmentData?.priority || 'medium',
-                methodology: assessmentData?.methodology || 'automated',
-                frequency: assessmentData?.frequency || 'monthly',
-                reportingLevel: assessmentData?.reportingLevel || 'facility',
+                frequency: assessmentData?.frequency || 'Monthly',
+                period: assessmentData?.period || '',
                 startDate: assessmentData?.startDate || '',
                 endDate: assessmentData?.endDate || '',
-                period: assessmentData?.period || '',
-                dataQualityDimensions: assessmentData?.dataQualityDimensions || ['completeness', 'timeliness'],
-                dataDimensionsQuality: assessmentData?.dataDimensionsQuality || assessmentData?.dataQualityDimensions || ['completeness', 'timeliness'],
-                stakeholders: assessmentData?.stakeholders || [],
-                riskFactors: assessmentData?.riskFactors || [],
-                successCriteria: assessmentData?.successCriteria || '',
-                successCriteriaPredefined: assessmentData?.successCriteriaPredefined || [],
+                reportingLevel: assessmentData?.reportingLevel || '',
+                dataQualityDimensions: assessmentData?.dataQualityDimensions || ['accuracy'],
+                scope: assessmentData?.scope || '',
+                objectives: assessmentData?.objectives || '',
                 notes: assessmentData?.notes || '',
+                tags: assessmentData?.tags || [],
+                customFields: assessmentData?.customFields || {},
                 notifications: assessmentData?.notifications !== undefined ? assessmentData.notifications : true,
                 autoSync: assessmentData?.autoSync !== undefined ? assessmentData.autoSync : true,
                 validationAlerts: assessmentData?.validationAlerts !== undefined ? assessmentData.validationAlerts : false,
                 historicalComparison: assessmentData?.historicalComparison !== undefined ? assessmentData.historicalComparison : false,
                 confidentialityLevel: assessmentData?.confidentialityLevel || 'internal',
                 dataRetentionPeriod: assessmentData?.dataRetentionPeriod || '5years',
-                publicAccess: assessmentData?.publicAccess !== undefined ? assessmentData.publicAccess : false,
-                status: assessmentData?.status || 'draft',
-                tags: assessmentData?.tags || [],
-                customFields: assessmentData?.customFields || {},
                 baselineAssessmentId: assessmentData?.baselineAssessmentId || null,
-                createdBy: userInfo ? {
-                    id: userInfo.id,
-                    username: userInfo.username,
-                    displayName: userInfo.displayName || `${userInfo.firstName || ''} ${userInfo.surname || ''}`.trim() || userInfo.username,
-                    firstName: userInfo.firstName,
-                    surname: userInfo.surname
-                } : null,
-                lastModifiedBy: userInfo ? {
-                    id: userInfo.id,
-                    username: userInfo.username,
-                    displayName: userInfo.displayName || `${userInfo.firstName || ''} ${userInfo.surname || ''}`.trim() || userInfo.username,
-                    firstName: userInfo.firstName,
-                    surname: userInfo.surname
-                } : null,
-                Dhis2config: {
-                    info: assessmentData?.externalConfig || assessmentData?.dhis2Config?.info || {},
-                    datasetsSelected: dsSel,
-                    orgUnitMapping: ouMap,
-                },
-                smsConfig: {
-                    ...(assessmentData?.smsConfig || {}),
-                    commands: smsCommands || [],
-                },
+                createdBy: userInfo?.displayName || userInfo?.name || null,
+                lastModifiedBy: userInfo?.displayName || userInfo?.name || null
             },
 
-            localDatasetsCreated: (created || []).map(d => ({
-                id: d.id,
-                name: d.name,
-                code: d.code,
-                datasetType: d.datasetType,
-                alias: d.alias,
-                categoryCombo: d.categoryCombo,
-                periodType: d.periodType || 'Monthly',
-                sms: d.sms || null,
-                dataElements: d.dataElements || [],
-                orgUnits: d.orgUnits || [],
-                sharing: d.sharing || null,
-                shortName: d.shortName || '',
-                formName: d.formName || '',
-                description: d.description || '',
-                timelyDays: d.timelyDays ?? 15,
-                openFuturePeriods: d.openFuturePeriods ?? 0,
-                expiryDays: d.expiryDays ?? 0,
-                openPeriodsAfterCoEndDate: d.openPeriodsAfterCoEndDate ?? 0,
-                version: d.version ?? 1,
-                formType: d.formType || 'DEFAULT',
-                status: d.status || 'unknown',
-                elementsCount: d.elementsCount || (d.dataElements ? d.dataElements.length : 0),
-                orgUnitsCount: d.orgUnitsCount || (d.orgUnits ? d.orgUnits.length : 0),
+            // Connection section (top-level)
+            connection: {
+                metadataSource: assessmentData?.metadataSource || 'external',
+                local: {
+                    systemName: 'DHIS2 Local Instance',
+                    baseUrl: '',
+                    version: '',
+                    apiVersion: '',
+                    configuredAt: now,
+                    timeout: 30000,
+                    useSSL: true
+                },
+                external: {
+                    baseUrl: externalCfg.baseUrl || '',
+                    version: externalCfg.version || '',
+                    apiVersion: externalCfg.apiVersion || '',
+                    auth: {
+                        type: externalCfg.authType || 'token',
+                        username: externalCfg.username || '',
+                        tokenRef: externalCfg.tokenRef || ''
+                    },
+                    connectionStatus: externalCfg.connectionStatus || 'not_tested',
+                    lastTested: externalCfg.lastTested || null,
+                    lastSuccessfulConnection: externalCfg.lastSuccessfulConnection || null,
+                    retryAttempts: externalCfg.retryAttempts || 3
+                }
+            },
+
+            // Datasets selected (top-level)
+            datasetsSelected: dsSel.map(ds => ({
+                code: ds.code,
+                name: ds.name || ds.displayName,
+                shortName: ds.shortName || ds.name,
+                periodType: ds.periodType,
+                dataSetElements: ds.dataSetElements || ds.dataElements?.length || 0,
+                categoryCombo: ds.categoryCombo,
+                id: ds.id,
+                organisationUnits: ds.organisationUnits || 0
             })),
-            elementMappings: rows,
+
+            // Org unit mappings (top-level)
+            orgUnitMappings: Array.isArray(assessmentData?.orgUnitMapping?.mappings)
+                ? assessmentData.orgUnitMapping.mappings
+                : (assessmentData?.orgUnitMappings || []),
+
+            // DQA datasets created (top-level)
+            dqaDatasetsCreated,
+            
+            // Data element mappings (top-level)
+            dataElementMappings
         }
     }
 
@@ -229,7 +266,7 @@ const ReviewStep = ({
 
         try {
             setIsDownloading(true)
-            const payload = typeof buildPayload === 'function' ? buildPayload() : buildFinalPayload()
+            const payload = buildFinalPayload()
             const enhancedPayload = {
                 ...payload,
                 exportInfo: {
@@ -244,7 +281,7 @@ const ReviewStep = ({
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             const timestamp = new Date().toISOString().split('T')[0]
-            const safeName = (payload.Info?.name || payload.details?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
+            const safeName = (payload.details?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
             a.download = `DQA360_${safeName}_${timestamp}.json`
             a.href = url
             document.body.appendChild(a)
@@ -270,65 +307,19 @@ const ReviewStep = ({
         try {
             setSaveStatus(null)
             setSaveMessage('')
-            const payload = typeof buildPayload === 'function' ? buildPayload() : buildFinalPayload()
+            const payload = buildFinalPayload()
+            
+            // Only use the new structure save function
             if (typeof onSave === 'function') {
                 await onSave(payload)
                 setSaveStatus('success')
-                setSaveMessage(`Assessment "${payload.Info?.name || payload.details?.name}" saved successfully!`)
-                navigate('/administration/assessments')
-                return
-            }
-            if (typeof saveAssessmentPayload === 'function') {
-                await saveAssessmentPayload(payload)
-                setSaveStatus('success')
-                setSaveMessage(`Assessment "${payload.Info?.name || payload.details?.name}" saved successfully!`)
+                setSaveMessage(`Assessment "${payload.details?.name}" completed and saved successfully! Status: Finished.`)
                 navigate('/administration/assessments')
                 return
             }
 
-            const key = payload.id
-            try {
-                await engine.mutate({ resource: `dataStore/dqa360/${key}`, type: 'create', data: payload })
-            } catch (createError) {
-                if (createError.message?.includes('already exists') || createError.httpStatusCode === 409) {
-                    await engine.mutate({ resource: `dataStore/dqa360/${key}`, type: 'update', data: payload })
-                } else {
-                    throw createError
-                }
-            }
-            try {
-                let idx
-                try {
-                    const res = await engine.query({ data: { resource: `dataStore/dqa360/assessments-index` } })
-                    idx = res?.data || { assessments: [], lastUpdated: null }
-                } catch {
-                    idx = { assessments: [], lastUpdated: null }
-                }
-                const item = {
-                    id: key,
-                    name: payload.details?.name || key,
-                    createdAt: payload.createdAt,
-                    lastUpdated: payload.lastUpdated,
-                    status: payload.details?.status || 'draft',
-                    datasetsCount: payload.datasetsCreated?.length || 0,
-                    mappingsCount: payload.dataElementsMappings?.length || 0
-                }
-                const exists = Array.isArray(idx.assessments) && idx.assessments.find((a) => a.id === key)
-                const next = exists
-                    ? idx.assessments.map((a) => (a.id === key ? item : a))
-                    : [...(idx.assessments || []), item]
-                const updatedIndex = { ...idx, assessments: next, lastUpdated: new Date().toISOString() }
-                try {
-                    await engine.mutate({ resource: `dataStore/dqa360/assessments-index`, type: 'update', data: updatedIndex })
-                } catch {
-                    await engine.mutate({ resource: `dataStore/dqa360/assessments-index`, type: 'create', data: updatedIndex })
-                }
-            } catch (indexError) {
-                console.warn('Failed to update assessments index:', indexError)
-            }
-            setSaveStatus('success')
-            setSaveMessage(`Assessment "${payload.details?.name}" saved successfully to DHIS2 dataStore!`)
-            navigate('/administration/assessments')
+            // Fallback error if no save function provided
+            throw new Error('No save function provided')
         } catch (error) {
             console.error('Save failed:', error)
             setSaveStatus('error')
@@ -341,7 +332,7 @@ const ReviewStep = ({
 
         try {
             setIsPrinting(true)
-            const payload = typeof buildPayload === 'function' ? buildPayload() : buildFinalPayload()
+            const payload = buildFinalPayload()
             const doc = new jsPDF({ unit: 'pt', format: 'a4' })
             const pageW = doc.internal.pageSize.getWidth()
             const pageH = doc.internal.pageSize.getHeight()
@@ -387,17 +378,18 @@ const ReviewStep = ({
                 { label: 'Start Date', value: payload.details?.startDate || '—' },
                 { label: 'End Date', value: payload.details?.endDate || '—' },
                 { label: 'Reporting Level', value: payload.details?.reportingLevel || '—' },
-                { label: 'Status', value: payload.details?.status || 'draft' }
+                { label: 'Status', value: 'Finished' },
+                { label: 'Completed At', value: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString() }
             ]
             details.forEach(item => { writeLines(`${item.label}: ${item.value}`, { size: 11, color: textColor, spacing: 16 }) })
             addSpacing(20)
 
             writeLines('Connection Information', { bold: true, size: 16, color: primaryColor, spacing: 20 })
             addSpacing(8)
-            writeLines(`Type: ${payload.connection?.type || 'local'}`, { size: 11, color: textColor, spacing: 16 })
-            if (payload.connection?.info) {
-                writeLines(`Base URL: ${payload.connection.info.baseUrl || '—'}`, { size: 11, color: textColor, spacing: 16 })
-                writeLines(`Version: ${payload.connection.info.version || '—'}`, { size: 11, color: textColor, spacing: 16 })
+            writeLines(`Type: ${payload.connection?.metadataSource || 'local'}`, { size: 11, color: textColor, spacing: 16 })
+            if (payload.connection?.external) {
+                writeLines(`Base URL: ${payload.connection.external.baseUrl || '—'}`, { size: 11, color: textColor, spacing: 16 })
+                writeLines(`Version: ${payload.connection.external.version || '—'}`, { size: 11, color: textColor, spacing: 16 })
             }
             addSpacing(20)
 
@@ -411,7 +403,7 @@ const ReviewStep = ({
                 { label: 'Data Elements Selected', value: deSel?.length || 0 },
                 { label: 'Organisation Units Selected', value: ouSel?.length || 0 },
                 { label: 'DQA Datasets Created', value: `${created?.length || 0}/4` },
-                { label: 'Element Mappings', value: rows.length },
+                { label: 'Data Element Mappings', value: rows.length },
                 { label: 'SMS Commands', value: (smsCommands || []).length }
             ]
             stats.forEach(stat => { writeLines(`${stat.label}: ${stat.value}`, { size: 11, color: textColor, spacing: 16 }) })
@@ -444,7 +436,7 @@ const ReviewStep = ({
             }
 
             if (rows && rows.length > 0) {
-                writeLines('Element Mappings Summary', { bold: true, size: 16, color: primaryColor, spacing: 20 })
+                writeLines('Data Element Mappings Summary', { bold: true, size: 16, color: primaryColor, spacing: 20 })
                 addSpacing(8)
                 writeLines(`Total mappings: ${rows.length}`, { size: 11, color: textColor, spacing: 16 })
                 const groupedMappings = rows.reduce((acc, row) => {
@@ -490,7 +482,7 @@ const ReviewStep = ({
 
             {!isReady && (
                 <NoticeBox warning title="Not ready to save">
-                    Please make sure: name, selected datasets, organisation units, 4 DQA datasets created, and element mappings are all present.
+                    Please make sure: name, selected datasets, organisation units, 4 local datasets created, and element mappings are all present.
                 </NoticeBox>
             )}
 
@@ -503,7 +495,7 @@ const ReviewStep = ({
                         <div><div style={{ color: '#666', fontSize: 12 }}>Datasets selected</div><div><strong>{dsSel?.length || 0}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Org Units</div><div><strong>{ouSel?.length || 0}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Data Elements</div><div><strong>{deSel?.length || 0}</strong></div></div>
-                        <div><div style={{ color: '#666', fontSize: 12 }}>Created DQA datasets</div><div><strong>{created?.length || 0}/4</strong></div></div>
+                        <div><div style={{ color: '#666', fontSize: 12 }}>Created Local datasets</div><div><strong>{created?.length || 0}/4</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Cross-dataset links</div><div><strong>{rows.length}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>SMS Commands</div><div><strong>{(smsCommands || []).length}</strong></div></div>
                     </div>
@@ -527,9 +519,119 @@ const ReviewStep = ({
                     <tr><td style={td}>Start</td><td style={td}>{assessmentData?.startDate || '—'}</td></tr>
                     <tr><td style={td}>End</td><td style={td}>{assessmentData?.endDate || '—'}</td></tr>
                     <tr><td style={td}>Reporting level</td><td style={td}>{assessmentData?.reportingLevel || '—'}</td></tr>
-                    <tr><td style={td}>Status</td><td style={td}>{assessmentData?.status || 'draft'}</td></tr>
+                    <tr><td style={td}>Status</td><td style={td}>
+                        <Tag positive icon="✅">Finished</Tag>
+                        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                            Assessment will be marked as completed upon saving
+                        </div>
+                    </td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            <h2 style={{ marginTop: 16 }}>🎯 Completion Summary</h2>
+            <div style={{ 
+                background: '#f8f9fa', 
+                border: '1px solid #e9ecef', 
+                borderRadius: 8, 
+                padding: 16, 
+                marginBottom: 16 
+            }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#28a745' }}>
+                            {created?.length || 0}/4
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>DQA Datasets Created</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#007bff' }}>
+                            {rows.length}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>Data Element Mappings</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#6f42c1' }}>
+                            {(smsCommands || []).filter(cmd => cmd.created).length}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>SMS Commands Active</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 'bold', color: '#fd7e14' }}>
+                            {(() => {
+                                const ouSel = Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : selectedOrgUnits
+                                return ouSel?.length || 0
+                            })()}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>Org Units Selected</div>
+                    </div>
+                </div>
+                
+                {created && created.length > 0 && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #dee2e6' }}>
+                        <h4 style={{ margin: '0 0 12px 0', color: '#495057' }}>📊 Created Dataset Links</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+                            {created.map((dataset, index) => {
+                                const baseUrl = assessmentData?.dhis2Config?.info?.baseUrl || assessmentData?.externalConfig?.baseUrl || window.location.origin
+                                const datasetUrl = `${baseUrl}/dhis-web-maintenance/#/list/dataSetSection/dataSet`
+                                const dataEntryUrl = `${baseUrl}/dhis-web-dataentry/#/datasets/${dataset.id}`
+                                
+                                return (
+                                    <div key={index} style={{ 
+                                        background: 'white', 
+                                        border: '1px solid #dee2e6', 
+                                        borderRadius: 6, 
+                                        padding: 12 
+                                    }}>
+                                        <div style={{ fontWeight: 'bold', color: '#495057', marginBottom: 4 }}>
+                                            {prettyType(dataset.datasetType)} Dataset
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#6c757d', marginBottom: 8 }}>
+                                            {dataset.name}
+                                        </div>
+                                        <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#6c757d', marginBottom: 8 }}>
+                                            ID: {dataset.id}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            <a 
+                                                href={datasetUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ 
+                                                    fontSize: 11, 
+                                                    color: '#007bff', 
+                                                    textDecoration: 'none',
+                                                    padding: '2px 6px',
+                                                    background: '#e7f3ff',
+                                                    borderRadius: 3,
+                                                    border: '1px solid #b3d9ff'
+                                                }}
+                                            >
+                                                📝 Maintenance
+                                            </a>
+                                            <a 
+                                                href={dataEntryUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ 
+                                                    fontSize: 11, 
+                                                    color: '#28a745', 
+                                                    textDecoration: 'none',
+                                                    padding: '2px 6px',
+                                                    background: '#e8f5e8',
+                                                    borderRadius: 3,
+                                                    border: '1px solid #b3e5b3'
+                                                }}
+                                            >
+                                                📊 Data Entry
+                                            </a>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <h2 style={{ marginTop: 16 }}>Connection</h2>
@@ -690,7 +792,7 @@ const ReviewStep = ({
                 )
             })()}
 
-            <h2 style={{ marginTop: 16 }}>Created DQA Datasets ({created?.length || 0})</h2>
+            <h2 style={{ marginTop: 16 }}>Created Local Datasets ({created?.length || 0})</h2>
             {(!created || created.length === 0) ? (
                 <div style={{ padding: 8, border: '1px solid #eee' }}>No created datasets</div>
             ) : (
@@ -894,7 +996,7 @@ const ReviewStep = ({
                 )}
 
                 <Button
-                    onClick={onDownload || downloadFinalPayload}
+                    onClick={downloadFinalPayload}
                     disabled={isDownloading}
                     loading={isDownloading}
                     icon={isDownloading ? undefined : '📥'}
@@ -903,7 +1005,7 @@ const ReviewStep = ({
                 </Button>
 
                 <Button
-                    onClick={onPrint || handlePrintSummary}
+                    onClick={handlePrintSummary}
                     disabled={isPrinting}
                     loading={isPrinting}
                     icon={isPrinting ? undefined : '🖨️'}
@@ -912,22 +1014,86 @@ const ReviewStep = ({
                 </Button>
 
                 <Button
+                    onClick={() => {
+                        try {
+                            const payload = buildFinalPayload()
+                            const pretty = JSON.stringify(payload, null, 2)
+                            setPreviewText(pretty)
+                            setShowPreview(true)
+                        } catch (e) {
+                            setPreviewText(`Error building payload: ${e?.message || e}`)
+                            setShowPreview(true)
+                        }
+                    }}
+                    icon="👁️"
+                >
+                    Preview JSON
+                </Button>
+
+                <Button
                     primary
                     onClick={handleSave}
                     disabled={!isReady || saving}
                     loading={saving}
-                    icon={saving ? undefined : '💾'}
+                    icon={saving ? undefined : '✅'}
                 >
-                    {saving ? 'Saving...' : '💾 Save Assessment'}
+                    {saving ? 'Completing Assessment...' : '✅ Complete & Save Assessment'}
                 </Button>
             </div>
+
+            {showPreview && (
+                <Modal large onClose={() => setShowPreview(false)} style={{ background: '#fff' }}>
+                    <ModalTitle>{i18n.t('Assessment JSON Preview')}</ModalTitle>
+                    <ModalContent>
+                        <div style={{
+                            maxHeight: 520,
+                            overflow: 'auto',
+                            background: '#0a0f1a',
+                            color: '#e6edf3',
+                            padding: 12,
+                            borderRadius: 4,
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace',
+                            fontSize: 12,
+                            lineHeight: 1.5
+                        }}>
+                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{previewText}</pre>
+                        </div>
+                    </ModalContent>
+                    <ModalActions>
+                        <Button onClick={() => setShowPreview(false)} secondary>{i18n.t('Close')}</Button>
+                        <Button
+                            onClick={() => {
+                                try {
+                                    const blob = new Blob([previewText], { type: 'application/json' })
+                                    const url = URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    const ts = new Date().toISOString().split('T')[0]
+                                    const name = (assessmentData?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
+                                    a.download = `DQA360_${name}_preview_${ts}.json`
+                                    a.href = url
+                                    document.body.appendChild(a)
+                                    a.click()
+                                    document.body.removeChild(a)
+                                    URL.revokeObjectURL(url)
+                                } catch (e) {
+                                    console.error('Preview download failed', e)
+                                }
+                            }}
+                            primary
+                        >
+                            {i18n.t('Download Preview JSON')}
+                        </Button>
+                    </ModalActions>
+                </Modal>
+            )}
 
             <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f8f9fa', borderRadius: 4, fontSize: 12, color: '#666' }}>
                 <strong>Actions Help:</strong>
                 <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
                     <li><strong>Download JSON Payload:</strong> Downloads the complete assessment configuration as a JSON file for backup or sharing</li>
                     <li><strong>Print Summary:</strong> Generates a comprehensive PDF report with all assessment details, statistics, and configurations</li>
-                    <li><strong>Save Assessment:</strong> Saves the assessment to DHIS2 dataStore for future access and management</li>
+                    <li><strong>Preview JSON:</strong> Shows the full datastore payload before saving</li>
+                    <li><strong>Complete & Save Assessment:</strong> Marks the assessment as finished and saves it to DHIS2 dataStore with completion details and dataset links</li>
                 </ul>
             </div>
         </div>

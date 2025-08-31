@@ -1566,207 +1566,19 @@ export const CreateAssessmentPage = () => {
         }
     }
 
-    // payload
-    const buildAssessmentPayload = () => {
-        const now = new Date().toISOString()
+    // legacy builder and print/download helpers removed; ReviewStep provides final payload
 
-        const selDEMap = new Map((elementsAll || []).map(e => [e.id, e]))
-        const materializedDEs = (selectedElementIds || []).map(id => selDEMap.get(id)).filter(Boolean)
-
-        const selOUMap = new Map((orgUnitsAll || []).map(o => [o.id, o]))
-        const materializedOUs = (selectedOrgUnitIds || []).map(id => selOUMap.get(id)).filter(Boolean)
-
-        return {
-            id: `assessment_${Date.now()}`,
-            version: '2.0.0',
-            createdAt: now,
-            lastUpdated: now,
-            info: {
-                name: assessmentData.name?.trim() || '',
-                description: assessmentData.description || '',
-                objectives: assessmentData.objectives || '',
-                scope: assessmentData.scope || '',
-                frequency: assessmentData.frequency || 'Monthly',
-                period: assessmentData.period || generatePeriodFromFrequency(assessmentData.frequency),
-                status: 'draft',
-                createdBy: formatUserInfo(userInfo),
-                lastModifiedBy: formatUserInfo(userInfo),
-                assessmentType: assessmentData.assessmentType || 'baseline',
-                priority: assessmentData.priority || 'medium',
-                methodology: assessmentData.methodology || 'automated',
-                startDate: assessmentData.startDate || '',
-                endDate: assessmentData.endDate || '',
-                reportingLevel: assessmentData.reportingLevel || '',
-                dataQualityDimensions: assessmentData.dataQualityDimensions || ['accuracy'],
-                successCriteriaPredefined: assessmentData.successCriteriaPredefined || [],
-                successCriteria: assessmentData.successCriteria || '',
-                confidentialityLevel: assessmentData.confidentialityLevel || 'internal',
-                dataRetentionPeriod: assessmentData.dataRetentionPeriod || '5years',
-                baselineAssessmentId: assessmentData.baselineAssessmentId || '',
-                options: {
-                    autoSave: !!assessmentData.autoSave,
-                    autoSync: !!assessmentData.autoSync,
-                    validationAlerts: !!assessmentData.validationAlerts,
-                    historicalComparison: !!assessmentData.historicalComparison,
-                    publicAccess: !!assessmentData.publicAccess,
-                },
-            },
-            sms: undefined,
-            datasets: {
-                selected: selectedDataSets.map(id => {
-                    const ds = localDatasets.find(d => d.id === id) || { id, name: id }
-                    return {
-                        id: ds.id,
-                        name: ds.name,
-                        code: ds.code || '',
-                        periodType: ds.periodType || 'Monthly',
-                        organisationUnits: (
-                            Array.isArray(ds.organisationUnits)
-                                ? ds.organisationUnits
-                                : (Array.isArray(ds?.organisationUnits?.selected) ? ds.organisationUnits.selected : [])
-                        ).map(ou => ({
-                            id: ou.id, name: ou.name, code: ou.code || '', level: ou.level,
-                            path: ou.path, parent: ou.parent ? { id: ou.parent.id, name: ou.parent.name, code: ou.parent.code || '' } : null
-                        })),
-                        dataSetElements: (Array.isArray(ds.dataSetElements) ? ds.dataSetElements : []).map(dse => ({
-                            dataElement: dse?.dataElement ? {
-                                id: dse.dataElement.id,
-                                name: dse.dataElement.name,
-                                code: dse.dataElement.code || '',
-                                valueType: dse.dataElement.valueType || 'TEXT',
-                                categoryCombo: dse?.dataElement?.categoryCombo ? {
-                                    id: dse.dataElement.categoryCombo.id,
-                                    name: dse.dataElement.categoryCombo.name,
-                                } : undefined,
-                            } : null,
-                            // Prefer element-level categoryCombo; fallback to pair-level if present
-                            categoryCombo: dse?.dataElement?.categoryCombo ? {
-                                id: dse.dataElement.categoryCombo.id,
-                                name: dse.dataElement.categoryCombo.name,
-                            } : (dse?.categoryCombo ? {
-                                id: dse.categoryCombo.id,
-                                name: dse.categoryCombo.name,
-                            } : null)
-                        }))
-                    }
-                }),
-                metadata: { totalSelected: selectedDataSets.length, source: metadataSource, lastUpdated: now },
-            },
-            dataElements: {
-                selected: materializedDEs.map(de => ({
-                    id: de.id,
-                    name: de.name,
-                    code: de.code || '',
-                    valueType: de.valueType,
-                    categoryCombo: de.categoryCombo ? { id: de.categoryCombo.id, name: de.categoryCombo.name } : undefined,
-                    categories: (de.categories || []).map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        code: c.code || '',
-                        categoryOptions: (c.options || []).map(o => ({
-                            id: o.id, name: o.name, code: o.code || ''
-                        }))
-                    })),
-                    categoryOptionCount: de.categoryOptionCount || 0,
-                })),
-                metadata: { totalSelected: materializedDEs.length, lastUpdated: now, source: 'derived-from-datasets' },
-            },
-            orgUnits: {
-                selected: materializedOUs.map(ou => ({ id: ou.id, name: ou.name, level: ou.level || 1, path: ou.path || `/${ou.id}` })),
-                metadata: { totalSelected: materializedOUs.length, lastUpdated: now },
-            },
-            orgUnitMapping: {
-                mappings: (orgUnitMappings || []).map(m => ({ sourceId: m.source, targetId: m.target })),
-            },
-            localDatasets: {
-                info: {
-                    creationStatus: datasetPreparationComplete ? 'completed' : 'pending',
-                    createdAt: datasetPreparationComplete ? now : null,
-                    lastModified: datasetPreparationComplete ? now : null,
-                },
-                createdDatasets: (() => {
-                    const cp = assessmentData?.creationPayload
-                    if (!cp?.datasets) return []
-                    return Object.keys(cp.datasets).map(type => {
-                        const entry = cp.datasets[type] || {}
-                        const p = entry.payload || {}
-                        return {
-                            id: entry.datasetId || p.id || '',
-                            type,
-                            name: p.name || '',
-                            code: p.code || '',
-                            periodType: p.periodType || 'Monthly',
-                            elements: Array.isArray(p.dataSetElements) ? p.dataSetElements.length : 0,
-                            orgUnits: Array.isArray(p.organisationUnits) ? p.organisationUnits.length : 0,
-                            sms: entry.smsCommand || null,
-                            sharing: p.sharing || null,
-                            payload: p || null,
-                        }
-                    }).filter(d => d.id)
-                })(),
-                elementMappings: Array.isArray(assessmentData?.creationPayload?.elementMappings)
-                    ? assessmentData.creationPayload.elementMappings
-                    : (assessmentData?.elementMappings || assessmentData?.creationPayload?.localDatasets?.elementMappings || []),
-            },
-            externalConfig: metadataSource === 'external' ? (externalConfig || {}) : undefined,
-            metadataSource,
-        }
-    }
-
-    const handleDownload = () => {
-        const payload = buildAssessmentPayload()
-        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2))
-        const a = document.createElement('a')
-        a.href = dataStr
-        a.download = `${payload.info.name || 'assessment'}.json`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-    }
-
-    const handlePrint = () => {
-        const payload = buildAssessmentPayload()
-        const w = window.open('', '_blank', 'width=900,height=700')
-        if (!w) return
-        const style = `
-            <style>
-                body{font-family: Arial, sans-serif; padding: 20px;}
-                h1{margin-top:0}
-                pre{background:#f7f7f7;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
-                .meta{margin-bottom:16px}
-                .meta div{margin:4px 0}
-            </style>
-        `
-        w.document.write(`
-            <html>
-                <head><title>${payload.info.name}</title>${style}</head>
-                <body>
-                    <h1>${payload.info.name}</h1>
-                    <div class="meta">
-                        <div><strong>${i18n.t('Period')}:</strong> ${payload.info.period}</div>
-                        <div><strong>${i18n.t('Frequency')}:</strong> ${payload.info.frequency}</div>
-                        <div><strong>${i18n.t('Dates')}:</strong> ${payload.info.startDate} — ${payload.info.endDate}</div>
-                        <div><strong>${i18n.t('Reporting level')}:</strong> ${payload.info.reportingLevel}</div>
-                    </div>
-                    <pre>${JSON.stringify(payload, null, 2)}</pre>
-                    <script>window.print();</script>
-                </body>
-            </html>
-        `)
-        w.document.close()
-    }
-
-    const handleSaveAssessment = async () => {
+    const handleSaveAssessment = async (payloadFromReview) => {
         setLoading(true)
         setError(null)
         try {
             const { valid, messages } = validateStep('review')
             if (!valid) { showValidationErrors(messages); setLoading(false); return }
-            const payload = buildAssessmentPayload()
+            const payload = payloadFromReview // use ReviewStep's final payload (nested structure)
             await saveAssessment(payload)
             clearDraft()
             navigate('/administration/assessments', {
-                state: { message: i18n.t('Assessment "{{name}}" created successfully', { name: payload.info.name }) },
+                state: { message: i18n.t('Assessment "{{name}}" created successfully', { name: (payload.details?.name || payload.info?.name) }) },
             })
         } catch (e) {
             console.error(e)
@@ -2007,11 +1819,8 @@ export const CreateAssessmentPage = () => {
                         setSmsConfig={setSmsConfig}
                         prereqsOk={arePrerequisiteTabsValid()}
                         onBack={() => changeTab('preparation')}
-                        onDownload={handleDownload}
-                        onPrint={handlePrint}
                         onSave={handleSaveAssessment}
                         saving={loading}
-                        buildPayload={buildAssessmentPayload}
                         selectedDataElements={selectedDataElements}
                         selectedDataSets={selectedDatasetObjects}
                         userInfo={userInfo}

@@ -28,7 +28,6 @@ const DATASET_UID_ATTRIBUTE_CODE = 'DQA360_DATASET_UID'
 
 // tidy logging sections
 const STEP = { A1: 'A1', A2: 'A2', A3: 'A3', A4: 'A4', A5: 'A5', B: 'B', C: 'C', D1: 'D1', D2: 'D2' }
-// Expand abbreviations in logs for clarity
 const STEP_LABEL = { A1: 'Category options', A2: 'Categories', A3: 'Category combos', A4: 'Data elements', A5: 'Summary', B: 'Organisation units', C: 'Datasets', D1: 'Sharing settings', D2: 'SMS' }
 const s = (k) => `[${STEP[k]} ${STEP_LABEL[k] ? '- ' + STEP_LABEL[k] : ''}]`
 
@@ -47,7 +46,6 @@ const uniqueSuffix = () => Date.now().toString(36).slice(-5).toUpperCase()
 const safeShort = (s, n = 50) => String(s || '').slice(0, n)
 const normCode = (s, fallbackPrefix = 'CC') =>
     (String(s ?? '').trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_]/g, '').toUpperCase()) || `${fallbackPrefix}_${uniqueSuffix()}`
-// set-equality for arrays of {id}
 const sameIdSet = (a = [], b = []) => {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
     const A = new Set(a.map(x => x?.id).filter(Boolean))
@@ -61,7 +59,6 @@ const metadataQueries = {
     upsertMetadata: {
         resource: 'metadata',
         type: 'create',
-        // Allow partial success to keep the flow seamless; create-or-update behavior
         params: { importMode: 'COMMIT', importStrategy: 'CREATE_AND_UPDATE', atomicMode: 'NONE' },
         data: ({ payload }) => payload,
     },
@@ -69,6 +66,12 @@ const metadataQueries = {
         resource: 'smsCommands',
         type: 'create',
         data: ({ body }) => body,
+    },
+    // Global maintenance (optional)
+    updateCategoryOptionCombos: {
+        resource: 'maintenance/categoryOptionComboUpdate',
+        type: 'create',
+        data: () => ({}),
     },
 }
 
@@ -96,17 +99,14 @@ const DatasetCreationModal = ({
     const [currentDatasetIdx, setCurrentDatasetIdx] = useState(0)
     const [currentStepIdx, setCurrentStepIdx] = useState(0)
 
-    const steps = useMemo(() => {
-        const base = [
-            'Manage data elements & category combos (category options / categories / category combos / data elements)',
-            'Resolve organisation units',
-            'Create or reuse dataset',
-            'Sharing settings',
-            'SMS commands',
-            'Finalize',
-        ]
-        return base
-    }, [])
+    const steps = useMemo(() => ([
+        'Manage data elements & category combos (category options / categories / category combos / data elements)',
+        'Resolve organisation units',
+        'Create or reuse dataset',
+        'Sharing settings',
+        'SMS commands',
+        'Finalize',
+    ]), [])
 
     const datasetUidAttrIdRef = useRef(null)
     const logsElRef = useRef(null)
@@ -129,7 +129,6 @@ const DatasetCreationModal = ({
     }, [localLogs])
 
     const addLog = (message, level = 'info', datasetType = null) => {
-        // Professional, single-line logs with DHIS2 terminology
         setLocalLogs((prev) => [
             ...prev,
             {
@@ -139,11 +138,8 @@ const DatasetCreationModal = ({
                 message: String(message || '').replace(/\s+/g, ' ').trim(),
             },
         ])
-        // Also echo to console for developer diagnostics
-        const prefix = datasetType ? `[${datasetType.toUpperCase()}]` : ''
-        const stamp = new Date().toISOString()
         // eslint-disable-next-line no-console
-        console.log(`${stamp} [${(level || 'info').toUpperCase()}] ${prefix} ${String(message || '').replace(/\s+/g, ' ').trim()}`)
+        console.log(`${new Date().toISOString()} [${(level || 'info').toUpperCase()}] ${datasetType ? `[${datasetType.toUpperCase()}]` : ''} ${String(message || '').replace(/\s+/g, ' ').trim()}`)
     }
 
     const downloadLogs = () => {
@@ -163,7 +159,6 @@ const DatasetCreationModal = ({
 
     // ------------------------------- Finders -------------------------------
     const findOne = async (resource, { id, code, name, fields = 'id,name,code' }) => {
-        // Avoid external UID lookups (causes 404 noise)
         const allowIdLookup = id && isUID(id) && metadataSource !== 'external'
 
         try {
@@ -176,7 +171,6 @@ const DatasetCreationModal = ({
                 if (item?.id) return item
             }
         } catch (e) {
-            // Graceful: 404 → not found; 409 → inconsequential for reads
             const msg = e?.details?.message || e?.message || String(e)
             if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
                 addLog(`${resource}: not found by code (${code})`, 'info')
@@ -225,7 +219,6 @@ const DatasetCreationModal = ({
 
     const findCategoryComboWithHierarchy = async ({ id, code, name }, datasetType) => {
         const fields = 'id,name,code,displayName,dataDimension,categories[id,name,code,displayName,dataDimensionType,categoryOptions[id,name,code,displayName,shortName]]'
-        // Prefer code/name; only do ID for local metadata
         try {
             if (code) {
                 const res = await de.query({
@@ -269,7 +262,6 @@ const DatasetCreationModal = ({
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
             const is404 = /404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404
-            // downgrade 404 to info to avoid noisy warnings
             addLog(`${s('A3')} Category combo by ID ${id}: ${msg}`, is404 ? 'info' : 'warning', datasetType)
         }
 
@@ -311,7 +303,6 @@ const DatasetCreationModal = ({
         const name = opt?.name || opt?.displayName || opt?.shortName || opt?.code || 'Option'
         const code = normCode(opt?.code || opt?.shortName || opt?.name, 'OPT')
 
-        // prefer reuse by code/name, then fallback to UID (local only)
         let existing = null
         existing = await findOne('categoryOptions', { code, fields: 'id,name,code' })
         if (!existing) existing = await findOne('categoryOptions', { name, fields: 'id,name,code' })
@@ -327,7 +318,6 @@ const DatasetCreationModal = ({
             }
         }
 
-        // create
         const preserveUID = opt?.id && isUID(opt.id) && metadataSource !== 'external'
         const draft = {
             id: preserveUID ? opt.id : generateUID(),
@@ -357,24 +347,22 @@ const DatasetCreationModal = ({
             addLog(`${s('A1')} Category option: created ${created.name}`, 'success', datasetType)
             return { id: created.id }
         }
-        // Do not use local draft id if not persisted
         addLog(`${s('A1')} Category option: not created/persisted — skipping`, 'warning', datasetType)
         return null
     }
 
     const ensureCategory = async (cat, optionRefs, datasetType, dataDimensionType = 'DISAGGREGATION') => {
         const name = cat?.name || cat?.displayName || cat?.shortName || cat?.code || 'Category'
-        const code = normCode(cat?.code || cat?.shortName || cat?.name, 'CAT')
+        the_cat_code:
+            const code = normCode(cat?.code || cat?.shortName || cat?.name, 'CAT')
 
         let existing = null
-        // prefer code/name first (include dataDimensionType when fetching)
         existing = await findOne('categories', { code, fields: 'id,name,code,dataDimensionType' })
         if (!existing) existing = await findOne('categories', { name, fields: 'id,name,code,dataDimensionType' })
         if (existing?.id) {
             addLog(`${s('A2')} Category: reuse ${existing.name} (${existing.id})`, 'info', datasetType)
             return { id: existing.id }
         }
-        // then fallback to UID (local only)
         if (cat?.id && isUID(cat.id) && metadataSource !== 'external') {
             existing = await findOne('categories', { id: cat.id, fields: 'id,name,code,dataDimensionType' })
             if (existing?.id) {
@@ -390,7 +378,7 @@ const DatasetCreationModal = ({
             shortName: safeShort(cat?.shortName || name, 50),
             code,
             dataDimension: true,
-            dataDimensionType, // 'DISAGGREGATION' for data elements; 'ATTRIBUTE' for datasets
+            dataDimensionType,
             categoryOptions: optionRefs,
         }
         addLog(`${s('A2')} Category: create ${name} (options=${optionRefs.length}, type=${dataDimensionType})`, 'info', datasetType)
@@ -415,7 +403,6 @@ const DatasetCreationModal = ({
             addLog(`${s('A2')} Category: created ${created.name}`, 'success', datasetType)
             return { id: created.id }
         }
-        // Do not use local draft id if not persisted
         addLog(`${s('A2')} Category: not created/persisted — skipping`, 'warning', datasetType)
         return null
     }
@@ -445,7 +432,6 @@ const DatasetCreationModal = ({
                 addLog(`${s('A2')} Category: skip ${cat?.name || cat?.code} (no ensured options)`, 'warning', datasetType)
                 continue
             }
-            // Ensure category passing the intended dataDimensionType (DISAGGREGATION for DE combos)
             const catRef = await ensureCategory(cat, optionRefs, datasetType, categoryDataDimensionType)
             if (catRef?.id) createdCategoryRefs.push(catRef)
             else {
@@ -463,7 +449,6 @@ const DatasetCreationModal = ({
         const ccName = src?.name || src?.displayName || `CategoryCombo_${uniqueSuffix()}`
         const ccCode = normCode(src?.code || src?.name, 'CC')
 
-        // reuse by UID (local only), then code/name
         let existing = null
         if (src?.id && isUID(src.id) && metadataSource !== 'external') {
             existing = await findOne('categoryCombos', { id: src.id, fields: 'id,name,code' })
@@ -474,7 +459,6 @@ const DatasetCreationModal = ({
         }
         existing = await findOne('categoryCombos', { code: ccCode, fields: 'id,name,code,categories[id]' })
         if (!existing) existing = await findOne('categoryCombos', { name: ccName, fields: 'id,name,code,categories[id]' })
-        // Fallback: scan for CC with identical category set
         if (!existing) {
             try {
                 const list = await de.query({
@@ -545,13 +529,11 @@ const DatasetCreationModal = ({
             addLog(`${s('A3')} Category combo: created ${created.name}`, 'success', datasetType)
             return { id: created.id, name: created.name, code: created.code }
         }
-        // Do not return non-persisted draft IDs. Fall back to DEFAULT to avoid 404 cascades
         addLog(`${s('A3')} Category combo: not created/persisted — falling back to DEFAULT`, 'warning', datasetType)
         return { id: DEFAULT_CC }
     }
 
     const ensureCategoryCombo = async (src, datasetType, categoryDataDimensionType = 'DISAGGREGATION') => {
-        // For external: default only when no hierarchy provided
         if (metadataSource === 'external' && (!src || (!src.id && !Array.isArray(src?.categories)))) {
             addLog(`${s('A3')} Category combo: external — default`, 'info', datasetType)
             return { id: DEFAULT_CC }
@@ -565,20 +547,16 @@ const DatasetCreationModal = ({
             return { id: DEFAULT_CC }
         }
 
-        // try reuse locally
         const hit = await findCategoryComboWithHierarchy({ id: src.id, code: src.code, name: src.name }, datasetType)
         if (hit?.id) {
             addLog(`${s('A3')} Category combo: reuse ${hit.name || hit.code} (${hit.id})`, 'success', datasetType)
             return { id: hit.id, name: hit.name, code: hit.code, categories: hit.categories || [] }
         }
 
-        // build from full structure if provided
         if (Array.isArray(src.categories) && src.categories.length > 0) {
-            // Use passed dataDimensionType: 'DISAGGREGATION' for DEs, 'ATTRIBUTE' for datasets
             return await createFullCategoryComboHierarchy(src, datasetType, categoryDataDimensionType)
         }
 
-        // otherwise basic: default category if available
         addLog(`${s('A3')} Category combo: basic (default category)`, 'info', datasetType)
         let defaultCategoryId = null
         try {
@@ -607,14 +585,12 @@ const DatasetCreationModal = ({
                 addLog(`${s('A3')} Category combo: basic create failed ${e?.details?.message || e?.message || e}`, 'warning', datasetType)
             }
         }
-        // Force safe fallback
         addLog(`${s('A3')} Category combo: fallback to DEFAULT`, 'warning', datasetType)
         return { id: DEFAULT_CC }
     }
 
     // ----------------------- DataElement creation -----------------------
     const upsertDataElementsForDataset = async (datasetType, arr) => {
-        // De-duplicate by code or name to avoid DB unique constraint errors
         const raw = Array.isArray(arr) ? arr : []
         const seen = new Set()
         const list = []
@@ -636,13 +612,9 @@ const DatasetCreationModal = ({
                 const valueType = String(src?.valueType || 'INTEGER')
                 const aggregationType = String(src?.aggregationType || 'SUM')
 
-                // STRICT ORDER 1→5 for each DE: CO → C → CC → DE → Summary
-                // External: do not attempt hierarchy; force DEFAULT CC to avoid 404 cascade
                 const ccSource = (metadataSource === 'external') ? { id: DEFAULT_CC } : (src?.fullCategoryCombo || src?.categoryCombo || null)
-                // For DEs, ensure categories use DISAGGREGATION
                 const cc = await ensureCategoryCombo(ccSource, datasetType, 'DISAGGREGATION')
 
-                // For external: do not pre-fetch DEs; try create first, then handle 409 by lookup
                 let existing = null
                 const enhancedFields = 'id,name,code,categoryCombo[id,name,code,categoryOptionCombos[id,name,code,categoryOptions[id,name,code]]]'
                 if (metadataSource !== 'external') {
@@ -658,7 +630,7 @@ const DatasetCreationModal = ({
                         code: existing.code,
                         valueType,
                         categoryCombo: existing.categoryCombo || { id: cc.id },
-                        fullCategoryCombo: existing.categoryCombo, // Now includes COCs
+                        fullCategoryCombo: existing.categoryCombo,
                     })
                     await sleep(4)
                     continue
@@ -689,10 +661,9 @@ const DatasetCreationModal = ({
                             code: check.code,
                             valueType,
                             categoryCombo: check.categoryCombo || { id: cc.id },
-                            fullCategoryCombo: check.categoryCombo, // Now includes COCs
+                            fullCategoryCombo: check.categoryCombo,
                         })
                     } else {
-                        // On inconsistent state, do not rely on local draft references
                         addLog(`${s('A4')} DE ${idx}/${list.length}: created but not retrievable → skip`, 'warning', datasetType)
                         continue
                     }
@@ -709,11 +680,10 @@ const DatasetCreationModal = ({
                                 code: maybe.code,
                                 valueType,
                                 categoryCombo: maybe.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: maybe.categoryCombo, // Now includes COCs
+                                fullCategoryCombo: maybe.categoryCombo,
                             })
                             continue
                         }
-                        // If not found by code, lookup by name
                         const maybeByName = await findOne('dataElements', { name, fields: enhancedFields })
                         if (maybeByName?.id) {
                             addLog(`${s('A4')} DE ${idx}/${list.length}: reuse by name ${maybeByName.code || maybeByName.id}`, 'success', datasetType)
@@ -723,11 +693,10 @@ const DatasetCreationModal = ({
                                 code: maybeByName.code,
                                 valueType,
                                 categoryCombo: maybeByName.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: maybeByName.categoryCombo, // Now includes COCs
+                                fullCategoryCombo: maybeByName.categoryCombo,
                             })
                             continue
                         }
-                        // As a last resort, do not invent new codes on conflict; skip creating duplicates
                         addLog(`${s('A4')} DE ${idx}/${list.length}: conflict but not resolvable → skip duplicate`, 'warning', datasetType)
                         continue
                     } else if (/404|not\s*found/i.test(msg)) {
@@ -741,7 +710,7 @@ const DatasetCreationModal = ({
                                 code: fallback.code,
                                 valueType,
                                 categoryCombo: fallback.categoryCombo || { id: cc.id },
-                                fullCategoryCombo: fallback.categoryCombo, // Now includes COCs
+                                fullCategoryCombo: fallback.categoryCombo,
                             })
                             continue
                         }
@@ -760,13 +729,10 @@ const DatasetCreationModal = ({
 
     // ------------------------ Org units (always local) ------------------------
     const resolveLocalOU = async (ou) => {
-        // Fast path: if local UID is provided and we're not mapping external → local, use it directly
         if (metadataSource !== 'external' && ou?.id && isUID(ou.id)) {
             return { id: ou.id }
         }
-        // when external, map external->local first
         if (metadataSource === 'external') {
-            // Prefer mapping; otherwise accept directly if it's already a local UID
             const srcId = String(ou?.id || '')
             const mapping = (orgUnitMappings || []).find((m) => String(m.source) === srcId)
             const targetId = mapping?.target || (isUID(srcId) ? srcId : null)
@@ -774,7 +740,6 @@ const DatasetCreationModal = ({
                 const mapped = await findOne('organisationUnits', { id: targetId, fields: 'id,name,code' })
                 if (mapped?.id) return { id: mapped.id, name: mapped.name, code: mapped.code }
             }
-            // If not resolvable, skip
             return null
         }
         const byCode = await findOne('organisationUnits', { code: ou?.code, fields: 'id,name,code' })
@@ -792,36 +757,28 @@ const DatasetCreationModal = ({
         const mappings = Array.isArray(orgUnitMappings) ? orgUnitMappings : []
         const mapBySource = new Map(mappings.map((m) => [String(m.source), m.target]))
 
-        // Choose the initial list provided by the UI
         let initial = Array.isArray(assignedOrgUnitsByDataset?.[datasetType])
             ? assignedOrgUnitsByDataset[datasetType]
             : (Array.isArray(orgUnits) ? orgUnits : [])
 
-        // When using external metadata, always map external selections to local UIDs
         let source
         if (metadataSource === 'external') {
             addLog(`${s('B')} Organisation units: resolving external selections to local`, 'info', datasetType)
             source = await Promise.all((initial || []).map(async (ou) => {
                 const srcId = String(ou?.id || '')
                 const mappedTarget = mapBySource.get(srcId)
-                if (mappedTarget) {
-                    return { id: mappedTarget }
-                }
-                // If looks like a UID, treat as already-local (Assigned OrgUnits column)
+                if (mappedTarget) return { id: mappedTarget }
                 if (isUID(srcId)) {
-                    // Optionally verify existence
                     try {
                         const exists = await findOne('organisationUnits', { id: srcId, fields: 'id' })
                         if (exists?.id) return { id: srcId }
                     } catch {}
-                    // If not resolvable, still skip
                 }
                 addLog(`${s('B')} Organisation units: no mapping for ${srcId} and not a resolvable local UID`, 'warning', datasetType)
                 return null
             }))
             source = source.filter(Boolean)
         } else {
-            // local metadata: use list as-is
             source = initial
         }
 
@@ -849,8 +806,6 @@ const DatasetCreationModal = ({
     }
 
     const createDataset = async (datasetType, cfg, deList, ouList) => {
-        // dataset-level CC from config
-        // Dataset-level combos require ATTRIBUTE categories
         const dsCC = await ensureCategoryCombo(cfg.fullCategoryCombo || cfg.categoryCombo || { id: DEFAULT_CC }, datasetType, 'ATTRIBUTE')
 
         addLog(`${s('C')} Dataset: ${cfg.name} (DEs=${deList.length}, OUs=${ouList.length})`, 'info', datasetType)
@@ -887,8 +842,6 @@ const DatasetCreationModal = ({
 
         addLog(`${s('C')} Dataset: submit`, 'info', datasetType)
 
-        // reuse existing by code/name
-        // For external: no pre-fetch; attempt create, then handle 409 by lookup
         let existing = null
         if (metadataSource !== 'external') {
             existing = await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
@@ -898,21 +851,22 @@ const DatasetCreationModal = ({
             try {
                 await de.mutate(metadataQueries.upsertMetadata, {
                     variables: { payload: { dataSets: [{
-                        id: existing.id,
-                        name: payload.name,
-                        code: payload.code,
-                        periodType: payload.periodType,
-                        categoryCombo: payload.categoryCombo,
-                        dataSetElements: payload.dataSetElements,
-                        organisationUnits: payload.organisationUnits,
-                        sharing: payload.sharing,
-                    }] } }
+                                id: existing.id,
+                                name: payload.name,
+                                shortName: payload.shortName,
+                                formName: payload.formName,
+                                code: payload.code,
+                                periodType: payload.periodType,
+                                categoryCombo: payload.categoryCombo,
+                                dataSetElements: payload.dataSetElements,
+                                organisationUnits: payload.organisationUnits,
+                                sharing: payload.sharing,
+                            }] } }
                 })
                 addLog(`${s('C')} Dataset: assignments updated`, 'info', datasetType)
             } catch (eUp) {
                 const baseMsg = eUp?.details?.message || eUp?.message || String(eUp)
                 addLog(`${s('C')} Dataset: update skipped ${baseMsg}`, 'warning', datasetType)
-                // Try to print DHIS2 import report details for easier debugging
                 try {
                     const resp = eUp?.details?.response || eUp?.details?.data || eUp?.data || {}
                     const report = resp?.importReport || resp?.response || resp
@@ -936,9 +890,7 @@ const DatasetCreationModal = ({
                         const st = report.stats
                         addLog(`${s('C')} Import stats - created:${st.created} updated:${st.updated} deleted:${st.deleted} ignored:${st.ignored}`,'info',datasetType)
                     }
-                } catch (_) {
-                    // no-op if shape differs
-                }
+                } catch (_) { /* ignore */ }
             }
             addLog(`${s('D')} Sharing: public=${payload.sharing.public} external=${payload.sharing.external}`, 'info', datasetType)
             return { id: existing.id, payload }
@@ -946,9 +898,7 @@ const DatasetCreationModal = ({
 
         try {
             await de.mutate(metadataQueries.upsertMetadata, { variables: { payload: { dataSets: [payload] } } })
-            const resolved = (metadataSource === 'external')
-                ? await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
-                : await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
+            const resolved = await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
             if (resolved?.id) {
                 addLog(`${s('C')} Dataset: created ${resolved.name} (${resolved.id})`, 'success', datasetType)
                 addLog(`${s('D')} Sharing: public=${payload.sharing.public} external=${payload.sharing.external}`, 'info', datasetType)
@@ -981,183 +931,97 @@ const DatasetCreationModal = ({
         }
     }
 
-    // -------------------------- Fallback SMS code generation --------------------------
-    const generateFallbackSmsCodes = async (deList, datasetType, addLog, engine) => {
-        const smsCodes = []
-        
-        for (let i = 0; i < (deList || []).length && i < 70; i++) {
-            const de = deList[i]
-            const baseCode = String.fromCharCode(97 + (i % 26)) // a, b, c, ...
-            
-            // Check if this data element has a non-default category combo
-            const hasCategoryCombo = de?.categoryCombo?.id && de.categoryCombo.id !== DEFAULT_CC
-            
-            if (hasCategoryCombo) {
-                try {
-                    // Fetch the full category combo to get category option combos
-                    const ccResponse = await engine.query(metadataQueries.getCategoryCombo, {
-                        variables: { id: de.categoryCombo.id }
-                    })
-                    
-                    const fullCC = ccResponse?.categoryCombo
-                    if (fullCC?.categoryOptionCombos?.length > 0) {
-                        // Generate SMS codes for each category option combo
-                        fullCC.categoryOptionCombos.forEach((coc, cocIdx) => {
-                            const smsCode = {
-                                code: `${baseCode.toUpperCase()}${cocIdx + 1}`, // A1, A2, A3, A4
-                                dataElement: { id: de.id },
-                                categoryOptionCombo: { id: coc.id },
-                                formula: null,
-                            }
-                            addLog(`${s('D2')} SMS: expanded code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
-                            smsCodes.push(smsCode)
-                        })
-                    } else {
-                        // Fallback to default COC if no category option combos found
-                        const smsCode = {
-                            code: baseCode,
-                            dataElement: { id: de.id },
-                            categoryOptionCombo: { id: DEFAULT_COC },
-                            formula: null,
-                        }
-                        addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
-                        smsCodes.push(smsCode)
-                    }
-                } catch (error) {
-                    // If fetching category combo fails, use default COC
-                    const smsCode = {
-                        code: baseCode,
-                        dataElement: { id: de.id },
-                        categoryOptionCombo: { id: DEFAULT_COC },
-                        formula: null,
-                    }
-                    addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
-                    smsCodes.push(smsCode)
-                }
-            } else {
-                // Data element uses default category combo
-                const smsCode = {
-                    code: baseCode,
-                    dataElement: { id: de.id },
-                    categoryOptionCombo: { id: DEFAULT_COC },
-                    formula: null,
-                }
-                addLog(`${s('D')} SMS: fallback code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
-                smsCodes.push(smsCode)
+    // -------------------------- Ensure COCs exist (per CC) --------------------------
+    const ensureCOCsForCategoryCombos = async (engine, ccIds = [], addLogFn, datasetType) => {
+        // DHIS2 endpoint: POST /maintenance/categoryOptionComboUpdate/categoryCombo/{categoryComboId}
+        const ids = Array.from(new Set((ccIds || []).filter((id) => id && id !== DEFAULT_CC)))
+        if (!ids.length) return
+        addLogFn(`${s('D2')} SMS: ensuring COCs for ${ids.length} category combo(s)`, 'info', datasetType)
+        for (const ccId of ids) {
+            try {
+                await engine.mutate({
+                    resource: `maintenance/categoryOptionComboUpdate/categoryCombo/${ccId}`,
+                    type: 'create',
+                    data: () => ({}),
+                })
+                addLogFn(`${s('D2')} SMS: COC generation triggered for CC ${ccId}`, 'success', datasetType)
+                await sleep(250)
+            } catch (e) {
+                const msg = e?.details?.message || e?.message || String(e)
+                addLogFn(`${s('D2')} SMS: COC generation failed for CC ${ccId}: ${msg}`, 'warning', datasetType)
             }
         }
-        
-        return smsCodes
     }
 
     // -------------------------- Generate Proper SMS Codes --------------------------
-    const generateProperSmsCodes = async (deList, datasetType, addLog, engine) => {
+    const generateProperSmsCodes = async (deList, datasetType, addLogFn, engine) => {
         const smsCodes = []
-        
+
         for (let i = 0; i < deList.length && i < 70; i++) {
             const de = deList[i]
             const baseCode = String.fromCharCode(97 + (i % 26)) // a, b, c, ...
-            
-            // Check if this data element has a non-default category combo
-            const hasCategoryCombo = de?.categoryCombo?.id && de.categoryCombo.id !== DEFAULT_CC
-            
-            if (hasCategoryCombo) {
-                // Use pre-fetched COC information from fullCategoryCombo
-                const fullCC = de.fullCategoryCombo
-                if (fullCC?.categoryOptionCombos?.length > 0) {
-                    addLog(`${s('D2')} SMS: using pre-fetched ${fullCC.categoryOptionCombos.length} COCs for DE ${de.id} (CC: ${de.categoryCombo.id} "${de.categoryCombo.name || fullCC.name || 'unnamed'}")`, 'info', datasetType)
-                    // Generate SMS codes for each category option combo
-                    fullCC.categoryOptionCombos.forEach((coc, cocIdx) => {
-                        const smsCode = {
-                            code: `${baseCode.toUpperCase()}${cocIdx + 1}`, // A1, A2, A3, A4
-                            dataElement: { id: de.id },
-                            categoryOptionCombo: { id: coc.id },
-                            formula: null,
-                        }
-                        // Build category option names for better visibility
-                        const categoryOptionNames = coc.categoryOptions?.map(co => co.name || co.code || co.id).join(', ') || 'default'
-                        addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${de.id} COC:${coc.id} "${coc.name || 'unnamed'}" [${categoryOptionNames}]`, 'info', datasetType)
-                        smsCodes.push(smsCode)
+            const ccId = de?.categoryCombo?.id
+            const hasNonDefaultCC = ccId && ccId !== DEFAULT_CC
+
+            let fullCC = de?.fullCategoryCombo
+
+            // Fetch COCs when needed with a named key (no function signatures)
+            if (hasNonDefaultCC && !(fullCC?.categoryOptionCombos?.length > 0)) {
+                try {
+                    const res = await engine.query({
+                        cc: {
+                            resource: 'categoryCombos',
+                            id: ccId,
+                            params: { fields: 'id,name,categoryOptionCombos[id,name,code,categoryOptions[id,name,code]]' },
+                        },
                     })
-                } else {
-                    // Fallback: try to fetch COCs if not available in pre-fetched data
-                    addLog(`${s('D2')} SMS: no pre-fetched COCs, attempting API fetch for DE ${de.id}`, 'warning', datasetType)
-                    try {
-                        const ccResponse = await engine.query({
-                            categoryCombo: {
-                                resource: 'categoryCombos',
-                                id: de.categoryCombo.id,
-                                params: {
-                                    fields: 'id,name,categoryOptionCombos[id,name,code,categoryOptions[id,name,code]]'
-                                }
-                            }
-                        })
-                        
-                        const fetchedCC = ccResponse?.categoryCombo
-                        if (fetchedCC?.categoryOptionCombos?.length > 0) {
-                            addLog(`${s('D2')} SMS: fetched ${fetchedCC.categoryOptionCombos.length} COCs for DE ${de.id} (CC: ${de.categoryCombo.id} "${fetchedCC.name || 'unnamed'}")`, 'info', datasetType)
-                            fetchedCC.categoryOptionCombos.forEach((coc, cocIdx) => {
-                                const smsCode = {
-                                    code: `${baseCode.toUpperCase()}${cocIdx + 1}`,
-                                    dataElement: { id: de.id },
-                                    categoryOptionCombo: { id: coc.id },
-                                    formula: null,
-                                }
-                                // Build category option names for better visibility
-                        const categoryOptionNames = coc.categoryOptions?.map(co => co.name || co.code || co.id).join(', ') || 'default'
-                        addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${de.id} COC:${coc.id} "${coc.name || 'unnamed'}" [${categoryOptionNames}]`, 'info', datasetType)
-                                smsCodes.push(smsCode)
-                            })
-                        } else {
-                            // Final fallback to default COC
-                            const smsCode = {
-                                code: baseCode,
-                                dataElement: { id: de.id },
-                                categoryOptionCombo: { id: DEFAULT_COC },
-                                formula: null,
-                            }
-                            addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC} "default" [default]`, 'info', datasetType)
-                            smsCodes.push(smsCode)
-                        }
-                    } catch (error) {
-                        addLog(`${s('D2')} SMS: failed to fetch category combo for DE ${de.id}: ${error.message}`, 'warning', datasetType)
-                        // If fetching category combo fails, use default COC
-                        const smsCode = {
-                            code: baseCode,
-                            dataElement: { id: de.id },
-                            categoryOptionCombo: { id: DEFAULT_COC },
-                            formula: null,
-                        }
-                        addLog(`${s('D2')} SMS: fallback code ${smsCode.code} → DE:${de.id} COC:${DEFAULT_COC}`, 'info', datasetType)
-                        smsCodes.push(smsCode)
+                    fullCC = res?.cc
+                    if (fullCC?.categoryOptionCombos?.length > 0) {
+                        addLogFn(`${s('D2')} SMS: fetched ${fullCC.categoryOptionCombos.length} COCs for CC ${ccId}`, 'info', datasetType)
                     }
+                } catch (e) {
+                    addLogFn(`${s('D2')} SMS: fetch COCs failed for CC ${ccId}: ${e?.message || e}`, 'warning', datasetType)
                 }
+            }
+
+            if (hasNonDefaultCC && fullCC?.categoryOptionCombos?.length > 0) {
+                fullCC.categoryOptionCombos.forEach((coc, idx) => {
+                    const code = `${baseCode.toUpperCase()}${idx + 1}` // A1, A2, ...
+                    const names = coc.categoryOptions?.map((co) => co.name || co.code || co.id).join(', ') || 'default'
+                    addLogFn(`${s('D2')} SMS: code ${code} → DE:${de.id} COC:${coc.id} "${coc.name || 'unnamed'}" [${names}]`, 'info', datasetType)
+                    smsCodes.push({
+                        code,
+                        dataElement: { id: de.id },
+                        categoryOptionCombo: { id: coc.id },
+                        formula: null,
+                    })
+                })
             } else {
-                // Data element uses default category combo
                 const smsCode = {
                     code: baseCode,
                     dataElement: { id: de.id },
                     categoryOptionCombo: { id: DEFAULT_COC },
                     formula: null,
                 }
-                addLog(`${s('D2')} SMS: code ${smsCode.code} → DE:${smsCode.dataElement.id} COC:${smsCode.categoryOptionCombo.id} "default" [default]`, 'info', datasetType)
+                addLogFn(`${s('D2')} SMS: ${hasNonDefaultCC ? 'no COCs after fetch → ' : ''}fallback code ${smsCode.code} → DE:${de.id} COC:${smsCode.categoryOptionCombo.id}`, 'info', datasetType)
                 smsCodes.push(smsCode)
             }
         }
-        
-        addLog(`${s('D2')} SMS: generated ${smsCodes.length} total SMS codes`, 'info', datasetType)
+
+        addLogFn(`${s('D2')} SMS: generated ${smsCodes.length} total SMS codes`, 'info', datasetType)
         return smsCodes
     }
 
     // -------------------------- Refresh SMS Command COCs --------------------------
-    const refreshSmsCommandCOCs = async (smsCommandId, datasetId, deList, addLog) => {
+    const refreshSmsCommandCOCs = async (smsCommandId, datasetId, deList, addLogFn) => {
         try {
-            addLog(`${s('D2')} SMS: refreshing COCs for command ${smsCommandId}`, 'info', 'refresh')
-            
-            // Generate fresh SMS codes with proper COCs
-            const freshSmsCodes = await generateFallbackSmsCodes(deList, 'refresh', addLog, de)
-            
-            // Convert to the format expected by smsService
+            addLogFn(`${s('D2')} SMS: refreshing COCs for command ${smsCommandId}`, 'info', 'refresh')
+
+            const ccIds = (deList || []).map((d) => d?.categoryCombo?.id).filter(Boolean)
+            await ensureCOCsForCategoryCombos(de, ccIds, addLogFn, 'refresh')
+
+            const freshSmsCodes = await generateProperSmsCodes(deList, 'refresh', addLogFn, de)
+
             const codes = {}
             freshSmsCodes.forEach(sc => {
                 codes[sc.code] = {
@@ -1165,14 +1029,13 @@ const DatasetCreationModal = ({
                     categoryOptionCombo: sc.categoryOptionCombo.id
                 }
             })
-            
-            // Update the SMS command using smsService
+
             await smsService.updateSmsCommand(de, smsCommandId, { smsCodes: codes })
-            addLog(`${s('D2')} SMS: refreshed COCs for command ${smsCommandId}`, 'success', 'refresh')
-            
+            addLogFn(`${s('D2')} SMS: refreshed COCs for command ${smsCommandId}`, 'success', 'refresh')
+
             return freshSmsCodes
         } catch (error) {
-            addLog(`${s('D2')} SMS: failed to refresh COCs for command ${smsCommandId}: ${error.message}`, 'error', 'refresh')
+            addLogFn(`${s('D2')} SMS: failed to refresh COCs for command ${smsCommandId}: ${error.message}`, 'error', 'refresh')
             throw error
         }
     }
@@ -1190,11 +1053,16 @@ const DatasetCreationModal = ({
             addLog(`${s('D2')} SMS: skipped (dataset id missing)`, 'warning', datasetType)
             return null
         }
+
+        // 1) Ensure COCs server-side BEFORE building SMS codes
+        const ccIds = (deList || []).map((d) => d?.categoryCombo?.id).filter(Boolean)
+        await ensureCOCsForCategoryCombos(de, ccIds, addLog, datasetType)
+
         const keyword = nested.keyword || cfg?.smsKeyword || `${datasetType}`.toUpperCase()
         const separator = nested.separator || cfg?.smsSeparator || ' '
         const commandName = nested.name || cfg?.smsCommandName || `${cfg.name} SMS`
 
-        // Always generate proper SMS codes with correct COCs, regardless of preview state
+        // 2) Build codes using real COCs (after maintenance)
         addLog(`${s('D2')} SMS: generating proper codes for ${deList.length} data elements`, 'info', datasetType)
         const smsCodes = await generateProperSmsCodes(deList, datasetType, addLog, de)
 
@@ -1214,12 +1082,12 @@ const DatasetCreationModal = ({
                 code: smsCode.code,
                 compulsory: false,
                 dataElement: smsCode.dataElement,
-                optionId: smsCode.categoryOptionCombo
+                // CategoryOptionCombo MUST be an object, not a string
+                optionId: { id: smsCode.categoryOptionCombo.id },
             })),
         }
         addLog(`${s('D2')} SMS: creating command with ${smsCodes.length} codes`, 'info', datasetType)
         try {
-            // If a command already exists with same dataset+name, treat as reuse for a clean flow
             await de.mutate(metadataQueries.createSmsCommand, { variables: { body } })
             addLog(`${s('D2')} SMS: created (keyword ${keyword})`, 'success', datasetType)
             return { keyword, separator, created: true, smsCodes, datasetType }
@@ -1346,7 +1214,7 @@ const DatasetCreationModal = ({
                 const result = results?.[t] || {}
                 const cfg = datasets?.[t] || {}
                 const payload = result?.payload || {}
-                
+
                 return {
                     id: result?.datasetId || null,
                     name: payload?.name || cfg?.name || '',
@@ -1368,7 +1236,6 @@ const DatasetCreationModal = ({
                         id: ou.id
                     })),
                     sharing: payload?.sharing || null,
-                    // Additional metadata for ReviewStep
                     shortName: payload?.shortName || cfg?.shortName || '',
                     formName: payload?.formName || cfg?.formName || '',
                     description: payload?.description || cfg?.description || '',

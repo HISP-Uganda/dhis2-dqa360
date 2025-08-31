@@ -5,7 +5,7 @@ import { useAssessmentDataStore } from '../../../services/assessmentDataStoreSer
 
 /**
  * DatasetsList
- * - Aggregates all datasets created via assessment creation (localDatasetsCreated)
+ * - Aggregates all datasets created via assessment creation (dqaDatasetsCreated)
  * - Shows which assessment each dataset belongs to
  */
 export const DatasetsList = () => {
@@ -34,14 +34,14 @@ export const DatasetsList = () => {
     const datasets = useMemo(() => {
         const rows = []
         for (const a of assessments) {
-            const list = a.localDatasetsCreated || []
+            const list = a.dqaDatasetsCreated || []
             for (const ds of list) {
                 const info = ds.info || {}
                 rows.push({
                     datasetId: info.id || ds.id || '',
                     datasetName: info.name || info.displayName || ds.name || 'Unnamed Dataset',
                     assessmentId: a.id,
-                    assessmentName: a.name || a.Info?.name || 'Unnamed Assessment',
+                    assessmentName: a.name || a.details?.name || 'Unnamed Assessment',
                     periodType: info.periodType || 'Monthly',
                     elementsCount: Array.isArray(ds.dataElements) ? ds.dataElements.length : 0,
                     orgUnitsCount: Array.isArray(ds.orgUnits) ? ds.orgUnits.length : 0,

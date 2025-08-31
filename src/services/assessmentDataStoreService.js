@@ -566,34 +566,68 @@ export const useAssessmentDataStore = () => {
                     metadataSource: assessmentData.metadataSource || (assessmentData.externalConfig ? 'external' : 'local'),
                 }
 
-                const mappedDhis2Config = assessmentData.externalConfig
+                // Prefer connection.external or connection.local depending on metadataSource; fall back to legacy
+                const mappedDhis2Config =
+                    (assessmentData.connection?.metadataSource === 'external' ? assessmentData.connection?.external
+                        : assessmentData.connection?.metadataSource === 'local' ? assessmentData.connection?.local
+                        : null)
+                    || assessmentData.externalConfig
                     || assessmentData.dhis2Config
                     || assessmentData.connection?.info
                     || assessmentData.connection
                     || {}
 
-                const mappedSelectedDataSets = assessmentData.datasets?.selected
+                // Datasets selected can come in as top-level datasetsSelected or legacy fields
+                const datasetsSelectedInput = assessmentData.datasetsSelected
+                    || assessmentData.datasets?.selected
                     || assessmentData.selectedDatasets
                     || assessmentData.selectedDataSets
-                    || assessmentData.datasetsSelected
                     || []
 
-                const mappedSelectedDataElements = assessmentData.dataElements?.selected
-                    || assessmentData.dataElementsSelected
-                    || []
+                // Derive data elements and org units from datasetsSelected if not explicitly provided
+                const derivedSelectedDataElements = Array.isArray(datasetsSelectedInput)
+                    ? datasetsSelectedInput.flatMap(ds => Array.isArray(ds?.dataElements) ? ds.dataElements : [])
+                    : []
 
-                const mappedSelectedOrgUnits = assessmentData.orgUnits?.selected
-                    || assessmentData.organisationUnitsSelected
-                    || assessmentData.selectedOrgUnits
-                    || []
+                const derivedSelectedOrgUnits = Array.isArray(datasetsSelectedInput)
+                    ? datasetsSelectedInput.flatMap(ds => Array.isArray(ds?.organisationUnits) ? ds.organisationUnits : [])
+                    : []
+
+                const uniqById = (arr = []) => {
+                    const seen = new Set()
+                    return arr.filter(x => {
+                        const id = x?.id
+                        if (!id || seen.has(id)) return false
+                        seen.add(id)
+                        return true
+                    })
+                }
+
+                const mappedSelectedDataSets = datasetsSelectedInput
+
+                const mappedSelectedDataElements = uniqById([
+                    ...(assessmentData.dataElements?.selected || assessmentData.dataElementsSelected || []),
+                    ...derivedSelectedDataElements
+                ].filter(de => de && typeof de === 'object' && de.id))
+
+                const mappedSelectedOrgUnits = uniqById([
+                    ...(assessmentData.orgUnits?.selected
+                        || assessmentData.organisationUnitsSelected
+                        || assessmentData.selectedOrgUnits
+                        || []),
+                    ...derivedSelectedOrgUnits
+                ].filter(ou => ou && typeof ou === 'object' && ou.id))
 
                 const mappedOrgUnitMappings = assessmentData.orgUnitMapping?.mappings
                     || assessmentData.orgUnitMapping
+                    || assessmentData.orgUnitMappings
                     || assessmentData.selectedOrgUnitMappings
                     || []
 
+                // Local datasets (new: dqaDatasetsCreated)
                 const mappedLocalDatasets = assessmentData.localDatasets?.createdDatasets
                     || assessmentData.createdDatasets
+                    || assessmentData.dqaDatasetsCreated
                     || []
 
                 assessment = createAssessmentStructure(
@@ -607,9 +641,11 @@ export const useAssessmentDataStore = () => {
                     userInfo
                 )
 
-                // Carry over element mappings if present
+                // Carry over element mappings if present (new: dataElementMappings)
                 if (Array.isArray(assessmentData.elementMappings)) {
                     assessment.elementMappings = assessmentData.elementMappings
+                } else if (Array.isArray(assessmentData.dataElementMappings)) {
+                    assessment.elementMappings = assessmentData.dataElementMappings
                 } else if (Array.isArray(assessmentData.creationPayload?.elementMappings)) {
                     assessment.elementMappings = assessmentData.creationPayload.elementMappings
                 }

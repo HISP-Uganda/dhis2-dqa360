@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useTabBasedDataStore } from '../../services/tabBasedDataStoreService'
 import { useAssessmentDataStore } from '../../services/assessmentDataStoreService'
 import styled from 'styled-components'
 
@@ -91,7 +90,6 @@ export const ManageAssessments = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const dataEngine = useDataEngine()
-    const { loadAllAssessments, deleteAssessment: deleteLegacyAssessment, updateAssessmentTab } = useTabBasedDataStore()
     const { getAssessments, deleteAssessment, clearAssessmentsCache } = useAssessmentDataStore()
     const [assessments, setAssessments] = useState([])
     const [assessmentsLoading, setAssessmentsLoading] = useState(false)
@@ -184,45 +182,23 @@ export const ManageAssessments = () => {
                             console.log('✅ Found assessments in main datastore:', mainData.length)
                             assessmentsList = mainData.map(assessment => ({
                                 ...assessment,
-                                // Map structure to display format (preserve nested Info if present)
-                                name: assessment.Info?.name || assessment.name || 'Untitled Assessment',
-                                status: assessment.Info?.status || assessment.status || 'draft',
-                                createdAt: assessment.createdAt || assessment.Info?.createdAt || new Date().toISOString(),
-                                createdBy: assessment.createdBy || assessment.Info?.createdBy || 'Unknown User',
+                                // Map structure to display format (correct structure)
+                                name: assessment.details?.name || assessment.name || 'Untitled Assessment',
+                                status: assessment.details?.status || 'draft',
+                                createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
+                                createdBy: assessment.details?.createdBy || 'Unknown User',
                                 dataStoreVersion: 'main'
                             }))
                         } else {
-                            console.log('📭 No assessments found in main datastore, trying legacy...')
-                            // Empty array is valid, try legacy as fallback
-                            try {
-                                const legacyData = await loadAllAssessments()
-                                assessmentsList = Array.isArray(legacyData) ? legacyData.map(assessment => ({
-                                    ...assessment,
-                                    dataStoreVersion: 'legacy'
-                                })) : []
-                                console.log('📋 Loaded from legacy datastore:', assessmentsList.length, 'assessments')
-                            } catch (legacyError) {
-                                console.log('📭 No legacy assessments found either - fresh installation detected:', legacyError.message)
-                                assessmentsList = []
-                            }
+                            console.log('📭 No assessments found in main datastore')
+                            assessmentsList = []
                         }
                     } else {
                         throw new Error('Invalid response from main datastore')
                     }
                 } catch (mainError) {
-                    console.log('⚠️ Main datastore failed, trying legacy datastore...', mainError.message)
-                    // Fallback to legacy datastore
-                    try {
-                        const legacyData = await loadAllAssessments()
-                        assessmentsList = Array.isArray(legacyData) ? legacyData.map(assessment => ({
-                            ...assessment,
-                            dataStoreVersion: 'legacy'
-                        })) : []
-                        console.log('📋 Loaded from legacy datastore:', assessmentsList.length, 'assessments')
-                    } catch (legacyError) {
-                        console.log('📭 No assessments found in either datastore - starting fresh:', legacyError.message)
-                        assessmentsList = []
-                    }
+                    console.log('⚠️ Main datastore failed:', mainError.message)
+                    assessmentsList = []
                 }
                 
                 if (isMounted) {
@@ -234,9 +210,10 @@ export const ManageAssessments = () => {
                     // Ensure all assessments have proper creation data
                     const processedAssessments = assessmentsList.map(assessment => ({
                         ...assessment,
-                        createdAt: assessment.createdAt || assessment.Info?.createdAt || assessment.info?.createdAt || new Date().toISOString(),
-                        createdBy: assessment.createdBy || assessment.Info?.createdBy || assessment.info?.createdBy || 'Unknown User',
-                        status: assessment.status || assessment.Info?.status || assessment.info?.status || 'draft'
+                        createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
+                        createdBy: assessment.details?.createdBy || 'Unknown User',
+                        status: assessment.details?.status || 'draft',
+                        name: assessment.details?.name || assessment.name || 'Untitled Assessment'
                     }))
                     
                     console.log('📊 Setting assessments state with', processedAssessments.length, 'assessments')
@@ -246,21 +223,10 @@ export const ManageAssessments = () => {
                     if (processedAssessments.length > 0) {
                         console.log('📋 Assessment summary:')
                         processedAssessments.forEach((assessment, index) => {
-                            // Handle different data structures for datasets
+                            // Handle correct data structure for datasets
                             let datasetsCount = 0
-                            if (assessment.localDatasetsMetadata?.createdDatasets) {
-                                if (Array.isArray(assessment.localDatasetsMetadata.createdDatasets)) {
-                                    datasetsCount = assessment.localDatasetsMetadata.createdDatasets.length
-                                } else if (typeof assessment.localDatasetsMetadata.createdDatasets === 'object') {
-                                    datasetsCount = Object.keys(assessment.localDatasetsMetadata.createdDatasets).length
-                                }
-                            } else if (assessment.datasets) {
-                                // Fallback to check datasets field
-                                if (Array.isArray(assessment.datasets)) {
-                                    datasetsCount = assessment.datasets.length
-                                } else if (typeof assessment.datasets === 'object') {
-                                    datasetsCount = Object.keys(assessment.datasets).length
-                                }
+                            if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated)) {
+                                datasetsCount = assessment.dqaDatasetsCreated.length
                             }
                             const isComplete = datasetsCount === 4
                             console.log(`   ${index + 1}. ${assessment.name} - ${isComplete ? '✅ Complete' : '⚠️ Incomplete'} (${datasetsCount}/4 datasets)`)
@@ -344,50 +310,31 @@ export const ManageAssessments = () => {
                         console.log('✅ Found assessments in main datastore during refresh:', mainData.length)
                         assessmentsList = mainData.map(assessment => ({
                             ...assessment,
-                            name: assessment.Info?.name || assessment.name || 'Untitled Assessment',
-                            status: assessment.Info?.status || assessment.status || 'draft',
-                            createdAt: assessment.createdAt || assessment.Info?.createdAt || new Date().toISOString(),
-                            createdBy: assessment.createdBy || assessment.Info?.createdBy || 'Unknown User',
+                            name: assessment.details?.name || assessment.name || 'Untitled Assessment',
+                            status: assessment.details?.status || 'draft',
+                            createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
+                            createdBy: assessment.details?.createdBy || 'Unknown User',
                             dataStoreVersion: 'main'
                         }))
                     } else {
-                        // Try legacy as fallback
-                        try {
-                            const legacyData = await loadAllAssessments()
-                            assessmentsList = Array.isArray(legacyData) ? legacyData.map(assessment => ({
-                                ...assessment,
-                                dataStoreVersion: 'legacy'
-                            })) : []
-                            console.log('📋 Loaded from legacy datastore during refresh:', assessmentsList.length, 'assessments')
-                        } catch (legacyError) {
-                            console.log('📭 No legacy assessments found during refresh:', legacyError.message)
-                            assessmentsList = []
-                        }
+                        console.log('📭 No assessments found in main datastore during refresh')
+                        assessmentsList = []
                     }
                 } else {
                     throw new Error('Invalid response from main datastore')
                 }
             } catch (mainError) {
-                console.log('⚠️ Main datastore failed during refresh, trying legacy...', mainError.message)
-                try {
-                    const legacyData = await loadAllAssessments()
-                    assessmentsList = Array.isArray(legacyData) ? legacyData.map(assessment => ({
-                        ...assessment,
-                        dataStoreVersion: 'legacy'
-                    })) : []
-                    console.log('📋 Loaded from legacy datastore during refresh:', assessmentsList.length, 'assessments')
-                } catch (legacyError) {
-                    console.log('📭 No assessments found in either datastore during refresh:', legacyError.message)
-                    assessmentsList = []
-                }
+                console.log('⚠️ Main datastore failed during refresh:', mainError.message)
+                assessmentsList = []
             }
             
             // Ensure all assessments have proper creation data
             const processedAssessments = assessmentsList.map(assessment => ({
                 ...assessment,
-                createdAt: assessment.createdAt || assessment.Info?.createdAt || assessment.info?.createdAt || new Date().toISOString(),
-                createdBy: assessment.createdBy || assessment.Info?.createdBy || assessment.info?.createdBy || 'Unknown User',
-                status: assessment.status || assessment.Info?.status || assessment.info?.status || 'draft'
+                createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
+                createdBy: assessment.details?.createdBy || 'Unknown User',
+                status: assessment.details?.status || 'draft',
+                name: assessment.details?.name || assessment.name || 'Untitled Assessment'
             }))
             
             setAssessments(processedAssessments)
@@ -413,7 +360,7 @@ export const ManageAssessments = () => {
         } finally {
             setAssessmentsLoading(false)
         }
-    }, [getAssessments, loadAllAssessments, assessmentsLoading, clearAssessmentsCache]) // Removed problematic dependencies
+    }, [getAssessments, assessmentsLoading, clearAssessmentsCache]) // Removed problematic dependencies
 
     // Manual refresh function for button
     const handleRefresh = () => {
@@ -447,7 +394,7 @@ export const ManageAssessments = () => {
         }
     }
 
-    // Enhanced assessment data getter with proper datastore structure support
+    // Enhanced assessment data getter with new structure support only
     const getAssessmentData = (assessment, field, defaultValue = 'Not specified') => {
         try {
             if (!assessment) {
@@ -455,165 +402,75 @@ export const ManageAssessments = () => {
                 return defaultValue
             }
             
-            // Handle the new nested datastore structure (v3.0.0+)
-            // Structure: { Info: {...}, Dhis2config: {...}, localDatasetsCreated: [...] }
+            // Handle the new structure only
+            // Structure: { details: {...}, connection: {...}, dqaDatasetsCreated: [...] }
             
             let value = null
+            const details = assessment.details || {}
             
-            // Check if this is the new nested structure
-            const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
-            
-            if (isNestedStructure) {
-                // New v3.0.0+ nested structure
-                switch (field) {
-                    case 'name':
-                        value = assessment.Info.name || assessment.Info.assessmentName || assessment.Info.title
-                        break
-                    case 'description':
-                        value = assessment.Info.description
-                        break
-                    case 'objectives':
-                        value = assessment.Info.objectives
-                        break
-                    case 'period':
-                        value = assessment.Info.period || assessment.Info.startDate
-                        break
-                    case 'frequency':
-                        value = assessment.Info.frequency || 'Not specified'
-                        break
-                    case 'status':
-                        value = assessment.Info.status || 'draft'
+            switch (field) {
+                case 'name':
+                    value = details.name || assessment.name
+                    break
+                case 'description':
+                    value = details.description
+                    break
+                case 'objectives':
+                    value = details.objectives
+                    break
+                case 'period':
+                    value = details.period || details.startDate
+                    break
+                case 'frequency':
+                    value = details.frequency || 'Not specified'
+                    break
+                case 'status':
+                    value = details.status || 'draft'
                         break
                     case 'priority':
-                        value = assessment.Info.priority
+                        value = details.priority
                         break
                     case 'assessmentType':
-                        value = assessment.Info.assessmentType
+                        value = details.assessmentType
                         break
                     case 'methodology':
-                        value = (assessment.Info.methodology || 'automated')
+                        value = details.methodology || 'automated'
                         break
                     case 'reportingLevel':
-                        value = assessment.Info.reportingLevel
+                        value = details.reportingLevel
                         break
                     case 'createdBy':
-                        if (assessment.Info.createdBy) {
-                            if (typeof assessment.Info.createdBy === 'object') {
-                                value = assessment.Info.createdBy.displayName || assessment.Info.createdBy.username
+                        if (details.createdBy) {
+                            if (typeof details.createdBy === 'object') {
+                                value = details.createdBy.displayName || details.createdBy.username
                             } else {
-                                value = assessment.Info.createdBy
+                                value = details.createdBy
                             }
                         }
                         break
                     case 'lastModifiedBy':
-                        if (assessment.Info.lastModifiedBy) {
-                            if (typeof assessment.Info.lastModifiedBy === 'object') {
-                                value = assessment.Info.lastModifiedBy.displayName || assessment.Info.lastModifiedBy.username
+                        if (details.lastModifiedBy) {
+                            if (typeof details.lastModifiedBy === 'object') {
+                                value = details.lastModifiedBy.displayName || details.lastModifiedBy.username
                             } else {
-                                value = assessment.Info.lastModifiedBy
+                                value = details.lastModifiedBy
                             }
                         }
                         break
                     case 'id':
-                        value = assessment.id || assessment.Info.id
+                        value = assessment.id
                         break
                     case 'createdAt':
-                        value = assessment.createdAt || assessment.Info.createdAt
+                        value = details.createdAt || assessment.createdAt
                         break
                     case 'lastUpdated':
-                        value = assessment.lastUpdated || assessment.Info.lastUpdated
+                        value = details.lastUpdated || assessment.lastUpdated
                         break
                     default:
-                        // Try Info first, then root level
-                        value = assessment.Info[field] || assessment[field]
+                        // Try details first, then root level
+                        value = details[field] || assessment[field]
                         break
                 }
-            } else {
-                // Legacy structure or flat structure - try multiple possible locations
-                switch (field) {
-                    case 'name':
-                        value = assessment.name || 
-                               assessment.info?.name ||
-                               assessment.assessmentName || 
-                               assessment.title ||
-                               assessment.basicInfo?.name ||
-                               assessment.basicInfo?.assessmentName
-                        break
-                    case 'description':
-                        value = assessment.description || 
-                               assessment.info?.description ||
-                               assessment.basicInfo?.description
-                        break
-                    case 'objectives':
-                        value = assessment.objectives || 
-                               assessment.info?.objectives ||
-                               assessment.basicInfo?.objectives
-                        break
-                    case 'period':
-                        value = assessment.period || 
-                               assessment.info?.period ||
-                               assessment.basicInfo?.period ||
-                               assessment.assessmentPeriod
-                        break
-                    case 'frequency':
-                        value = assessment.frequency || 
-                               assessment.info?.frequency ||
-                               assessment.basicInfo?.frequency ||
-                               assessment.assessmentFrequency || 'Not specified'
-                        break
-                    case 'status':
-                        value = assessment.status || 
-                               assessment.info?.status ||
-                               assessment.basicInfo?.status
-                        break
-                    case 'priority':
-                        value = assessment.priority || 
-                               assessment.info?.priority ||
-                               assessment.basicInfo?.priority
-                        break
-                    case 'assessmentType':
-                        value = assessment.assessmentType || 
-                               assessment.info?.assessmentType ||
-                               assessment.basicInfo?.assessmentType ||
-                               assessment.type || 'baseline'
-                        break
-                    case 'methodology':
-                        value = assessment.methodology || 
-                               assessment.info?.methodology ||
-                               assessment.basicInfo?.methodology || 'automated'
-                        break
-                    case 'reportingLevel':
-                        value = assessment.reportingLevel || 
-                               assessment.info?.reportingLevel ||
-                               assessment.basicInfo?.reportingLevel
-                        break
-                    case 'createdBy':
-                        value = assessment.createdBy || 
-                               assessment.info?.createdBy ||
-                               assessment.basicInfo?.createdBy ||
-                               assessment.creator
-                        break
-                    case 'lastModifiedBy':
-                        value = assessment.lastModifiedBy || 
-                               assessment.info?.lastModifiedBy ||
-                               assessment.basicInfo?.lastModifiedBy ||
-                               assessment.modifiedBy
-                        break
-                    case 'startDate':
-                        value = assessment.startDate || 
-                               assessment.info?.startDate ||
-                               assessment.basicInfo?.startDate
-                        break
-                    case 'endDate':
-                        value = assessment.endDate || 
-                               assessment.info?.endDate ||
-                               assessment.basicInfo?.endDate
-                        break
-                    default:
-                        value = assessment[field] || assessment.info?.[field] || assessment.basicInfo?.[field]
-                        break
-                }
-            }
             
             return value || defaultValue
         } catch (error) {
@@ -625,25 +482,9 @@ export const ManageAssessments = () => {
     // Helper function to get selected datasets count (source datasets, not DQA datasets)
     const getSelectedDatasetsCount = (assessment) => {
         try {
-            // Check if this is the new nested structure
-            const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
-            
-            if (isNestedStructure) {
-                // New v3.0.0+ nested structure
-                if (assessment.Dhis2config?.datasetsSelected && Array.isArray(assessment.Dhis2config.datasetsSelected)) {
-                    return assessment.Dhis2config.datasetsSelected.length
-                }
-            } else {
-                // Legacy structures - check for selected datasets
-                if (assessment.datasets?.selected && Array.isArray(assessment.datasets.selected)) {
-                    return assessment.datasets.selected.length
-                } else if (assessment.selectedDataSets && Array.isArray(assessment.selectedDataSets)) {
-                    return assessment.selectedDataSets.length
-                } else if (assessment.datasets && Array.isArray(assessment.datasets)) {
-                    return assessment.datasets.length
-                } else if (assessment.datasets && typeof assessment.datasets === 'object' && !assessment.datasets.selected) {
-                    return Object.keys(assessment.datasets).length
-                }
+            // New structure only - check for selected datasets in connection
+            if (assessment.connection?.datasetsSelected && Array.isArray(assessment.connection.datasetsSelected)) {
+                return assessment.connection.datasetsSelected.length
             }
             
             return 0
@@ -653,131 +494,18 @@ export const ManageAssessments = () => {
         }
     }
 
-    // Enhanced helper function to get dataset count from different data structures
+    // Helper function to get dataset count from new data structure
     const getDatasetCount = (assessment) => {
         let datasetsCount = 0
         
         try {
-            // Check if this is the new nested structure
-            const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
-            
-            if (isNestedStructure) {
-                // New v3.0.0+ nested structure
-                if (assessment.localDatasetsCreated && Array.isArray(assessment.localDatasetsCreated)) {
-                    datasetsCount = assessment.localDatasetsCreated.length
-                } else if (assessment.Dhis2config?.datasetsSelected && Array.isArray(assessment.Dhis2config.datasetsSelected)) {
-                    // Count selected datasets from DHIS2 config
-                    datasetsCount = assessment.Dhis2config.datasetsSelected.length
-                } else if (assessment.localDatasets?.createdDatasets) {
-                    // Some nested payloads still use localDatasets.createdDatasets
-                    datasetsCount = Array.isArray(assessment.localDatasets.createdDatasets)
-                        ? assessment.localDatasets.createdDatasets.length
-                        : Object.keys(assessment.localDatasets.createdDatasets).length
-                }
-            } else {
-                // Legacy structures - check multiple possible locations
-                
-                // 1. New v2.0.0 structure - localDatasets.createdDatasets
-                if (assessment.localDatasets?.createdDatasets) {
-                    datasetsCount = Array.isArray(assessment.localDatasets.createdDatasets) 
-                        ? assessment.localDatasets.createdDatasets.length 
-                        : Object.keys(assessment.localDatasets.createdDatasets).length
-                }
-                // 2. Legacy v3.0.0 structure - localDatasetsCreated 
-                else if (assessment.localDatasetsCreated && Array.isArray(assessment.localDatasetsCreated)) {
-                    datasetsCount = assessment.localDatasetsCreated.length
-                }
-                // 3. Legacy structure - datasets.selected
-                else if (assessment.datasets?.selected && Array.isArray(assessment.datasets.selected)) {
-                    datasetsCount = assessment.datasets.selected.length
-                }
-                // 4. Legacy structure - localDatasetsMetadata.createdDatasets
-                else if (assessment.localDatasetsMetadata?.createdDatasets) {
-                    if (Array.isArray(assessment.localDatasetsMetadata.createdDatasets)) {
-                        datasetsCount = assessment.localDatasetsMetadata.createdDatasets.length
-                    } else if (typeof assessment.localDatasetsMetadata.createdDatasets === 'object') {
-                        datasetsCount = Object.keys(assessment.localDatasetsMetadata.createdDatasets).length
-                    }
-                }
-                // 5. Legacy structure - selectedDataSets
-                else if (assessment.selectedDataSets && Array.isArray(assessment.selectedDataSets)) {
-                    datasetsCount = assessment.selectedDataSets.length
-                }
-                // 6. Direct datasets array
-                else if (assessment.datasets && Array.isArray(assessment.datasets)) {
-                    datasetsCount = assessment.datasets.length
-                }
-                // 7. Datasets as object
-                else if (assessment.datasets && typeof assessment.datasets === 'object' && !assessment.datasets.selected) {
-                    datasetsCount = Object.keys(assessment.datasets).length
-                }
-                // 8. Check for DHIS2 created datasets by looking for dataset IDs
-                else if (assessment.createdDatasetIds && Array.isArray(assessment.createdDatasetIds)) {
-                    datasetsCount = assessment.createdDatasetIds.length
-                }
-                // 9. Check metadata structure for created datasets
-                else if (assessment.metadata?.createdDatasets) {
-                    if (Array.isArray(assessment.metadata.createdDatasets)) {
-                        datasetsCount = assessment.metadata.createdDatasets.length
-                    } else if (typeof assessment.metadata.createdDatasets === 'object') {
-                        datasetsCount = Object.keys(assessment.metadata.createdDatasets).length
-                    }
-                }
+            // New structure only - check for DQA datasets created
+            if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated)) {
+                datasetsCount = assessment.dqaDatasetsCreated.length
             }
         } catch (error) {
             console.warn('Error counting datasets for assessment:', assessment.id, error)
             datasetsCount = 0
-        }
-        
-        // If we still have 0, check if this assessment might have datasets created in DHIS2
-        if (datasetsCount === 0) {
-            const assessmentName = getAssessmentData(assessment, 'name', '')
-            
-            // Check if assessment has a proper name (not default/unnamed)
-            const hasValidName = assessmentName && 
-                               assessmentName !== 'Unnamed Assessment' && 
-                               assessmentName.length > 3 &&
-                               !assessmentName.includes('Untitled')
-            
-            // Check if assessment has been processed (has lastUpdated different from createdAt)
-            const hasBeenProcessed = assessment.lastUpdated && 
-                                   assessment.createdAt && 
-                                   assessment.lastUpdated !== assessment.createdAt
-            
-            // Check if assessment is not in draft status
-            const isNotDraft = assessment.status && assessment.status !== 'draft'
-            
-            // Only assume datasets were created if there's strong evidence
-            // (not just having a valid name, but actual processing or non-draft status)
-            if ((hasBeenProcessed || isNotDraft) && hasValidName) {
-                // Only log this warning once per assessment to avoid spam
-                if (!assessment._datasetWarningLogged) {
-                    console.log('⚠️ No datasets found in data structure but assessment appears to have datasets created')
-                    console.log('Assessment details:', {
-                        name: assessmentName,
-                        hasValidName,
-                        hasBeenProcessed,
-                        isNotDraft,
-                        status: assessment.status,
-                        lastUpdated: assessment.lastUpdated,
-                        createdAt: assessment.createdAt
-                    })
-                    assessment._datasetWarningLogged = true
-                }
-                datasetsCount = 4
-            }
-            
-            // Special case: if assessment name contains "Test creation admin assessment"
-            // (based on your example), definitely assume 4 datasets
-            if (assessmentName && assessmentName.toLowerCase().includes('test creation admin assessment')) {
-                console.log('🎯 Detected test assessment with known datasets, setting count to 4')
-                datasetsCount = 4
-            }
-        }
-        
-        // Final debug log
-        if (assessment.id && assessment.id.includes('1752240180975_226')) {
-            console.log(`🎯 Final dataset count for ${assessment.id}: ${datasetsCount}`)
         }
         
         return datasetsCount
@@ -785,29 +513,16 @@ export const ManageAssessments = () => {
     
     // Helper function to get dataset name/description
     const getDatasetName = (assessment) => {
-        // New v3.0.0 structure
-        if (assessment.version === '3.0.0') {
-            const name = assessment.Info?.name || assessment.info?.name || assessment.name || 'Unnamed Assessment'
-            const count = getDatasetCount(assessment)
-            return `${name} - ${count}/4 DQA Datasets`
-        }
-        // New v2.0.0 structure
-        else if (assessment.version === '2.0.0') {
-            const name = assessment.info?.name || assessment.name || 'Unnamed Assessment'
-            return `${name} Datasets`
-        }
-        
-        // Legacy structure
-        return assessment.sourceDataSet?.name || 
-               `${assessment.name || 'Unnamed Assessment'} Datasets`
+        // New structure only
+        const name = assessment.details?.name || assessment.name || 'Unnamed Assessment'
+        const count = getDatasetCount(assessment)
+        return `${name} - ${count}/4 DQA Datasets`
     }
     
     // Helper function to render clickable dataset links
     const renderDatasetLinks = (assessment) => {
-        // Check for created datasets with DHIS2 IDs
-        const createdDatasets = assessment.localDatasets?.createdDatasets || 
-                               assessment.localDatasets?.datasets || 
-                               []
+        // Check for created datasets with DHIS2 IDs (new structure only)
+        const createdDatasets = assessment.dqaDatasetsCreated || []
         
         if (createdDatasets.length > 0) {
             return (
@@ -888,48 +603,48 @@ export const ManageAssessments = () => {
             let dateValue = null
             
             // Check if this is the new nested structure
-            const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
+            const isNestedStructure = assessment.details && typeof assessment.details === 'object'
             
             if (isNestedStructure) {
-                // New v3.0.0+ nested structure
+                // New v3.1.0+ nested structure
                 switch (field) {
                     case 'createdAt':
-                        dateValue = assessment.createdAt || assessment.Info.createdAt
+                        dateValue = assessment.createdAt || assessment.details.createdAt
                         break
                     case 'lastUpdated':
-                        dateValue = assessment.lastUpdated || assessment.Info.lastUpdated
+                        dateValue = assessment.lastUpdated || assessment.details.lastUpdated
                         break
                     case 'startDate':
-                        dateValue = assessment.Info.startDate
+                        dateValue = assessment.details.startDate
                         break
                     case 'endDate':
-                        dateValue = assessment.Info.endDate
+                        dateValue = assessment.details.endDate
                         break
                     default:
-                        dateValue = assessment.Info[field] || assessment[field]
+                        dateValue = assessment.details[field] || assessment[field]
                         break
                 }
             } else {
                 // Legacy structures - try multiple possible locations
                 dateValue = assessment?.[field] || 
-                           assessment?.info?.[field] ||
-                           assessment?.basicInfo?.[field]
+                           assessment?.details?.[field] ||
+                           assessment?.info?.[field]
                 
                 // Special handling for common date fields in legacy structure
                 if (field === 'createdAt') {
-                    dateValue = dateValue || assessment?.createdAt || assessment?.info?.createdAt
+                    dateValue = dateValue || assessment?.createdAt || assessment?.details?.createdAt
                 }
                 
                 if (field === 'lastUpdated') {
-                    dateValue = dateValue || assessment?.lastUpdated || assessment?.info?.lastUpdated
+                    dateValue = dateValue || assessment?.lastUpdated || assessment?.details?.lastUpdated
                 }
                 
                 if (field === 'startDate') {
-                    dateValue = dateValue || assessment?.startDate || assessment?.info?.startDate
+                    dateValue = dateValue || assessment?.startDate || assessment?.details?.startDate
                 }
                 
                 if (field === 'endDate') {
-                    dateValue = dateValue || assessment?.endDate || assessment?.info?.endDate
+                    dateValue = dateValue || assessment?.endDate || assessment?.details?.endDate
                 }
             }
             
@@ -1037,11 +752,10 @@ export const ManageAssessments = () => {
     const getAssessmentActions = (assessment) => {
         const handleDownloadAssessmentJSON = (a) => {
             try {
-                const payload = a?.savedPayload || a?.creationPayload || a
-                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+                const blob = new Blob([JSON.stringify(a, null, 2)], { type: 'application/json' })
                 const url = URL.createObjectURL(blob)
                 const aEl = document.createElement('a')
-                const safeName = String(a?.name || a?.info?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
+                const safeName = String(a?.details?.name || a?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
                 const ts = new Date().toISOString().split('T')[0]
                 aEl.download = `DQA360_${safeName}_${ts}.json`
                 aEl.href = url
@@ -1055,7 +769,6 @@ export const ManageAssessments = () => {
         }
         const handlePrintAssessmentSummary = (a) => {
             try {
-                const payload = a?.savedPayload || a?.creationPayload || a
                 const w = window.open('', '_blank', 'width=900,height=700')
                 if (!w) return
                 const style = `
@@ -1067,20 +780,23 @@ export const ManageAssessments = () => {
                         .meta div{margin:4px 0}
                     </style>
                 `
-                const name = a?.name || a?.info?.name || 'Assessment'
-                const info = a?.info || a?.Info || {}
+                const name = a?.details?.name || a?.name || 'Assessment'
+                const details = a?.details || {}
                 w.document.write(`
                     <html>
                         <head><title>${name}</title>${style}</head>
                         <body>
                             <h1>${name}</h1>
                             <div class="meta">
-                                <div><strong>Period:</strong> ${info.period || ''}</div>
-                                <div><strong>Frequency:</strong> ${info.frequency || ''}</div>
-                                <div><strong>Dates:</strong> ${info.startDate || ''} — ${info.endDate || ''}</div>
-                                <div><strong>Reporting level:</strong> ${info.reportingLevel || ''}</div>
+                                <div><strong>Period:</strong> ${details.period || ''}</div>
+                                <div><strong>Frequency:</strong> ${details.frequency || ''}</div>
+                                <div><strong>Status:</strong> ${details.status || ''}</div>
+                                <div><strong>Priority:</strong> ${details.priority || ''}</div>
+                                <div><strong>Assessment Type:</strong> ${details.assessmentType || ''}</div>
+                                <div><strong>Methodology:</strong> ${details.methodology || ''}</div>
+                                <div><strong>Reporting Level:</strong> ${details.reportingLevel || ''}</div>
                             </div>
-                            <pre>${JSON.stringify(payload, null, 2)}</pre>
+                            <pre>${JSON.stringify(a, null, 2)}</pre>
                             <script>window.print();</script>
                         </body>
                     </html>
@@ -1276,7 +992,14 @@ export const ManageAssessments = () => {
     // Remove the blocking loading state - let the page load immediately
 
     return (
-        <Box style={{ minHeight: 'calc(100vh - 120px)', padding: '16px' }}>
+        <Box style={{ 
+            height: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: '16px',
+            background: 'transparent',
+            overflow: 'hidden'
+        }}>
             {/* Success Message */}
             {successMessage && (
                 <Box marginBottom="16px">
@@ -1285,10 +1008,6 @@ export const ManageAssessments = () => {
                     </NoticeBox>
                 </Box>
             )}
-
-
-
-
 
             {/* Header with Actions */}
             <Box marginBottom="16px" display="flex" justifyContent="space-between" alignItems="center">
@@ -1322,16 +1041,28 @@ export const ManageAssessments = () => {
             </Box>
 
             {/* Assessments List */}
-            <Card style={{ minHeight: 'calc(100vh - 200px)', ...((assessmentsLoading || initialLoad || assessments.length === 0 || assessmentsError) ? { background: 'transparent', boxShadow: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}) }}>
+            <Card style={{ 
+                flex: 1, 
+                background: 'transparent', 
+                boxShadow: 'none', 
+                border: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                ...((assessmentsLoading || initialLoad || assessments.length === 0 || assessmentsError) ? { 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                } : {}) 
+            }}>
                 {(assessmentsLoading || initialLoad) ? (
                     <CenteredLoader 
                         message={i18n.t('Loading assessments...')}
-                        minHeight="calc(100vh - 200px)"
+                        style={{ flex: 1 }}
                     />
                 ) : assessmentsError ? (
                     <Box 
                         style={{ 
-                            minHeight: 'calc(100vh - 200px)',
+                            flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
@@ -1352,7 +1083,7 @@ export const ManageAssessments = () => {
                 ) : assessments.length === 0 ? (
                     <Box 
                         style={{ 
-                            minHeight: 'calc(100vh - 200px)',
+                            flex: 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1369,7 +1100,12 @@ export const ManageAssessments = () => {
                         </Button>
                     </Box>
                 ) : (
-                    <DataTable>
+                    <DataTable style={{ 
+                        flex: 1, 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        overflow: 'hidden'
+                    }}>
                         <DataTableHead>
                             <DataTableRow>
                                 <DataTableColumnHeader>{i18n.t('Assessment Details')}</DataTableColumnHeader>
@@ -1387,43 +1123,19 @@ export const ManageAssessments = () => {
                                     {/* Assessment Details */}
                                     <DataTableCell>
                                         <Box>
-                                            <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                                            <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px', color: '#1976d2' }}>
                                                 {getAssessmentData(assessment, 'name', 'Unnamed Assessment')}
                                             </div>
                                             {getAssessmentData(assessment, 'description') !== 'Not specified' && (
-                                                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', lineHeight: '1.3' }}>
-                                                    {getAssessmentData(assessment, 'description').length > 80 
-                                                        ? `${getAssessmentData(assessment, 'description').substring(0, 80)}...`
+                                                <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', lineHeight: '1.3' }}>
+                                                    {getAssessmentData(assessment, 'description').length > 60 
+                                                        ? `${getAssessmentData(assessment, 'description').substring(0, 60)}...`
                                                         : getAssessmentData(assessment, 'description')
                                                     }
                                                 </div>
                                             )}
                                             <div style={{ fontSize: '11px', color: '#888', marginBottom: '2px' }}>
-                                                <span style={{ fontWeight: '500' }}>Created by:</span> {
-                                                    (() => {
-                                                        const createdBy = getAssessmentData(assessment, 'createdBy', 'Unknown User')
-                                                        if (typeof createdBy === 'object' && createdBy.displayName) {
-                                                            return createdBy.displayName
-                                                        }
-                                                        return createdBy
-                                                    })()
-                                                }
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#999', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span>
-                                                    <span style={{ fontWeight: '500' }}>ID:</span> {getAssessmentData(assessment, 'id', 'Unknown ID').substring(0, 12)}...
-                                                </span>
-                                                {assessment.version && (
-                                                    <span style={{ 
-                                                        backgroundColor: '#F3F4F6', 
-                                                        padding: '2px 6px', 
-                                                        borderRadius: '4px',
-                                                        fontSize: '10px',
-                                                        fontFamily: 'monospace'
-                                                    }}>
-                                                        v{assessment.version}
-                                                    </span>
-                                                )}
+                                                <span style={{ fontWeight: '500' }}>ID:</span> {getAssessmentData(assessment, 'id', 'Unknown ID').substring(0, 15)}...
                                             </div>
                                         </Box>
                                     </DataTableCell>
@@ -1439,32 +1151,32 @@ export const ManageAssessments = () => {
                                                 
                                                 if (startDate && endDate) {
                                                     return (
-                                                        <>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
                                                                 {formatDate(startDate)} - {formatDate(endDate)}
                                                             </div>
-                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                {frequency}
                                                             </div>
-                                                        </>
+                                                        </div>
                                                     )
                                                 } else if (period && period !== 'Not specified') {
                                                     return (
-                                                        <>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
                                                                 {period}
                                                             </div>
-                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                {frequency}
                                                             </div>
-                                                        </>
+                                                        </div>
                                                     )
                                                 } else {
                                                     return (
                                                         <div>
-                                                            <div style={{ color: '#999', fontSize: '12px' }}>No period set</div>
-                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                                <span style={{ fontWeight: '500' }}>Frequency:</span> {frequency}
+                                                            <div style={{ color: '#999', fontSize: '12px', marginBottom: '2px' }}>No period set</div>
+                                                            <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                {frequency}
                                                             </div>
                                                         </div>
                                                     )
@@ -1476,32 +1188,23 @@ export const ManageAssessments = () => {
                                     {/* Type & Priority */}
                                     <DataTableCell>
                                         <Box>
-                                            <div style={{ marginBottom: '6px' }}>
-                                                <Tag neutral style={{ fontSize: '10px', marginBottom: '2px' }}>
+                                            <div style={{ marginBottom: '4px' }}>
+                                                <Tag neutral style={{ fontSize: '10px' }}>
                                                     {getAssessmentData(assessment, 'assessmentType', 'baseline')}
                                                 </Tag>
                                             </div>
-                                            <div style={{ marginBottom: '6px' }}>
+                                            <div style={{ marginBottom: '4px' }}>
                                                 <Tag 
                                                     positive={getAssessmentData(assessment, 'priority', 'medium') === 'low'}
                                                     neutral={getAssessmentData(assessment, 'priority', 'medium') === 'medium'}
                                                     negative={['high', 'critical'].includes(getAssessmentData(assessment, 'priority', 'medium'))}
                                                     style={{ fontSize: '10px' }}
                                                 >
-                                                    {getAssessmentData(assessment, 'priority', 'medium')} priority
+                                                    {getAssessmentData(assessment, 'priority', 'medium')}
                                                 </Tag>
                                             </div>
                                             <div style={{ fontSize: '11px', color: '#666' }}>
-                                                {getAssessmentData(assessment, 'methodology') !== 'Not specified' && (
-                                                    <div style={{ marginBottom: '1px' }}>
-                                                        <span style={{ fontWeight: '500' }}>Method:</span> {getAssessmentData(assessment, 'methodology')}
-                                                    </div>
-                                                )}
-                                                {getAssessmentData(assessment, 'reportingLevel') !== 'Not specified' && (
-                                                    <div>
-                                                        <span style={{ fontWeight: '500' }}>Level:</span> {getAssessmentData(assessment, 'reportingLevel')}
-                                                    </div>
-                                                )}
+                                                {getAssessmentData(assessment, 'methodology', 'automated')}
                                             </div>
                                         </Box>
                                     </DataTableCell>
@@ -1572,28 +1275,18 @@ export const ManageAssessments = () => {
                                             {(() => {
                                                 const datasetCount = getDatasetCount(assessment)
                                                 const selectedDatasets = getSelectedDatasetsCount(assessment)
-                                                const isNestedStructure = assessment.Info && typeof assessment.Info === 'object'
-                                                
-                                                // Get data elements and org units from proper datastore structure
+                                                // Get data elements and org units from new structure only
                                                 let localDataElements = []
                                                 let localOrgUnits = []
                                                 
-                                                if (isNestedStructure) {
-                                                    // New v3.0.0+ nested structure
-                                                    localDataElements = assessment.localDatasetsCreated?.reduce((acc, dataset) => {
-                                                        return acc.concat(dataset.dataElements || [])
-                                                    }, []) || []
-                                                    
-                                                    localOrgUnits = assessment.localDatasetsCreated?.reduce((acc, dataset) => {
-                                                        return acc.concat(dataset.orgUnits || [])
-                                                    }, []) || []
-                                                } else {
-                                                    // Legacy structures
-                                                    localDataElements = assessment.localDataElementsCreated || 
-                                                                      assessment.localDataElements || []
-                                                    localOrgUnits = assessment.localOrgUnitsCreated || 
-                                                                   assessment.localOrgUnits || []
-                                                }
+                                                // New structure only
+                                                localDataElements = assessment.dqaDatasetsCreated?.reduce((acc, dataset) => {
+                                                    return acc.concat(dataset.dataElements || [])
+                                                }, []) || []
+                                                
+                                                localOrgUnits = assessment.dqaDatasetsCreated?.reduce((acc, dataset) => {
+                                                    return acc.concat(dataset.orgUnits || [])
+                                                }, []) || []
                                                 
                                                 // Show different states based on configuration progress
                                                 if (datasetCount >= 4) {
@@ -1669,8 +1362,7 @@ export const ManageAssessments = () => {
                                             <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
                                                 {formatDate(getAssessmentDate(assessment, 'createdAt'))}
                                             </div>
-                                            <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
-                                                <span style={{ fontWeight: '500' }}>Created by:</span><br />
+                                            <div style={{ fontSize: '11px', color: '#666' }}>
                                                 {(() => {
                                                     const createdBy = getAssessmentData(assessment, 'createdBy', 'Unknown User')
                                                     if (typeof createdBy === 'object' && createdBy.displayName) {
@@ -1679,28 +1371,6 @@ export const ManageAssessments = () => {
                                                     return createdBy
                                                 })()}
                                             </div>
-                                            {getAssessmentDate(assessment, 'lastUpdated') && 
-                                             getAssessmentDate(assessment, 'lastUpdated') !== getAssessmentDate(assessment, 'createdAt') && (
-                                                <div style={{ fontSize: '10px', color: '#888' }}>
-                                                    <span style={{ fontWeight: '500' }}>Updated:</span> {formatDate(getAssessmentDate(assessment, 'lastUpdated'))}
-                                                </div>
-                                            )}
-                                            {(() => {
-                                                const lastModifiedBy = getAssessmentData(assessment, 'lastModifiedBy', '')
-                                                const createdBy = getAssessmentData(assessment, 'createdBy', '')
-                                                
-                                                if (lastModifiedBy && lastModifiedBy !== createdBy) {
-                                                    return (
-                                                        <div style={{ fontSize: '10px', color: '#888' }}>
-                                                            <span style={{ fontWeight: '500' }}>Modified by:</span><br />
-                                                            {typeof lastModifiedBy === 'object' && lastModifiedBy.displayName 
-                                                                ? lastModifiedBy.displayName 
-                                                                : lastModifiedBy}
-                                                        </div>
-                                                    )
-                                                }
-                                                return null
-                                            })()}
                                             {(assessment.version || assessment.structure) && (
                                                 <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
                                                     {assessment.version && `v${assessment.version}`}
@@ -1782,7 +1452,7 @@ export const ManageAssessments = () => {
                 <Modal 
                     large 
                     onClose={() => setDatasetDetailsModal({ isOpen: false, dataset: null, assessment: null })}
-                    style={{ background: '#fff' }}
+                    style={{ background: 'transparent' }}
                 >
                     <ModalTitle>
                         Dataset Details: {datasetDetailsModal.dataset?.datasetType || datasetDetailsModal.dataset?.type} 
@@ -1888,7 +1558,7 @@ export const ManageAssessments = () => {
                 <Modal 
                     onClose={() => setStatusChangeModal({ isOpen: false, assessment: null, newStatus: null })}
                     large
-                    style={{ background: '#fff' }}
+                    style={{ background: 'transparent' }}
                 >
                     <ModalTitle>
                         Change Assessment Status
@@ -1942,7 +1612,7 @@ export const ManageAssessments = () => {
                 <Modal 
                     large
                     onClose={() => setSmsTestModal({ isOpen: false })}
-                    style={{ background: '#fff' }}
+                    style={{ background: 'transparent' }}
                 >
                     <ModalTitle>
                         📱 SMS Integration Test

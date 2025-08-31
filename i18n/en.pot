@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-30T10:28:54.140Z\n"
-"PO-Revision-Date: 2025-08-30T10:28:54.140Z\n"
+"POT-Creation-Date: 2025-08-31T15:28:26.795Z\n"
+"PO-Revision-Date: 2025-08-31T15:28:26.795Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -1670,26 +1670,20 @@ msgstr "Enter description"
 msgid "Mapped from"
 msgstr "Mapped from"
 
-msgid "View and monitor data quality assessments"
-msgstr "View and monitor data quality assessments"
+msgid "View and manage assessment details"
+msgstr "View and manage assessment details"
 
-msgid "Completed"
-msgstr "Completed"
-
-msgid "Draft"
-msgstr "Draft"
-
-msgid "DQA Assessments"
-msgstr "DQA Assessments"
+msgid "Loading assessment..."
+msgstr "Loading assessment..."
 
 msgid "Manage and monitor data quality assessments"
 msgstr "Manage and monitor data quality assessments"
 
+msgid "DQA Assessments"
+msgstr "DQA Assessments"
+
 msgid "Create New Assessment"
 msgstr "Create New Assessment"
-
-msgid "Assessment List"
-msgstr "Assessment List"
 
 msgid "Loading assessments..."
 msgstr "Loading assessments..."
@@ -1697,50 +1691,14 @@ msgstr "Loading assessments..."
 msgid "No assessments found"
 msgstr "No assessments found"
 
+msgid "No assessments match the current filter"
+msgstr "No assessments match the current filter"
+
 msgid "Create your first assessment to get started"
 msgstr "Create your first assessment to get started"
 
-msgid "No period set"
-msgstr "No period set"
-
-msgid "Not specified"
-msgstr "Not specified"
-
-msgid "None specified"
-msgstr "None specified"
-
-msgid "No datasets selected"
-msgstr "No datasets selected"
-
-msgid "None created"
-msgstr "None created"
-
-msgid "Untitled Assessment"
-msgstr "Untitled Assessment"
-
-msgid "Period & Scope"
-msgstr "Period & Scope"
-
-msgid "Assessment Config"
-msgstr "Assessment Config"
-
-msgid "Data Quality Dimensions"
-msgstr "Data Quality Dimensions"
-
-msgid "DHIS2 Connection"
-msgstr "DHIS2 Connection"
-
-msgid "facilities"
-msgstr "facilities"
-
-msgid "No mappings"
-msgstr "No mappings"
-
-msgid "Local Datasets Created"
-msgstr "Local Datasets Created"
-
-msgid "Element Mappings"
-msgstr "Element Mappings"
+msgid "Try adjusting your filter criteria"
+msgstr "Try adjusting your filter criteria"
 
 msgid "Error loading form data"
 msgstr "Error loading form data"
@@ -1996,6 +1954,9 @@ msgstr ""
 msgid "Update Data Element"
 msgstr "Update Data Element"
 
+msgid "DHIS2 Connection"
+msgstr "DHIS2 Connection"
+
 msgid "Connected"
 msgstr "Connected"
 
@@ -2181,6 +2142,12 @@ msgstr "Select Metadata Source"
 
 msgid "Next"
 msgstr "Next"
+
+msgid "Completed"
+msgstr "Completed"
+
+msgid "Draft"
+msgstr "Draft"
 
 msgid "Datasets not created yet"
 msgstr "Datasets not created yet"
@@ -3003,6 +2970,9 @@ msgstr "Reporting Level"
 msgid "Organisation unit levels"
 msgstr "Organisation unit levels"
 
+msgid "Data Quality Dimensions"
+msgstr "Data Quality Dimensions"
+
 msgid "Start with Accuracy; add other dimensions used in DQA"
 msgstr "Start with Accuracy; add other dimensions used in DQA"
 
@@ -3568,6 +3538,12 @@ msgstr "Create DQA Datasets"
 msgid "Creating DQA Datasets"
 msgstr "Creating DQA Datasets"
 
+msgid "Assessment JSON Preview"
+msgstr "Assessment JSON Preview"
+
+msgid "Download Preview JSON"
+msgstr "Download Preview JSON"
+
 msgid "Select data elements first to generate concept mappings."
 msgstr "Select data elements first to generate concept mappings."
 
@@ -3787,12 +3763,6 @@ msgstr "Some prerequisites are missing before saving."
 
 msgid "Failed to save dataset"
 msgstr "Failed to save dataset"
-
-msgid "Dates"
-msgstr "Dates"
-
-msgid "Reporting level"
-msgstr "Reporting level"
 
 msgid "Assessment \"{{name}}\" created successfully"
 msgstr "Assessment \"{{name}}\" created successfully"
@@ -4085,9 +4055,6 @@ msgstr "Tab content not found"
 msgid "Save Assessment"
 msgstr "Save Assessment"
 
-msgid "Loading assessment..."
-msgstr "Loading assessment..."
-
 msgid "Back to Assessments"
 msgstr "Back to Assessments"
 
@@ -4360,6 +4327,9 @@ msgstr "Show selected only"
 
 msgid "Selection Summary"
 msgstr "Selection Summary"
+
+msgid "Not specified"
+msgstr "Not specified"
 
 msgid "No data elements match your current filters"
 msgstr "No data elements match your current filters"
@@ -4790,11 +4760,3 @@ msgstr "Creating SMS commands for datasets"
 
 msgid "Assessment creation completed"
 msgstr "Assessment creation completed"
-
-msgctxt "Application title"
-msgid "__MANIFEST_APP_TITLE"
-msgstr "DQA360 - Data Quality Assessment"
-
-msgctxt "Application description"
-msgid "__MANIFEST_APP_DESCRIPTION"
-msgstr "A comprehensive data quality assessment platform for DHIS2"

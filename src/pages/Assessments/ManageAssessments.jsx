@@ -40,13 +40,13 @@ const DQSummaryModal = ({ assessment, onClose }) => {
         { key: 'correction', label: 'Correction', color: '#9c27b0', icon: '✏️' }
     ]
 
-    // Extract data from nested structure
-    const info = assessment.Info || assessment
-    const dhis2Config = info.Dhis2config || assessment.Dhis2config || assessment.dhis2Config || {}
-    const dsSelected = Array.isArray(dhis2Config.datasetsSelected) ? dhis2Config.datasetsSelected : []
-    const localDatasets = Array.isArray(assessment.localDatasetsCreated) ? assessment.localDatasetsCreated : []
-    const orgUnitMapping = Array.isArray(dhis2Config.orgUnitMapping) ? dhis2Config.orgUnitMapping : []
-    const elementMappings = Array.isArray(assessment.elementMappings) ? assessment.elementMappings : []
+    // Extract data from correct structure
+    const info = assessment.details || assessment
+    const dhis2Config = assessment.connection || assessment.Dhis2config || assessment.dhis2Config || {}
+    const dsSelected = Array.isArray(assessment.datasetsSelected) ? assessment.datasetsSelected : []
+    const localDatasets = Array.isArray(assessment.dqaDatasetsCreated) ? assessment.dqaDatasetsCreated : []
+    const orgUnitMapping = Array.isArray(assessment.orgUnitMappings) ? assessment.orgUnitMappings : []
+    const elementMappings = Array.isArray(assessment.dataElementMappings) ? assessment.dataElementMappings : []
 
     // Calculate totals
     const totalDataElements = dsSelected.reduce((total, ds) => total + (ds?.dataElements?.length || 0), 0)

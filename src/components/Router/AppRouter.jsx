@@ -4,6 +4,7 @@ import { Layout } from '../Layout/Layout'
 import { PageProvider } from '../../contexts/PageContext'
 import { Dashboards as Dashboard } from '../../pages/Dashboard/Dashboards'
 import { Assessments } from '../../pages/Assessments/Assessments'
+import AssessmentDetails from '../../pages/Assessments/AssessmentDetails'
 import { Administration } from '../../pages/Administration/Administration'
 import { ViewAssessment } from '../../pages/ViewAssessment/ViewAssessment'
 import { DQAData } from '../../pages/DQAData/DQAData'
@@ -29,7 +30,8 @@ export const AppRouter = () => {
                     <Routes>
                         {/* Main Navigation Routes */}
                         <Route path="/dashboard/*" element={<Dashboard />} />
-                        <Route path="/assessments/*" element={<Assessments />} />
+                        <Route path="/assessments" element={<Assessments />} />
+                        <Route path="/assessments/:assessmentId" element={<AssessmentDetails />} />
                         <Route path="/manage-assessments/*" element={<ManageAssessments />} />
                         <Route path="/dqa-data/*" element={<DQAData />} />
                         <Route path="/dqa-analysis/*" element={<DQAAnalysis />} />
