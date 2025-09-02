@@ -540,194 +540,51 @@ export const useAssessmentDataStore = () => {
     /**
      * Save assessment with nested structure
      */
-    const saveAssessment = async (assessmentData, dhis2Config, selectedDataSets, selectedDataElements, selectedOrgUnits, orgUnitMappings, localDatasets, userInfo) => {
+    const saveAssessment = async (assessmentData) => {
         try {
-            console.log('💾 Saving assessment with nested structure')
+            console.log('💾 Saving assessment with new structure v3.0.0')
             
             await initializeDataStore()
             
-            // Create or normalize the nested structure
-            let assessment
-            if (assessmentData?.Info) {
-                // Already nested v3 structure
-                assessment = { ...assessmentData }
-            } else if (assessmentData?.info || assessmentData?.details || assessmentData?.basicInfo) {
-                // Map legacy/flat payloads (e.g., CreateAssessmentPage) into nested inputs
-                const details = assessmentData.info || assessmentData.details || assessmentData.basicInfo || {}
-
-                // Derive fields expected by createAssessmentStructure
-                const mappedAssessmentData = {
-                    ...details,
-                    // Preserve id if present
-                    id: assessmentData.id || details.id,
-                    // SMS config compatibility
-                    smsConfig: assessmentData.smsConfig || assessmentData.sms,
-                    // Metadata source
-                    metadataSource: assessmentData.metadataSource || (assessmentData.externalConfig ? 'external' : 'local'),
-                }
-
-                // Prefer connection.external or connection.local depending on metadataSource; fall back to legacy
-                const mappedDhis2Config =
-                    (assessmentData.connection?.metadataSource === 'external' ? assessmentData.connection?.external
-                        : assessmentData.connection?.metadataSource === 'local' ? assessmentData.connection?.local
-                        : null)
-                    || assessmentData.externalConfig
-                    || assessmentData.dhis2Config
-                    || assessmentData.connection?.info
-                    || assessmentData.connection
-                    || {}
-
-                // Datasets selected can come in as top-level datasetsSelected or legacy fields
-                const datasetsSelectedInput = assessmentData.datasetsSelected
-                    || assessmentData.datasets?.selected
-                    || assessmentData.selectedDatasets
-                    || assessmentData.selectedDataSets
-                    || []
-
-                // Derive data elements and org units from datasetsSelected if not explicitly provided
-                const derivedSelectedDataElements = Array.isArray(datasetsSelectedInput)
-                    ? datasetsSelectedInput.flatMap(ds => Array.isArray(ds?.dataElements) ? ds.dataElements : [])
-                    : []
-
-                const derivedSelectedOrgUnits = Array.isArray(datasetsSelectedInput)
-                    ? datasetsSelectedInput.flatMap(ds => Array.isArray(ds?.organisationUnits) ? ds.organisationUnits : [])
-                    : []
-
-                const uniqById = (arr = []) => {
-                    const seen = new Set()
-                    return arr.filter(x => {
-                        const id = x?.id
-                        if (!id || seen.has(id)) return false
-                        seen.add(id)
-                        return true
-                    })
-                }
-
-                const mappedSelectedDataSets = datasetsSelectedInput
-
-                const mappedSelectedDataElements = uniqById([
-                    ...(assessmentData.dataElements?.selected || assessmentData.dataElementsSelected || []),
-                    ...derivedSelectedDataElements
-                ].filter(de => de && typeof de === 'object' && de.id))
-
-                const mappedSelectedOrgUnits = uniqById([
-                    ...(assessmentData.orgUnits?.selected
-                        || assessmentData.organisationUnitsSelected
-                        || assessmentData.selectedOrgUnits
-                        || []),
-                    ...derivedSelectedOrgUnits
-                ].filter(ou => ou && typeof ou === 'object' && ou.id))
-
-                const mappedOrgUnitMappings = assessmentData.orgUnitMapping?.mappings
-                    || assessmentData.orgUnitMapping
-                    || assessmentData.orgUnitMappings
-                    || assessmentData.selectedOrgUnitMappings
-                    || []
-
-                // Local datasets (new: dqaDatasetsCreated)
-                const mappedLocalDatasets = assessmentData.localDatasets?.createdDatasets
-                    || assessmentData.createdDatasets
-                    || assessmentData.dqaDatasetsCreated
-                    || []
-
-                assessment = createAssessmentStructure(
-                    mappedAssessmentData,
-                    mappedDhis2Config,
-                    mappedSelectedDataSets,
-                    mappedSelectedDataElements,
-                    mappedSelectedOrgUnits,
-                    mappedOrgUnitMappings,
-                    mappedLocalDatasets,
-                    userInfo
-                )
-
-                // Carry over element mappings if present (new: dataElementMappings)
-                if (Array.isArray(assessmentData.elementMappings)) {
-                    assessment.elementMappings = assessmentData.elementMappings
-                } else if (Array.isArray(assessmentData.dataElementMappings)) {
-                    assessment.elementMappings = assessmentData.dataElementMappings
-                } else if (Array.isArray(assessmentData.creationPayload?.elementMappings)) {
-                    assessment.elementMappings = assessmentData.creationPayload.elementMappings
-                }
-            } else {
-                // Build from explicit arguments
-                assessment = createAssessmentStructure(
-                    assessmentData,
-                    dhis2Config,
-                    selectedDataSets,
-                    selectedDataElements,
-                    selectedOrgUnits,
-                    orgUnitMappings,
-                    localDatasets,
-                    userInfo
-                )
+            // The ReviewStep already provides the correct new structure
+            // We just need to validate and save it directly
+            let assessment = { ...assessmentData }
+            
+            // Ensure required fields are present
+            if (!assessment.id) {
+                assessment.id = `assessment_${Date.now()}`
             }
             
-            // Ensure Dhis2config is properly nested under Info (structure is already correct from createAssessmentStructure)
-
-            // Hydrate localDatasetsCreated from known sources if missing
-            if (!Array.isArray(assessment.localDatasetsCreated) || assessment.localDatasetsCreated.length === 0) {
-                const mapDataset = (d, typeKey) => ({
-                    id: d?.id || d?.datasetId || '',
-                    name: d?.name || d?.payload?.name || '',
-                    code: d?.code || d?.payload?.code || '',
-                    datasetType: d?.datasetType || typeKey || d?.type || '',
-                    alias: d?.alias || d?.payload?.alias || '',
-                    categoryCombo: d?.categoryCombo || d?.payload?.categoryCombo || undefined,
-                    periodType: d?.periodType || d?.payload?.periodType || 'Monthly',
-                    sms: d?.sms || d?.smsCommand || null,
-                    dataElements: d?.dataElements || d?.payload?.dataSetElements || [],
-                    orgUnits: d?.orgUnits || d?.payload?.organisationUnits || [],
-                    sharing: d?.sharing || d?.payload?.sharing || null,
-                })
-
-                const fromLocal = assessment?.localDatasets?.createdDatasets
-                if (Array.isArray(fromLocal) && fromLocal.length) {
-                    assessment.localDatasetsCreated = fromLocal.map((d) => mapDataset(d))
-                } else {
-                    const cp = assessment?.creationPayload || assessment?.creation || {}
-                    const ds = cp?.datasets || {}
-                    const keys = Object.keys(ds || {})
-                    if (keys.length) {
-                        assessment.localDatasetsCreated = keys
-                            .map((k) => mapDataset(ds[k], k))
-                            .filter((x) => x.id)
-                    }
-                }
-
-                // Element mappings
-                if (!Array.isArray(assessment.elementMappings) || assessment.elementMappings.length === 0) {
-                    const mp = assessment?.creationPayload?.mappingPayload?.elementsMapping
-                        || assessment?.mappingPayload?.elementsMapping
-                        || assessment?.creationPayload?.elementMappings
-                        || []
-                    if (Array.isArray(mp) && mp.length) assessment.elementMappings = mp
-                }
+            if (!assessment.structure) {
+                assessment.structure = 'nested'
             }
-
-            const _dhCfg = assessment.Info?.Dhis2config || { info: {}, datasetsSelected: [] }
-            console.log('📋 Assessment structure:', {
+            
+            if (!assessment.version) {
+                assessment.version = '3.0.0'
+            }
+            
+            if (!assessment.createdAt) {
+                assessment.createdAt = new Date().toISOString()
+            }
+            
+            assessment.lastUpdated = new Date().toISOString()
+            
+            console.log('📋 Assessment structure (new format):', {
                 id: assessment.id,
                 version: assessment.version,
                 structure: assessment.structure,
-                infoFields: Object.keys(assessment.Info || {}).length,
-                dhis2ConfigFields: Object.keys(_dhCfg.info || {}).length,
-                datasetsSelected: (_dhCfg.datasetsSelected || []).length,
-                localDatasetsCreated: (assessment.localDatasetsCreated || []).length,
-                elementMappings: (assessment.elementMappings || []).length
+                hasDetails: !!assessment.details,
+                hasConnection: !!assessment.connection,
+                datasetsSelectedCount: (assessment.datasetsSelected || []).length,
+                dqaDatasetsCreatedCount: (assessment.dqaDatasetsCreated || []).length,
+                dataElementMappingsCount: (assessment.dataElementMappings || []).length,
+                orgUnitMappingsCount: (assessment.orgUnitMappings || []).length
             })
             
             // Save to dataStore
             const assessmentKey = getAssessmentKey(assessment.id)
             
-            // Log what we're about to save
-            console.log('💾 About to save assessment:', {
-                id: assessment.id,
-                version: assessment.version,
-                localDatasetsCreatedCount: assessment.localDatasetsCreated?.length || 0,
-                hasLocalDatasetsCreated: !!assessment.localDatasetsCreated,
-                assessmentKey
-            })
+            console.log('💾 About to save assessment with key:', assessmentKey)
             
             try {
                 // Try to update existing assessment
@@ -751,7 +608,7 @@ export const useAssessmentDataStore = () => {
                 }
             }
             
-            // Update assessments index
+            // Update assessments index with new structure
             await updateAssessmentsIndex(assessment)
             
             return assessment
@@ -789,16 +646,16 @@ export const useAssessmentDataStore = () => {
                 }
             }
             
-            // Update or add assessment in index
+            // Update or add assessment in index (using new structure)
             const existingIndex = index.assessments.findIndex(a => a.id === assessment.id)
             const assessmentSummary = {
                 id: assessment.id,
-                name: assessment.Info.name,
-                status: assessment.Info.status,
-                assessmentType: assessment.Info.assessmentType,
+                name: assessment.details?.name || assessment.Info?.name || 'Unnamed Assessment',
+                status: assessment.details?.status || assessment.Info?.status || 'draft',
+                assessmentType: assessment.details?.assessmentType || assessment.Info?.assessmentType || 'baseline',
                 createdAt: assessment.createdAt,
                 lastUpdated: assessment.lastUpdated,
-                createdBy: assessment.Info.createdBy?.username || 'system'
+                createdBy: assessment.details?.createdBy || assessment.Info?.createdBy?.username || 'system'
             }
             
             if (existingIndex >= 0) {
@@ -1185,7 +1042,6 @@ export const useAssessmentDataStore = () => {
         getAssessments,
         getAssessment,
         deleteAssessment,
-        createAssessmentStructure,
         clearAssessmentsCache
     }
 }

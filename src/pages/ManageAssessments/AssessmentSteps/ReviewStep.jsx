@@ -26,17 +26,20 @@ const gatherFrom = (data) => {
     const creation = data?.creationPayload || {}
     const mp = creation?.mappingPayload || data?.mappingPayload || data?.handoff?.mappingPayload || data?.savedPayload?.mappingPayload || {}
     const elementsMapping = mp?.elementsMapping || data?.dataElementMappings || creation?.dataElementMappings || []
+    
     // Include all known places where created datasets may be stored
+    // Prioritize dqaDatasetsCreated as that's what PreparationStep sets
     const created =
+        data?.dqaDatasetsCreated ||
         creation?.localDatasets?.createdDatasets ||
         data?.createdDatasets ||
-        data?.dqaDatasetsCreated ||
         data?.localDatasets?.createdDatasets ||
         data?.handoff?.createdDatasets ||
         data?.localDatasetsMetadata?.createdDatasets ||
         data?.creationMetadata?.createdDatasets ||
         data?.savedPayload?.localDatasets?.createdDatasets ||
         []
+    
     const smsCommands =
         (data?.sms?.commands) ||
         (creation?.sms?.commands) ||
@@ -115,17 +118,7 @@ const ReviewStep = ({
         selectedOrgUnits,
         selectedDataElements,
         mappingPayload,
-    } = useMemo(() => {
-        const result = gatherFrom(assessmentData || {})
-        console.log('ReviewStep - gatherFrom result:', {
-            created: result.created,
-            createdLength: Array.isArray(result.created) ? result.created.length : Object.keys(result.created || {}).length,
-            assessmentDataKeys: Object.keys(assessmentData || {}),
-            dqaDatasetsCreated: assessmentData?.dqaDatasetsCreated,
-            dataElementMappings: assessmentData?.dataElementMappings
-        })
-        return result
-    }, [assessmentData])
+    } = useMemo(() => gatherFrom(assessmentData || {}), [assessmentData])
 
     // Normalize created datasets to an array for consistent rendering
     const createdList = useMemo(() => (Array.isArray(created) ? created : Object.values(created || {})), [created])
@@ -149,33 +142,18 @@ const ReviewStep = ({
         const dsSel = Array.isArray(selectedDatasets?.selected) ? selectedDatasets.selected : selectedDatasets
         const ouSel = Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : selectedOrgUnits
         
-        // Check for org unit mappings
-        const hasOrgUnitMappings = (
-            Array.isArray(assessmentData?.orgUnitMapping?.mappings) && assessmentData.orgUnitMapping.mappings.length > 0
-        ) || (
-            Array.isArray(assessmentData?.orgUnitMappings) && assessmentData.orgUnitMappings.length > 0
+        // Check for org unit mappings (only required for external metadata sources)
+        const metadataSource = assessmentData?.metadataSource || 'local'
+        const isExternal = metadataSource === 'external' || metadataSource === 'dhis2'
+        const hasOrgUnitMappings = !isExternal || (
+            (Array.isArray(assessmentData?.orgUnitMapping?.mappings) && assessmentData.orgUnitMapping.mappings.length > 0) ||
+            (Array.isArray(assessmentData?.orgUnitMappings) && assessmentData.orgUnitMappings.length > 0)
         )
         
         // Basic requirements
         const hasName = !!assessmentData?.name
         const hasSelectedDatasets = (dsSel?.length || 0) > 0
         const hasSelectedOrgUnits = (ouSel?.length || 0) > 0
-        
-        // Debug logging
-        console.log('ReviewStep isReady check:', {
-            hasName,
-            hasSelectedDatasets: hasSelectedDatasets,
-            selectedDatasetsCount: dsSel?.length || 0,
-            hasSelectedOrgUnits: hasSelectedOrgUnits,
-            selectedOrgUnitsCount: ouSel?.length || 0,
-            has4DatasetsCreated: has4,
-            createdDatasetsCount: normCreated.length,
-            createdDatasetTypes: normCreated.map(d => d.datasetType || d.type),
-            hasElementMappings: hasLinks,
-            elementMappingsCount: (elementsMapping || []).length,
-            hasOrgUnitMappings,
-            orgUnitMappingsCount: assessmentData?.orgUnitMapping?.mappings?.length || assessmentData?.orgUnitMappings?.length || 0
-        })
         
         return !!(hasName && hasSelectedDatasets && hasSelectedOrgUnits && has4 && hasLinks && hasOrgUnitMappings)
     }, [assessmentData, created, elementsMapping, selectedDatasets, selectedOrgUnits])
@@ -189,7 +167,6 @@ const ReviewStep = ({
         const externalCfg = assessmentData?.externalConfig || assessmentData?.dhis2Config?.info || {}
         
         // Map created datasets to dqaDatasetsCreated shape (correct structure)
-        console.log('ReviewStep - buildFinalPayload createdList:', createdList)
         const dqaDatasetsCreated = (createdList || []).map(d => ({
             id: d.id || d.datasetId || null,
             code: d.code,

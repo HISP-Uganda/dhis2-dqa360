@@ -159,21 +159,29 @@ const DatasetCreationModal = ({
     }
 
     // ------------------------------- Finders -------------------------------
-    const findOne = async (resource, { id, code, name, fields = 'id,name,code' }) => {
+    const findOne = async (resource, { id, code, name, fields = 'id,name,code' }, timeout = 10000) => {
         const allowIdLookup = id && isUID(id) && metadataSource !== 'external'
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`Query timeout after ${timeout}ms`)), timeout)
+        })
 
         try {
             if (code) {
-                const res = await de.query({
+                const queryPromise = de.query({
                     list: { resource, params: { fields, filter: `code:eq:${code}`, pageSize: 1 } },
                 })
+                const res = await Promise.race([queryPromise, timeoutPromise])
                 const coll = res?.list?.[resource] || res?.list?.[resource + 's'] || res?.list?.categoryCombos || res?.list?.dataElements || []
                 const item = Array.isArray(coll) ? coll[0] : coll?.[0]
                 if (item?.id) return item
             }
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
-            if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
+            if (/timeout/i.test(msg)) {
+                addLog(`${resource}: query timeout by code (${code}) - continuing without`, 'warning')
+            } else if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
                 addLog(`${resource}: not found by code (${code})`, 'info')
             } else if (/409/i.test(msg)) {
                 addLog(`${resource}: conflict while fetching by code (${code})`, 'warning')
@@ -183,16 +191,19 @@ const DatasetCreationModal = ({
         }
         try {
             if (name) {
-                const res = await de.query({
+                const queryPromise = de.query({
                     list: { resource, params: { fields, filter: `name:eq:${name}`, pageSize: 1 } },
                 })
+                const res = await Promise.race([queryPromise, timeoutPromise])
                 const coll = res?.list?.[resource] || res?.list?.[resource + 's'] || []
                 const item = Array.isArray(coll) ? coll[0] : coll?.[0]
                 if (item?.id) return item
             }
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
-            if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
+            if (/timeout/i.test(msg)) {
+                addLog(`${resource}: query timeout by name (${name}) - continuing without`, 'warning')
+            } else if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
                 addLog(`${resource}: not found by name (${name})`, 'info')
             } else if (/409/i.test(msg)) {
                 addLog(`${resource}: conflict while fetching by name (${name})`, 'warning')
@@ -202,12 +213,15 @@ const DatasetCreationModal = ({
         }
         try {
             if (allowIdLookup) {
-                const res = await de.query({ item: { resource, id, params: { fields } } })
+                const queryPromise = de.query({ item: { resource, id, params: { fields } } })
+                const res = await Promise.race([queryPromise, timeoutPromise])
                 if (res?.item?.id) return res.item
             }
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
-            if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
+            if (/timeout/i.test(msg)) {
+                addLog(`${resource}: query timeout by id (${id}) - continuing without`, 'warning')
+            } else if (/404|not\s*found/i.test(msg) || e?.details?.httpStatusCode === 404) {
                 addLog(`${resource}: not found by id (${id})`, 'info')
             } else if (/409/i.test(msg)) {
                 addLog(`${resource}: conflict while fetching by id (${id})`, 'warning')
@@ -275,13 +289,26 @@ const DatasetCreationModal = ({
     const ensureDQAAttributes = async () => {
         addLog('Ensuring DQA360 attributes…', 'info')
         
-        // Ensure dataset ID attribute
+        // Ensure dataset ID attribute with timeout and retry logic
+        let heartbeatInterval = null
         try {
+            addLog('Checking for existing DQA360 Dataset ID attribute...', 'info')
+            
+            // Add a heartbeat to show progress
+            heartbeatInterval = setInterval(() => {
+                addLog('Still checking DQA360 Dataset ID attribute...', 'info')
+            }, 3000)
+            
             let existing = await findOne('attributes', {
                 code: 'dqa360_dataset_id',
                 fields: 'id,code,name,dataSetAttribute,objectTypes',
-            })
+            }, 8000) // 8 second timeout
+            
+            clearInterval(heartbeatInterval)
+            heartbeatInterval = null
+            
             if (!existing?.id || (!existing.dataSetAttribute && !existing.objectTypes?.includes('DATA_SET'))) {
+                addLog('Creating DQA360 Dataset ID attribute...', 'info')
                 const payload = {
                     attributes: [
                         { 
@@ -294,21 +321,47 @@ const DatasetCreationModal = ({
                     ],
                 }
                 await de.mutate(metadataQueries.upsertMetadata, { variables: { payload } })
-                existing = await findOne('attributes', { code: 'dqa360_dataset_id', fields: 'id' })
+                
+                // Wait a bit for the attribute to be created
+                await sleep(1000)
+                
+                // Try to find it again with a shorter timeout
+                existing = await findOne('attributes', { code: 'dqa360_dataset_id', fields: 'id' }, 5000)
             }
+            
             dqaAttributeIdsRef.current.datasetId = existing?.id || null
-            if (existing?.id) addLog('DQA360 Dataset ID attribute ready.', 'success')
+            if (existing?.id) {
+                addLog('DQA360 Dataset ID attribute ready.', 'success')
+            } else {
+                addLog('DQA360 Dataset ID attribute not available - continuing without it', 'warning')
+            }
         } catch (e) {
-            addLog(`DQA360 Dataset ID attribute failed: ${e?.message || e}`, 'warning')
+            if (heartbeatInterval) clearInterval(heartbeatInterval)
+            const msg = e?.message || String(e)
+            addLog(`DQA360 Dataset ID attribute failed: ${msg} - continuing without it`, 'warning')
+            dqaAttributeIdsRef.current.datasetId = null
         }
         
-        // Ensure assessment ID attribute
+        // Ensure assessment ID attribute with timeout and retry logic
+        let heartbeatInterval2 = null
         try {
+            addLog('Checking for existing DQA360 Assessment ID attribute...', 'info')
+            
+            // Add a heartbeat to show progress
+            heartbeatInterval2 = setInterval(() => {
+                addLog('Still checking DQA360 Assessment ID attribute...', 'info')
+            }, 3000)
+            
             let existing = await findOne('attributes', {
                 code: 'dqa360_assessment_id',
                 fields: 'id,code,name,dataSetAttribute,objectTypes',
-            })
+            }, 8000) // 8 second timeout
+            
+            clearInterval(heartbeatInterval2)
+            heartbeatInterval2 = null
+            
             if (!existing?.id || (!existing.dataSetAttribute && !existing.objectTypes?.includes('DATA_SET'))) {
+                addLog('Creating DQA360 Assessment ID attribute...', 'info')
                 const payload = {
                     attributes: [
                         { 
@@ -321,41 +374,78 @@ const DatasetCreationModal = ({
                     ],
                 }
                 await de.mutate(metadataQueries.upsertMetadata, { variables: { payload } })
-                existing = await findOne('attributes', { code: 'dqa360_assessment_id', fields: 'id' })
+                
+                // Wait a bit for the attribute to be created
+                await sleep(1000)
+                
+                // Try to find it again with a shorter timeout
+                existing = await findOne('attributes', { code: 'dqa360_assessment_id', fields: 'id' }, 5000)
             }
+            
             dqaAttributeIdsRef.current.assessmentId = existing?.id || null
-            if (existing?.id) addLog('DQA360 Assessment ID attribute ready.', 'success')
+            if (existing?.id) {
+                addLog('DQA360 Assessment ID attribute ready.', 'success')
+            } else {
+                addLog('DQA360 Assessment ID attribute not available - continuing without it', 'warning')
+            }
         } catch (e) {
-            addLog(`DQA360 Assessment ID attribute failed: ${e?.message || e}`, 'warning')
+            if (heartbeatInterval2) clearInterval(heartbeatInterval2)
+            const msg = e?.message || String(e)
+            addLog(`DQA360 Assessment ID attribute failed: ${msg} - continuing without it`, 'warning')
+            dqaAttributeIdsRef.current.assessmentId = null
         }
+        
+        addLog('DQA360 attributes initialization completed', 'info')
     }
 
     const ensureDatasetUIDAttribute = async () => {
         addLog('Ensuring dataset UID attribute…', 'info')
+        let heartbeatInterval = null
         try {
+            addLog('Checking for existing dataset UID attribute...', 'info')
+            
+            // Add a heartbeat to show progress
+            heartbeatInterval = setInterval(() => {
+                addLog('Still checking dataset UID attribute...', 'info')
+            }, 3000)
+            
             const existing = await findOne('attributes', {
                 code: DATASET_UID_ATTRIBUTE_CODE,
                 fields: 'id,code,name,dataSetAttribute,objectTypes',
-            })
+            }, 8000) // 8 second timeout
+            
+            clearInterval(heartbeatInterval)
+            heartbeatInterval = null
+            
             if (existing?.id && (existing.dataSetAttribute || existing.objectTypes?.includes('DATA_SET'))) {
                 datasetUidAttrIdRef.current = existing.id
                 addLog('Found dataset UID attribute.', 'success')
                 return
             }
-        } catch {}
+        } catch (e) {
+            if (heartbeatInterval) clearInterval(heartbeatInterval)
+            addLog(`Error checking existing dataset UID attribute: ${e?.message || e}`, 'warning')
+        }
+        
         try {
+            addLog('Creating dataset UID attribute...', 'info')
             const payload = {
                 attributes: [
                     { name: 'DQA360 Dataset UID', code: DATASET_UID_ATTRIBUTE_CODE, valueType: 'TEXT', dataSetAttribute: true },
                 ],
             }
             await de.mutate(metadataQueries.upsertMetadata, { variables: { payload } })
-            const check = await findOne('attributes', { code: DATASET_UID_ATTRIBUTE_CODE, fields: 'id' })
+            
+            // Wait a bit for the attribute to be created
+            await sleep(1000)
+            
+            const check = await findOne('attributes', { code: DATASET_UID_ATTRIBUTE_CODE, fields: 'id' }, 5000)
             datasetUidAttrIdRef.current = check?.id || null
             if (check?.id) addLog('Created dataset UID attribute.', 'success')
             else addLog('Attribute ensure ended without id; will skip attributeValues.', 'warning')
         } catch (e) {
             addLog(`Attribute ensure failed; continuing without (ok): ${e?.message || e}`, 'warning')
+            datasetUidAttrIdRef.current = null
         }
     }
 
@@ -1369,8 +1459,28 @@ const DatasetCreationModal = ({
             const isTemporaryId = !assessmentId
             
             addLog(`Assessment ID: ${effectiveAssessmentId}${isTemporaryId ? ' (temporary - will be updated when assessment is saved)' : ''}`, 'info')
-            await ensureDatasetUIDAttribute()
-            await ensureDQAAttributes()
+            
+            // Try to ensure attributes with timeout protection
+            try {
+                await Promise.race([
+                    ensureDatasetUIDAttribute(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Dataset UID attribute timeout')), 15000))
+                ])
+            } catch (e) {
+                addLog(`Dataset UID attribute setup failed or timed out: ${e.message} - continuing without it`, 'warning')
+                datasetUidAttrIdRef.current = null
+            }
+            
+            try {
+                await Promise.race([
+                    ensureDQAAttributes(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('DQA attributes timeout')), 20000))
+                ])
+            } catch (e) {
+                addLog(`DQA attributes setup failed or timed out: ${e.message} - continuing without them`, 'warning')
+                dqaAttributeIdsRef.current.datasetId = null
+                dqaAttributeIdsRef.current.assessmentId = null
+            }
             
             // Verify DQA attributes are available
             addLog(`DQA Attributes Status: Dataset ID=${dqaAttributeIdsRef.current.datasetId ? 'READY' : 'MISSING'}, Assessment ID=${dqaAttributeIdsRef.current.assessmentId ? 'READY' : 'MISSING'}`, 'info')

@@ -1809,6 +1809,8 @@ export const CreateAssessmentPage = () => {
                             selectedDataElements: selectedDataElements,
                             selectedOrgUnits: selectedOrgUnits,
                             selectedOrgUnitMappings: orgUnitMappings,
+                            // Include metadata source for proper validation
+                            metadataSource: metadataSource,
                             // Preserve existing creationPayload and created datasets if they exist
                             creationPayload: assessmentData?.creationPayload || null,
                             createdDatasets: assessmentData?.createdDatasets || [],
