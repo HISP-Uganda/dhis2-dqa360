@@ -853,20 +853,28 @@ export const useAssessmentDataStore = () => {
                     })
                     
                     const assessment = assessmentResponse.data
-                    // Create summary for list view
+                    // Create summary for list view - handle both old nested and new flat structures
                     const assessmentSummary = {
                         id: assessment.id,
-                        name: assessment.Info?.name || assessment.name || 'Unnamed Assessment',
-                        status: assessment.Info?.status || assessment.status || 'draft',
-                        assessmentType: assessment.Info?.assessmentType || assessment.assessmentType,
+                        // Handle new flat structure (details) and old nested structure (Info)
+                        name: assessment.details?.name || assessment.Info?.name || assessment.name || 'Unnamed Assessment',
+                        status: assessment.details?.status || assessment.Info?.status || assessment.status || 'draft',
+                        assessmentType: assessment.details?.assessmentType || assessment.Info?.assessmentType || assessment.assessmentType,
                         createdAt: assessment.createdAt || assessment.created,
                         lastUpdated: assessment.lastUpdated || assessment.updated,
-                        createdBy: assessment.Info?.createdBy?.username || assessment.createdBy || 'system',
-                        // Include full data for compatibility
-                        Info: assessment.Info || assessment,
-                        localDatasetsCreated: assessment.localDatasetsCreated || [],
-                        // Ensure orgUnitMapping is available at top level for backward compatibility
-                        orgUnitMapping: (assessment.Info?.Dhis2config?.orgUnitMapping) || []
+                        createdBy: assessment.details?.createdBy?.username || assessment.Info?.createdBy?.username || assessment.createdBy || 'system',
+                        
+                        // Include full data for compatibility - map new structure to expected format
+                        details: assessment.details || assessment.Info || assessment,
+                        connection: assessment.connection || assessment.Info?.Dhis2config || {},
+                        dqaDatasetsCreated: assessment.dqaDatasetsCreated || assessment.localDatasetsCreated || [],
+                        datasetsSelected: assessment.datasetsSelected || assessment.Info?.Dhis2config?.datasetsSelected || [],
+                        dataElementMappings: assessment.dataElementMappings || assessment.elementMappings || [],
+                        
+                        // Legacy compatibility
+                        Info: assessment.Info || assessment.details || assessment,
+                        localDatasetsCreated: assessment.dqaDatasetsCreated || assessment.localDatasetsCreated || [],
+                        orgUnitMapping: assessment.orgUnitMapping || assessment.Info?.Dhis2config?.orgUnitMapping || []
                     }
                     
                     assessments.push(assessmentSummary)

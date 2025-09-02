@@ -7,12 +7,6 @@ import {
     Box, 
     Button, 
     Card, 
-    DataTable,
-    DataTableHead,
-    DataTableRow,
-    DataTableColumnHeader,
-    DataTableBody,
-    DataTableCell,
     Tag,
     ButtonStrip,
     Modal,
@@ -90,7 +84,7 @@ export const ManageAssessments = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const dataEngine = useDataEngine()
-    const { getAssessments, deleteAssessment, clearAssessmentsCache } = useAssessmentDataStore()
+    const { getAssessments, getAssessment, deleteAssessment, clearAssessmentsCache } = useAssessmentDataStore()
     const [assessments, setAssessments] = useState([])
     const [assessmentsLoading, setAssessmentsLoading] = useState(false)
     const [assessmentsError, setAssessmentsError] = useState(null)
@@ -174,19 +168,55 @@ export const ManageAssessments = () => {
                 let assessmentsList = []
                 
                 try {
-                    // Try main datastore first
+                    // Try main datastore first - get index
                     console.log('📋 Trying main datastore...')
-                    const mainData = await getAssessments()
-                    if (mainData && Array.isArray(mainData)) {
-                        if (mainData.length > 0) {
-                            console.log('✅ Found assessments in main datastore:', mainData.length)
-                            assessmentsList = mainData.map(assessment => ({
+                    const indexData = await getAssessments()
+                    
+                    // 🔍 DEBUG: Log the index response
+                    console.log('🔍 RAW INDEX RESPONSE:', JSON.stringify(indexData, null, 2))
+                    
+                    if (indexData && Array.isArray(indexData)) {
+                        if (indexData.length > 0) {
+                            console.log('✅ Found assessments in index:', indexData.length)
+                            
+                            // Load full assessment data for each assessment
+                            console.log('📥 Loading full assessment data...')
+                            const fullAssessments = []
+                            
+                            for (const indexAssessment of indexData) {
+                                try {
+                                    console.log(`📥 Loading full data for assessment: ${indexAssessment.id}`)
+                                    const fullAssessment = await getAssessment(indexAssessment.id)
+                                    
+                                    if (fullAssessment) {
+                                        // 🔍 DEBUG: Log each assessment's complete structure
+                                        console.log(`🔍 ASSESSMENT ${indexAssessment.id} COMPLETE STRUCTURE:`, JSON.stringify(fullAssessment, null, 2))
+                                        console.log(`🔍 ASSESSMENT ${indexAssessment.id} KEYS:`, Object.keys(fullAssessment))
+                                        if (fullAssessment.dqaDatasetsCreated) {
+                                            console.log(`🔍 ASSESSMENT ${indexAssessment.id} DQA DATASETS:`, JSON.stringify(fullAssessment.dqaDatasetsCreated, null, 2))
+                                        }
+                                        if (fullAssessment.details) {
+                                            console.log(`🔍 ASSESSMENT ${indexAssessment.id} DETAILS:`, JSON.stringify(fullAssessment.details, null, 2))
+                                        }
+                                        
+                                        fullAssessments.push(fullAssessment)
+                                    } else {
+                                        console.warn(`⚠️ Could not load full data for assessment ${indexAssessment.id}, using index data`)
+                                        fullAssessments.push(indexAssessment)
+                                    }
+                                } catch (error) {
+                                    console.warn(`⚠️ Error loading full data for assessment ${indexAssessment.id}:`, error)
+                                    fullAssessments.push(indexAssessment)
+                                }
+                            }
+                            
+                            assessmentsList = fullAssessments.map(assessment => ({
                                 ...assessment,
                                 // Map structure to display format (correct structure)
                                 name: assessment.details?.name || assessment.name || 'Untitled Assessment',
-                                status: assessment.details?.status || 'draft',
+                                status: assessment.details?.status || assessment.status || 'draft',
                                 createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                                createdBy: assessment.details?.createdBy || 'Unknown User',
+                                createdBy: assessment.details?.createdBy || assessment.createdBy || 'Unknown User',
                                 dataStoreVersion: 'main'
                             }))
                         } else {
@@ -304,16 +334,35 @@ export const ManageAssessments = () => {
             let assessmentsList = []
             
             try {
-                const mainData = await getAssessments()
-                if (mainData && Array.isArray(mainData)) {
-                    if (mainData.length > 0) {
-                        console.log('✅ Found assessments in main datastore during refresh:', mainData.length)
-                        assessmentsList = mainData.map(assessment => ({
+                const indexData = await getAssessments()
+                if (indexData && Array.isArray(indexData)) {
+                    if (indexData.length > 0) {
+                        console.log('✅ Found assessments in index during refresh:', indexData.length)
+                        
+                        // Load full assessment data for each assessment
+                        console.log('📥 Loading full assessment data during refresh...')
+                        const fullAssessments = []
+                        
+                        for (const indexAssessment of indexData) {
+                            try {
+                                const fullAssessment = await getAssessment(indexAssessment.id)
+                                if (fullAssessment) {
+                                    fullAssessments.push(fullAssessment)
+                                } else {
+                                    fullAssessments.push(indexAssessment)
+                                }
+                            } catch (error) {
+                                console.warn(`⚠️ Error loading full data for assessment ${indexAssessment.id} during refresh:`, error)
+                                fullAssessments.push(indexAssessment)
+                            }
+                        }
+                        
+                        assessmentsList = fullAssessments.map(assessment => ({
                             ...assessment,
                             name: assessment.details?.name || assessment.name || 'Untitled Assessment',
-                            status: assessment.details?.status || 'draft',
+                            status: assessment.details?.status || assessment.status || 'draft',
                             createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                            createdBy: assessment.details?.createdBy || 'Unknown User',
+                            createdBy: assessment.details?.createdBy || assessment.createdBy || 'Unknown User',
                             dataStoreVersion: 'main'
                         }))
                     } else {
@@ -482,7 +531,12 @@ export const ManageAssessments = () => {
     // Helper function to get selected datasets count (source datasets, not DQA datasets)
     const getSelectedDatasetsCount = (assessment) => {
         try {
-            // New structure only - check for selected datasets in connection
+            // New structure - check for selected datasets at root level
+            if (assessment.datasetsSelected && Array.isArray(assessment.datasetsSelected)) {
+                return assessment.datasetsSelected.length
+            }
+            
+            // Fallback to connection structure
             if (assessment.connection?.datasetsSelected && Array.isArray(assessment.connection.datasetsSelected)) {
                 return assessment.connection.datasetsSelected.length
             }
@@ -503,6 +557,7 @@ export const ManageAssessments = () => {
             if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated)) {
                 datasetsCount = assessment.dqaDatasetsCreated.length
             }
+            // If no datasets created yet, return 0 (this is normal for new assessments)
         } catch (error) {
             console.warn('Error counting datasets for assessment:', assessment.id, error)
             datasetsCount = 0
@@ -516,7 +571,57 @@ export const ManageAssessments = () => {
         // New structure only
         const name = assessment.details?.name || assessment.name || 'Unnamed Assessment'
         const count = getDatasetCount(assessment)
-        return `${name} - ${count}/4 DQA Datasets`
+        const status = count === 0 ? 'Setup Required' : `${count}/4 DQA Datasets`
+        return `${name} - ${status}`
+    }
+
+    // Helper function to get total data elements count across all DQA datasets
+    const getDataElementsCount = (assessment) => {
+        try {
+            if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated)) {
+                return assessment.dqaDatasetsCreated.reduce((total, dataset) => {
+                    return total + (dataset.dataElements ? dataset.dataElements.length : 0)
+                }, 0)
+            }
+            // Return 0 if no datasets created yet (normal for new assessments)
+            return 0
+        } catch (error) {
+            console.warn('Error counting data elements:', error)
+            return 0
+        }
+    }
+
+    // Helper function to get organization units count
+    const getOrgUnitsCount = (assessment) => {
+        try {
+            // Get org units from the first dataset (they should be the same across all datasets)
+            if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated) && assessment.dqaDatasetsCreated.length > 0) {
+                const firstDataset = assessment.dqaDatasetsCreated[0]
+                return firstDataset.orgUnits ? firstDataset.orgUnits.length : 0
+            }
+            // Return 0 if no datasets created yet (normal for new assessments)
+            return 0
+        } catch (error) {
+            console.warn('Error counting org units:', error)
+            return 0
+        }
+    }
+
+    // Helper function to get dataset types/aliases
+    const getDatasetTypes = (assessment) => {
+        try {
+            if (assessment.dqaDatasetsCreated && Array.isArray(assessment.dqaDatasetsCreated)) {
+                const types = assessment.dqaDatasetsCreated.map(dataset => {
+                    return dataset.type || dataset.alias || 'Unknown'
+                })
+                return types.join(', ')
+            }
+            // Return empty string if no datasets created yet
+            return ''
+        } catch (error) {
+            console.warn('Error getting dataset types:', error)
+            return ''
+        }
     }
     
     // Helper function to render clickable dataset links
@@ -748,243 +853,65 @@ export const ManageAssessments = () => {
         return true // For now, assume it's configured
     }
 
-    // Assessment Actions for each assessment - new structure
+    // Assessment Actions for each assessment - simplified and realistic
     const getAssessmentActions = (assessment) => {
-        const handleDownloadAssessmentJSON = (a) => {
-            try {
-                const blob = new Blob([JSON.stringify(a, null, 2)], { type: 'application/json' })
-                const url = URL.createObjectURL(blob)
-                const aEl = document.createElement('a')
-                const safeName = String(a?.details?.name || a?.name || 'assessment').replace(/[^a-zA-Z0-9]/g, '_')
-                const ts = new Date().toISOString().split('T')[0]
-                aEl.download = `DQA360_${safeName}_${ts}.json`
-                aEl.href = url
-                document.body.appendChild(aEl)
-                aEl.click()
-                document.body.removeChild(aEl)
-                URL.revokeObjectURL(url)
-            } catch (e) {
-                console.error('Download failed', e)
-            }
-        }
-        const handlePrintAssessmentSummary = (a) => {
-            try {
-                const w = window.open('', '_blank', 'width=900,height=700')
-                if (!w) return
-                const style = `
-                    <style>
-                        body{font-family: Arial, sans-serif; padding: 20px;}
-                        h1{margin-top:0}
-                        pre{background:#f7f7f7;padding:12px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
-                        .meta{margin-bottom:16px}
-                        .meta div{margin:4px 0}
-                    </style>
-                `
-                const name = a?.details?.name || a?.name || 'Assessment'
-                const details = a?.details || {}
-                w.document.write(`
-                    <html>
-                        <head><title>${name}</title>${style}</head>
-                        <body>
-                            <h1>${name}</h1>
-                            <div class="meta">
-                                <div><strong>Period:</strong> ${details.period || ''}</div>
-                                <div><strong>Frequency:</strong> ${details.frequency || ''}</div>
-                                <div><strong>Status:</strong> ${details.status || ''}</div>
-                                <div><strong>Priority:</strong> ${details.priority || ''}</div>
-                                <div><strong>Assessment Type:</strong> ${details.assessmentType || ''}</div>
-                                <div><strong>Methodology:</strong> ${details.methodology || ''}</div>
-                                <div><strong>Reporting Level:</strong> ${details.reportingLevel || ''}</div>
-                            </div>
-                            <pre>${JSON.stringify(a, null, 2)}</pre>
-                            <script>window.print();</script>
-                        </body>
-                    </html>
-                `)
-                w.document.close()
-            } catch (e) {
-                console.error('Print failed', e)
-            }
-        }
+        const datasetCount = getDatasetCount(assessment)
+        const isComplete = datasetCount >= 4
+        const status = getAssessmentData(assessment, 'status', 'draft')
+        
         const actions = [
-            // 1. View Assessment (Details page, Edit, Delete, Deactivate)
+            // Edit/Configure Assessment
             {
-                label: i18n.t('View Assessment'),
-                icon: <IconView24 />,
-                submenu: [
-                    {
-                        label: i18n.t('View Details'),
-                        onClick: () => handleViewAssessment(assessment)
-                    },
-                    {
-                        label: i18n.t('Edit Assessment'),
-                        onClick: () => handleEditAssessment(assessment)
-                    },
-                    {
-                        label: i18n.t('Deactivate'),
-                        onClick: () => handleStatusChange(assessment, 'inactive')
-                    },
-                    {
-                        label: i18n.t('Delete Assessment'),
-                        destructive: true,
-                        onClick: () => handleDeleteAssessment(assessment.id)
-                    }
-                ]
-            },
-            
-            // 2. Data (Entry, Export, Edit)
-            {
-                label: i18n.t('Data'),
+                label: isComplete ? i18n.t('Edit Assessment') : i18n.t('Configure Assessment'),
                 icon: <IconEdit24 />,
-                submenu: [
-                    {
-                        label: i18n.t('Data Entry'),
-                        onClick: () => console.log('Data Entry for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Export Data'),
-                        onClick: () => console.log('Export Data for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Edit Data'),
-                        onClick: () => console.log('Edit Data for:', assessment.id)
-                    }
-                ]
+                onClick: () => navigate(`/administration/assessments/edit/${assessment.id}`)
             },
+            
+            // View Details
+            {
+                label: i18n.t('View Details'),
+                icon: <IconView24 />,
+                onClick: () => handleViewAssessment(assessment)
+            }
+        ]
 
-            // 3. Download & Print (Assessment payload)
-            {
-                label: i18n.t('Download & Print'),
-                icon: <IconDownload24 />,
-                submenu: [
-                    {
-                        label: i18n.t('Download Assessment JSON'),
-                        onClick: () => handleDownloadAssessmentJSON(assessment)
-                    },
-                    {
-                        label: i18n.t('Print Assessment Summary'),
-                        onClick: () => handlePrintAssessmentSummary(assessment)
-                    }
-                ]
-            },
-            
-            // 4. DQA Analysis
-            {
-                label: i18n.t('DQA Analysis'),
-                icon: <IconMore24 />,
-                submenu: [
-                    {
-                        label: i18n.t('Data Quality Check'),
-                        onClick: () => openDQModal('dataQualityCheck', assessment)
-                    },
-                    {
-                        label: i18n.t('Completeness Analysis'),
-                        onClick: () => openDQModal('completenessAnalysis', assessment)
-                    },
-                    {
-                        label: i18n.t('Consistency Analysis'),
-                        onClick: () => openDQModal('consistencyAnalysis', assessment)
-                    },
-                    {
-                        label: i18n.t('Outlier Detection'),
-                        onClick: () => openDQModal('outlierDetection', assessment)
-                    },
-                    { type: 'divider' },
-                    {
-                        label: i18n.t('Generate DQA Report'),
-                        onClick: () => console.log('Generate DQA Report for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Export DQA Results'),
-                        onClick: () => console.log('Export DQA Results for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('DQA Dashboard'),
-                        onClick: () => console.log('Open DQA Dashboard for:', assessment.id)
-                    }
-                ]
-            },
-            
-            // 5. User Access
-            {
-                label: i18n.t('User Access'),
-                icon: <IconSettings24 />,
-                onClick: () => console.log('User Access for:', assessment.id)
-            },
-            
-            // 6. Settings (Change Status, Notifications)
-            {
-                label: i18n.t('Settings'),
-                icon: <IconSettings24 />,
-                submenu: [
-                    {
-                        label: i18n.t('Change Status'),
-                        submenu: [
-                            {
-                                label: i18n.t('Mark as Active'),
-                                onClick: () => handleStatusChange(assessment, 'active')
-                            },
-                            {
-                                label: i18n.t('Mark as Completed'),
-                                onClick: () => handleStatusChange(assessment, 'completed')
-                            },
-                            {
-                                label: i18n.t('Mark as Draft'),
-                                onClick: () => handleStatusChange(assessment, 'draft')
-                            },
-                            {
-                                label: i18n.t('Mark as On Hold'),
-                                onClick: () => handleStatusChange(assessment, 'on-hold')
-                            }
-                        ]
-                    },
-                    {
-                        label: i18n.t('Notifications'),
-                        onClick: () => console.log('Notifications for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Assessment Settings'),
-                        onClick: () => openDQModal('assessmentSettings', assessment)
-                    }
-                ]
-            },
-            
+        // Add DQA actions only if assessment is complete
+        if (isComplete) {
+            actions.push(
+                { type: 'divider' },
+                {
+                    label: i18n.t('Data Quality Check'),
+                    icon: <IconMore24 />,
+                    onClick: () => openDQModal('dataQualityCheck', assessment)
+                },
+                {
+                    label: i18n.t('Completeness Analysis'),
+                    icon: <IconMore24 />,
+                    onClick: () => openDQModal('completenessAnalysis', assessment)
+                }
+            )
+        }
+
+        // Add status change actions
+        actions.push(
             { type: 'divider' },
-            
-            // 7. Delete (separate item)
+            {
+                label: status === 'active' ? i18n.t('Mark as Draft') : i18n.t('Mark as Active'),
+                icon: <IconSettings24 />,
+                onClick: () => handleStatusChange(assessment, status === 'active' ? 'draft' : 'active')
+            }
+        )
+
+        // Add delete action
+        actions.push(
+            { type: 'divider' },
             {
                 label: i18n.t('Delete'),
                 icon: <IconDelete24 />,
                 destructive: true,
                 onClick: () => handleDeleteAssessment(assessment.id)
             }
-        ]
-
-        // 3. Load Reported Data (If DHIS2 configured) - conditionally add
-        if (isDHIS2Configured()) {
-            actions.splice(2, 0, {
-                label: i18n.t('Load Reported Data'),
-                icon: <IconDownload24 />,
-                submenu: [
-                    {
-                        label: i18n.t('Load from External DHIS2'),
-                        onClick: () => console.log('Load from External DHIS2 for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Sync Reported Dataset'),
-                        onClick: () => console.log('Sync Reported Dataset for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Update Reported Data'),
-                        onClick: () => console.log('Update Reported Data for:', assessment.id)
-                    },
-                    {
-                        label: i18n.t('Refresh Metadata'),
-                        onClick: () => console.log('Refresh Metadata for:', assessment.id)
-                    }
-                ]
-            })
-        }
+        )
 
         return actions
     }
@@ -1020,6 +947,13 @@ export const ManageAssessments = () => {
                     </p>
                 </Box>
                 <ButtonStrip>
+                    <Button 
+                        secondary
+                        onClick={handleRefresh}
+                        disabled={assessmentsLoading}
+                    >
+                        🔄 {i18n.t('Refresh')}
+                    </Button>
                     {assessments.length > 0 && (
                         <Button 
                             secondary
@@ -1028,15 +962,13 @@ export const ManageAssessments = () => {
                             📱 {i18n.t('Test SMS Integration')}
                         </Button>
                     )}
-                    {assessments.length > 0 && (
-                        <Button 
-                            primary
-                            icon={<IconAdd24 />}
-                            onClick={handleCreateAssessment}
-                        >
-                            {i18n.t('Create New Assessment')}
-                        </Button>
-                    )}
+                    <Button 
+                        primary
+                        icon={<IconAdd24 />}
+                        onClick={handleCreateAssessment}
+                    >
+                        {i18n.t('Create New Assessment')}
+                    </Button>
                 </ButtonStrip>
             </Box>
 
@@ -1085,11 +1017,30 @@ export const ManageAssessments = () => {
                         style={{ 
                             flex: 1,
                             display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: '32px'
+                            padding: '32px',
+                            textAlign: 'center'
                         }}
                     >
+                        <div style={{ marginBottom: '24px' }}>
+                            <h3 style={{ margin: '0 0 8px 0', color: '#666' }}>
+                                {i18n.t('No Assessments Found')}
+                            </h3>
+                            <p style={{ margin: '0', color: '#888', fontSize: '14px' }}>
+                                {i18n.t('Create your first DQA assessment to get started with data quality analysis.')}
+                            </p>
+                            {process.env.NODE_ENV === 'development' && (
+                                <div style={{ marginTop: '16px', padding: '8px', background: '#f5f5f5', borderRadius: '4px', fontSize: '12px', color: '#666' }}>
+                                    <strong>Debug Info:</strong><br />
+                                    Loading: {assessmentsLoading ? 'Yes' : 'No'}<br />
+                                    Initial Load: {initialLoad ? 'Yes' : 'No'}<br />
+                                    Error: {assessmentsError || 'None'}<br />
+                                    Assessments Count: {assessments.length}
+                                </div>
+                            )}
+                        </div>
                         <Button 
                             primary 
                             large
@@ -1100,324 +1051,347 @@ export const ManageAssessments = () => {
                         </Button>
                     </Box>
                 ) : (
-                    <DataTable style={{ 
+                    <div style={{ 
                         flex: 1, 
                         display: 'flex', 
                         flexDirection: 'column',
-                        overflow: 'hidden'
+                        overflow: 'auto'
                     }}>
-                        <DataTableHead>
-                            <DataTableRow>
-                                <DataTableColumnHeader>{i18n.t('Assessment Details')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Period & Frequency')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Type & Priority')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Status')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Data Configuration')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Created')}</DataTableColumnHeader>
-                                <DataTableColumnHeader>{i18n.t('Actions')}</DataTableColumnHeader>
-                            </DataTableRow>
-                        </DataTableHead>
-                        <DataTableBody>
-                            {assessments.map((assessment, index) => (
-                                <DataTableRow key={assessment?.id || `assessment-${index}`}>
-                                    {/* Assessment Details */}
-                                    <DataTableCell>
-                                        <Box>
-                                            <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px', color: '#1976d2' }}>
-                                                {getAssessmentData(assessment, 'name', 'Unnamed Assessment')}
-                                            </div>
-                                            {getAssessmentData(assessment, 'description') !== 'Not specified' && (
-                                                <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', lineHeight: '1.3' }}>
-                                                    {getAssessmentData(assessment, 'description').length > 60 
-                                                        ? `${getAssessmentData(assessment, 'description').substring(0, 60)}...`
-                                                        : getAssessmentData(assessment, 'description')
-                                                    }
-                                                </div>
-                                            )}
-                                            <div style={{ fontSize: '11px', color: '#888', marginBottom: '2px' }}>
-                                                <span style={{ fontWeight: '500' }}>ID:</span> {getAssessmentData(assessment, 'id', 'Unknown ID').substring(0, 15)}...
-                                            </div>
-                                        </Box>
-                                    </DataTableCell>
-
-                                    {/* Period & Frequency */}
-                                    <DataTableCell>
-                                        <Box>
-                                            {(() => {
-                                                const startDate = getAssessmentDate(assessment, 'startDate')
-                                                const endDate = getAssessmentDate(assessment, 'endDate')
-                                                const period = getAssessmentData(assessment, 'period')
-                                                const frequency = getAssessmentData(assessment, 'frequency', 'Not specified')
-                                                
-                                                if (startDate && endDate) {
-                                                    return (
-                                                        <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
-                                                                {formatDate(startDate)} - {formatDate(endDate)}
-                                                            </div>
-                                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                {frequency}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                } else if (period && period !== 'Not specified') {
-                                                    return (
-                                                        <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
-                                                                {period}
-                                                            </div>
-                                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                {frequency}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                } else {
-                                                    return (
-                                                        <div>
-                                                            <div style={{ color: '#999', fontSize: '12px', marginBottom: '2px' }}>No period set</div>
-                                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                {frequency}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                }
-                                            })()}
-                                        </Box>
-                                    </DataTableCell>
-
-                                    {/* Type & Priority */}
-                                    <DataTableCell>
-                                        <Box>
-                                            <div style={{ marginBottom: '4px' }}>
-                                                <Tag neutral style={{ fontSize: '10px' }}>
-                                                    {getAssessmentData(assessment, 'assessmentType', 'baseline')}
-                                                </Tag>
-                                            </div>
-                                            <div style={{ marginBottom: '4px' }}>
-                                                <Tag 
-                                                    positive={getAssessmentData(assessment, 'priority', 'medium') === 'low'}
-                                                    neutral={getAssessmentData(assessment, 'priority', 'medium') === 'medium'}
-                                                    negative={['high', 'critical'].includes(getAssessmentData(assessment, 'priority', 'medium'))}
-                                                    style={{ fontSize: '10px' }}
-                                                >
-                                                    {getAssessmentData(assessment, 'priority', 'medium')}
-                                                </Tag>
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                {getAssessmentData(assessment, 'methodology', 'automated')}
-                                            </div>
-                                        </Box>
-                                    </DataTableCell>
-
-                                    {/* Status */}
-                                    <DataTableCell>
-                                        <Box>
-                                            {(() => {
-                                                const status = getAssessmentData(assessment, 'status', 'draft')
-                                                const datasetCount = getDatasetCount(assessment)
-                                                const selectedDatasets = getSelectedDatasetsCount(assessment)
-                                                const hasDQADatasets = datasetCount >= 4
-                                                const hasSelectedDatasets = selectedDatasets > 0
-                                                
-                                                // Determine completion status
-                                                let completionStatus = 'incomplete'
-                                                let statusText = status.toUpperCase()
-                                                
-                                                if (hasDQADatasets) {
-                                                    completionStatus = 'complete'
-                                                    statusText = status.toUpperCase()
-                                                } else if (hasSelectedDatasets) {
-                                                    completionStatus = 'partial'
-                                                    statusText = 'SETUP REQUIRED'
-                                                } else {
-                                                    completionStatus = 'incomplete'
-                                                    statusText = 'INCOMPLETE'
-                                                }
-                                                
-                                                return (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr>
+                                        <th style={tableStyles.th}>{i18n.t('Assessment Details')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Period & Frequency')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Type & Priority')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Status')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Data Configuration')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Created')}</th>
+                                        <th style={tableStyles.th}>{i18n.t('Actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {assessments.map((assessment, index) => {
+                                        // Debug log for assessment structure (only in development)
+                                        if (process.env.NODE_ENV === 'development' && index === 0) {
+                                            console.log('📊 Sample assessment structure:', {
+                                                id: assessment.id,
+                                                hasDetails: !!assessment.details,
+                                                hasConnection: !!assessment.connection,
+                                                hasDqaDatasetsCreated: !!assessment.dqaDatasetsCreated,
+                                                dqaDatasetsCount: assessment.dqaDatasetsCreated?.length || 0,
+                                                structure: Object.keys(assessment)
+                                            })
+                                        }
+                                        
+                                        return (
+                                            <tr key={assessment?.id || `assessment-${index}`}>
+                                                {/* Assessment Details */}
+                                                <td style={tableStyles.td}>
                                                     <div>
-                                                        <div style={{ marginBottom: '4px' }}>
-                                                            <Tag 
-                                                                positive={completionStatus === 'complete' && status === 'active'}
-                                                                neutral={completionStatus === 'partial' || status === 'draft'}
-                                                                negative={status === 'archived' || status === 'error' || completionStatus === 'incomplete'}
-                                                                style={{ fontSize: '10px' }}
-                                                            >
-                                                                {statusText}
-                                                            </Tag>
+                                                        <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px', color: '#1976d2' }}>
+                                                            {getAssessmentData(assessment, 'name', 'Unnamed Assessment')}
                                                         </div>
-                                                        {completionStatus !== 'complete' && (
-                                                            <div>
-                                                                <Button 
-                                                                    small 
-                                                                    primary
-                                                                    onClick={() => navigate(`/administration/assessments/edit/${assessment.id}`)}
-                                                                    style={{ fontSize: '10px', padding: '4px 8px' }}
-                                                                >
-                                                                    {completionStatus === 'partial' ? i18n.t('Complete Setup') : i18n.t('Configure')}
-                                                                </Button>
+                                                        {getAssessmentData(assessment, 'description') !== 'Not specified' && (
+                                                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', lineHeight: '1.3' }}>
+                                                                {getAssessmentData(assessment, 'description').length > 60 
+                                                                    ? `${getAssessmentData(assessment, 'description').substring(0, 60)}...`
+                                                                    : getAssessmentData(assessment, 'description')
+                                                                }
                                                             </div>
                                                         )}
-                                                        <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                            {completionStatus === 'complete' ? 'Ready for use' : 
-                                                             completionStatus === 'partial' ? `${selectedDatasets} datasets selected` :
-                                                             'Not configured'}
+                                                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '2px' }}>
+                                                            <span style={{ fontWeight: '500' }}>ID:</span> {getAssessmentData(assessment, 'id', 'Unknown ID').substring(0, 15)}...
                                                         </div>
                                                     </div>
-                                                )
-                                            })()}
-                                        </Box>
-                                    </DataTableCell>
+                                                </td>
 
-                                    {/* Data Configuration */}
-                                    <DataTableCell>
-                                        <Box>
-                                            {(() => {
-                                                const datasetCount = getDatasetCount(assessment)
-                                                const selectedDatasets = getSelectedDatasetsCount(assessment)
-                                                // Get data elements and org units from new structure only
-                                                let localDataElements = []
-                                                let localOrgUnits = []
-                                                
-                                                // New structure only
-                                                localDataElements = assessment.dqaDatasetsCreated?.reduce((acc, dataset) => {
-                                                    return acc.concat(dataset.dataElements || [])
-                                                }, []) || []
-                                                
-                                                localOrgUnits = assessment.dqaDatasetsCreated?.reduce((acc, dataset) => {
-                                                    return acc.concat(dataset.orgUnits || [])
-                                                }, []) || []
-                                                
-                                                // Show different states based on configuration progress
-                                                if (datasetCount >= 4) {
-                                                    // Complete DQA setup
-                                                    return (
-                                                        <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#10B981' }}>
-                                                                ✅ DQA Datasets Ready
-                                                            </div>
-                                                            <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    <span style={{ fontWeight: '500' }}>Datasets:</span> {datasetCount}/4 created
+                                                {/* Period & Frequency */}
+                                                <td style={tableStyles.td}>
+                                                    {(() => {
+                                                        const startDate = getAssessmentDate(assessment, 'startDate')
+                                                        const endDate = getAssessmentDate(assessment, 'endDate')
+                                                        const period = getAssessmentData(assessment, 'period')
+                                                        const frequency = getAssessmentData(assessment, 'frequency', 'Not specified')
+                                                        
+                                                        if (startDate && endDate) {
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
+                                                                        {formatDate(startDate)} - {formatDate(endDate)}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                        {frequency}
+                                                                    </div>
                                                                 </div>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    <span style={{ fontWeight: '500' }}>Elements:</span> {localDataElements.length} DQA elements
+                                                            )
+                                                        } else if (period && period !== 'Not specified') {
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
+                                                                        {period}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                        {frequency}
+                                                                    </div>
                                                                 </div>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    <span style={{ fontWeight: '500' }}>Facilities:</span> {localOrgUnits.length} assigned
+                                                            )
+                                                        } else {
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ color: '#999', fontSize: '12px', marginBottom: '2px' }}>No period set</div>
+                                                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                        {frequency}
+                                                                    </div>
                                                                 </div>
-                                                                {selectedDatasets > 0 && (
-                                                                    <div style={{ fontSize: '10px', color: '#888' }}>
-                                                                        From {selectedDatasets} source datasets
+                                                            )
+                                                        }
+                                                    })()}
+                                                </td>
+
+                                                {/* Type & Priority */}
+                                                <td style={tableStyles.td}>
+                                                    <div>
+                                                        <div style={{ marginBottom: '4px' }}>
+                                                            <Tag neutral style={{ fontSize: '10px' }}>
+                                                                {getAssessmentData(assessment, 'assessmentType', 'baseline')}
+                                                            </Tag>
+                                                        </div>
+                                                        <div style={{ marginBottom: '4px' }}>
+                                                            <Tag 
+                                                                positive={getAssessmentData(assessment, 'priority', 'medium') === 'low'}
+                                                                neutral={getAssessmentData(assessment, 'priority', 'medium') === 'medium'}
+                                                                negative={['high', 'critical'].includes(getAssessmentData(assessment, 'priority', 'medium'))}
+                                                                style={{ fontSize: '10px' }}
+                                                            >
+                                                                {getAssessmentData(assessment, 'priority', 'medium')}
+                                                            </Tag>
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: '#666' }}>
+                                                            {getAssessmentData(assessment, 'methodology', 'automated')}
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Status */}
+                                                <td style={tableStyles.td}>
+                                                    {(() => {
+                                                        const status = getAssessmentData(assessment, 'status', 'draft')
+                                                        const datasetCount = getDatasetCount(assessment)
+                                                        const selectedDatasets = getSelectedDatasetsCount(assessment)
+                                                        const hasDQADatasets = datasetCount >= 4
+                                                        const hasSelectedDatasets = selectedDatasets > 0
+                                                        
+                                                        // Determine completion status
+                                                        let completionStatus = 'incomplete'
+                                                        let statusText = status.toUpperCase()
+                                                        
+                                                        if (hasDQADatasets) {
+                                                            completionStatus = 'complete'
+                                                            statusText = status.toUpperCase()
+                                                        } else if (hasSelectedDatasets) {
+                                                            completionStatus = 'partial'
+                                                            statusText = 'SETUP REQUIRED'
+                                                        } else {
+                                                            completionStatus = 'incomplete'
+                                                            statusText = 'INCOMPLETE'
+                                                        }
+                                                        
+                                                        return (
+                                                            <div>
+                                                                <div style={{ marginBottom: '4px' }}>
+                                                                    <Tag 
+                                                                        positive={completionStatus === 'complete' && status === 'active'}
+                                                                        neutral={completionStatus === 'partial' || status === 'draft'}
+                                                                        negative={status === 'archived' || status === 'error' || completionStatus === 'incomplete'}
+                                                                        style={{ fontSize: '10px' }}
+                                                                    >
+                                                                        {statusText}
+                                                                    </Tag>
+                                                                </div>
+                                                                {completionStatus !== 'complete' && (
+                                                                    <div>
+                                                                        <Button 
+                                                                            small 
+                                                                            primary
+                                                                            onClick={() => navigate(`/administration/assessments/edit/${assessment.id}`)}
+                                                                            style={{ fontSize: '10px', padding: '4px 8px' }}
+                                                                        >
+                                                                            {completionStatus === 'partial' ? i18n.t('Complete Setup') : i18n.t('Configure')}
+                                                                        </Button>
                                                                     </div>
                                                                 )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                } else if (selectedDatasets > 0) {
-                                                    // Partial setup - datasets selected but DQA not created
-                                                    return (
-                                                        <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#f59e0b' }}>
-                                                                ⚙️ Setup In Progress
-                                                            </div>
-                                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    <span style={{ fontWeight: '500' }}>Source:</span> {selectedDatasets} datasets selected
-                                                                </div>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    <span style={{ fontWeight: '500' }}>DQA:</span> {datasetCount}/4 datasets created
-                                                                </div>
-                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
-                                                                    Complete setup to generate DQA datasets
+                                                                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                                    {completionStatus === 'complete' ? 'Ready for use' : 
+                                                                     completionStatus === 'partial' ? `${selectedDatasets} datasets selected` :
+                                                                     'Not configured'}
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    )
-                                                } else {
-                                                    // No configuration
-                                                    return (
-                                                        <div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#ef4444' }}>
-                                                                ❌ Not Configured
-                                                            </div>
-                                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                                <div style={{ marginBottom: '1px' }}>
-                                                                    No datasets selected
-                                                                </div>
-                                                                <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
-                                                                    Configure assessment to get started
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                }
-                                            })()}
-                                        </Box>
-                                    </DataTableCell>
-
-                                    {/* Created */}
-                                    <DataTableCell>
-                                        <Box>
-                                            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
-                                                {formatDate(getAssessmentDate(assessment, 'createdAt'))}
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                                {(() => {
-                                                    const createdBy = getAssessmentData(assessment, 'createdBy', 'Unknown User')
-                                                    if (typeof createdBy === 'object' && createdBy.displayName) {
-                                                        return createdBy.displayName
-                                                    }
-                                                    return createdBy
-                                                })()}
-                                            </div>
-                                            {(assessment.version || assessment.structure) && (
-                                                <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
-                                                    {assessment.version && `v${assessment.version}`}
-                                                    {assessment.structure && ` (${assessment.structure})`}
-                                                </div>
-                                            )}
-                                        </Box>
-                                    </DataTableCell>
-                                    <DataTableCell>
-                                        <DropdownButton
-                                            component={
-                                                <FlyoutMenu>
-                                                    {getAssessmentActions(assessment).map((action, index) => 
-                                                        action.type === 'divider' ? (
-                                                            <Divider key={index} />
-                                                        ) : action.submenu ? (
-                                                            <MenuItem
-                                                                key={index}
-                                                                label={action.label}
-                                                                icon={action.icon}
-                                                                onClick={() => {
-                                                                    // For now, show first submenu item - in real implementation, this would be a nested menu
-                                                                    if (action.submenu.length > 0) {
-                                                                        action.submenu[0].onClick()
-                                                                    }
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <MenuItem
-                                                                key={index}
-                                                                label={action.label}
-                                                                icon={action.icon}
-                                                                destructive={action.destructive}
-                                                                onClick={action.onClick}
-                                                            />
                                                         )
-                                                    )}
-                                                </FlyoutMenu>
-                                            }
-                                        >
-                                            {i18n.t('Actions')}
-                                        </DropdownButton>
-                                    </DataTableCell>
-                                </DataTableRow>
-                            ))}
-                        </DataTableBody>
-                    </DataTable>
+                                                    })()}
+                                                </td>
+
+                                                {/* Data Configuration */}
+                                                <td style={tableStyles.td}>
+                                                    {(() => {
+                                                        const datasetCount = getDatasetCount(assessment)
+                                                        const selectedDatasets = getSelectedDatasetsCount(assessment)
+                                                        
+                                                        // Debug logging (only in development)
+                                                        if (process.env.NODE_ENV === 'development' && index === 0) {
+                                                            console.log('🔍 Assessment data configuration:', {
+                                                                assessmentId: assessment.id,
+                                                                assessmentName: assessment.details?.name || assessment.name,
+                                                                datasetCount,
+                                                                selectedDatasets,
+                                                                hasDatasets: !!assessment.dqaDatasetsCreated,
+                                                                assessmentKeys: Object.keys(assessment)
+                                                            })
+                                                        }
+                                                        
+                                                        // Get detailed counts using helper functions
+                                                        const dataElementsCount = getDataElementsCount(assessment)
+                                                        const orgUnitsCount = getOrgUnitsCount(assessment)
+                                                        const datasetTypes = getDatasetTypes(assessment)
+                                                        
+                                                        // Show different states based on configuration progress
+                                                        if (datasetCount >= 4) {
+                                                            // Complete DQA setup
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#10B981' }}>
+                                                                        ✅ DQA Datasets Ready
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            <span style={{ fontWeight: '500' }}>Datasets:</span> {datasetCount}/4 created
+                                                                        </div>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            <span style={{ fontWeight: '500' }}>Elements:</span> {dataElementsCount} DQA elements
+                                                                        </div>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            <span style={{ fontWeight: '500' }}>Facilities:</span> {orgUnitsCount} assigned
+                                                                        </div>
+                                                                        {datasetTypes && (
+                                                                            <div style={{ fontSize: '10px', color: '#888' }}>
+                                                                                Types: {datasetTypes}
+                                                                            </div>
+                                                                        )}
+                                                                        {selectedDatasets > 0 && (
+                                                                            <div style={{ fontSize: '10px', color: '#888' }}>
+                                                                                From {selectedDatasets} source datasets
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        } else if (selectedDatasets > 0 || (assessment.selectedDatasets && assessment.selectedDatasets.length > 0)) {
+                                                            // Partial setup - datasets selected but DQA not created
+                                                            const actualSelectedCount = selectedDatasets || (assessment.selectedDatasets?.length || 0)
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#f59e0b' }}>
+                                                                        ⚙️ Setup In Progress
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            <span style={{ fontWeight: '500' }}>Source:</span> {actualSelectedCount} datasets selected
+                                                                        </div>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            <span style={{ fontWeight: '500' }}>DQA:</span> {datasetCount}/4 datasets created
+                                                                        </div>
+                                                                        {datasetCount > 0 && (
+                                                                            <>
+                                                                                <div style={{ marginBottom: '1px' }}>
+                                                                                    <span style={{ fontWeight: '500' }}>Elements:</span> {dataElementsCount} created
+                                                                                </div>
+                                                                                <div style={{ marginBottom: '1px' }}>
+                                                                                    <span style={{ fontWeight: '500' }}>Facilities:</span> {orgUnitsCount} assigned
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                                                                            Complete setup to generate all DQA datasets
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        } else {
+                                                            // No configuration
+                                                            return (
+                                                                <div>
+                                                                    <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#ef4444' }}>
+                                                                        ❌ Not Configured
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                                                        <div style={{ marginBottom: '1px' }}>
+                                                                            No datasets selected
+                                                                        </div>
+                                                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+                                                                            Configure assessment to get started
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        }
+                                                    })()}
+                                                </td>
+
+                                                {/* Created */}
+                                                <td style={tableStyles.td}>
+                                                    <div>
+                                                        <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px' }}>
+                                                            {formatDate(getAssessmentDate(assessment, 'createdAt'))}
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: '#666' }}>
+                                                            {(() => {
+                                                                const createdBy = getAssessmentData(assessment, 'createdBy', 'Unknown User')
+                                                                if (typeof createdBy === 'object' && createdBy.displayName) {
+                                                                    return createdBy.displayName
+                                                                }
+                                                                return createdBy
+                                                            })()}
+                                                        </div>
+                                                        {(assessment.version || assessment.structure) && (
+                                                            <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+                                                                {assessment.version && `v${assessment.version}`}
+                                                                {assessment.structure && ` (${assessment.structure})`}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                
+                                                {/* Actions */}
+                                                <td style={tableStyles.td}>
+                                                    <DropdownButton
+                                                        component={
+                                                            <FlyoutMenu>
+                                                                {getAssessmentActions(assessment).map((action, index) => 
+                                                                    action.type === 'divider' ? (
+                                                                        <Divider key={index} />
+                                                                    ) : (
+                                                                        <MenuItem
+                                                                            key={index}
+                                                                            label={action.label}
+                                                                            icon={action.icon}
+                                                                            destructive={action.destructive}
+                                                                            onClick={action.onClick}
+                                                                        />
+                                                                    )
+                                                                )}
+                                                            </FlyoutMenu>
+                                                        }
+                                                    >
+                                                        {i18n.t('Actions')}
+                                                    </DropdownButton>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 )}
             </Card>
 
@@ -1640,4 +1614,22 @@ export const ManageAssessments = () => {
             </FloatingActionButton>
         </Box>
     )
+}
+
+// Table styles matching assessment creation steps
+const tableStyles = {
+    th: { 
+        textAlign: 'left', 
+        borderBottom: '2px solid #ccc', 
+        padding: '10px 8px', 
+        fontSize: 12, 
+        textTransform: 'uppercase', 
+        letterSpacing: '.4px' 
+    },
+    td: { 
+        borderBottom: '1px solid #eee', 
+        padding: '10px 8px', 
+        verticalAlign: 'top', 
+        fontSize: 14 
+    }
 }

@@ -104,7 +104,6 @@ const DatasetCreationModal = ({
         'Manage data elements & category combos (category options / categories / category combos / data elements)',
         'Resolve organisation units',
         'Create or reuse dataset',
-        'Sharing settings',
         'SMS commands',
         'Finalize',
     ]), [])
@@ -1535,10 +1534,13 @@ const DatasetCreationModal = ({
 
                 // finalize
                 setCurrentStepIdx(4)
-                addLog('Finalize', 'info', type)
+                addLog(`Finalizing ${type} dataset`, 'info', type)
                 await sleep(40)
             }
 
+            // Final completion step
+            setCurrentDatasetIdx(4) // Show completion
+            setCurrentStepIdx(4)
             addLog('Building mapping payload…', 'info')
             addLog(`Results summary: ${Object.keys(results).map(type => `${type}=${results[type]?.datasetId ? 'SUCCESS' : 'FAILED'}`).join(', ')}`, 'info')
             const mappingPayload = buildMappingPayload(results)
@@ -1641,12 +1643,18 @@ const DatasetCreationModal = ({
                 {/* Full-width progress header */}
                 <div style={{ margin: '8px 0 12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 6, fontSize: 13 }}>
-                        <div><strong>Dataset type:</strong> {['Register', 'Summary', 'Reported', 'Corrected'][currentDatasetIdx]} ({currentDatasetIdx + 1}/4)</div>
-                        <div><strong>Step:</strong> {steps[currentStepIdx]} ({currentStepIdx + 1}/{steps.length})</div>
+                        <div><strong>Dataset type:</strong> {
+                            currentDatasetIdx >= 4 ? 'Completing...' : 
+                            `${['Register', 'Summary', 'Reported', 'Corrected'][currentDatasetIdx]} (${currentDatasetIdx + 1}/4)`
+                        }</div>
+                        <div><strong>Step:</strong> {
+                            currentDatasetIdx >= 4 ? 'Finalizing all datasets' :
+                            `${steps[currentStepIdx]} (${currentStepIdx + 1}/${steps.length})`
+                        }</div>
                     </div>
                     <LinearLoader amount={
                         success ? 100 :
-                            isCreating ? Math.min(100, ((currentDatasetIdx * steps.length + currentStepIdx) / (4 * steps.length)) * 100) :
+                            isCreating ? Math.min(100, currentDatasetIdx >= 4 ? 95 : ((currentDatasetIdx * steps.length + currentStepIdx) / (4 * steps.length)) * 100) :
                                 0 } />
                 </div>
 

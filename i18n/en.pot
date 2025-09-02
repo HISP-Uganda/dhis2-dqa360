@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-09-02T11:05:45.745Z\n"
-"PO-Revision-Date: 2025-09-02T11:05:45.746Z\n"
+"POT-Creation-Date: 2025-09-02T17:35:45.622Z\n"
+"PO-Revision-Date: 2025-09-02T17:35:45.623Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -4377,86 +4377,17 @@ msgstr ""
 msgid "Assessment deleted successfully"
 msgstr "Assessment deleted successfully"
 
-msgid "View Assessment"
-msgstr "View Assessment"
+msgid "Configure Assessment"
+msgstr "Configure Assessment"
 
 msgid "View Details"
 msgstr "View Details"
 
-msgid "Deactivate"
-msgstr "Deactivate"
-
-msgid "Delete Assessment"
-msgstr "Delete Assessment"
-
-msgid "Data"
-msgstr "Data"
-
-msgid "Data Entry"
-msgstr "Data Entry"
-
-msgid "Export Data"
-msgstr "Export Data"
-
-msgid "Edit Data"
-msgstr "Edit Data"
-
-msgid "Download & Print"
-msgstr "Download & Print"
-
-msgid "Download Assessment JSON"
-msgstr "Download Assessment JSON"
-
-msgid "Print Assessment Summary"
-msgstr "Print Assessment Summary"
-
-msgid "Consistency Analysis"
-msgstr "Consistency Analysis"
-
-msgid "Outlier Detection"
-msgstr "Outlier Detection"
-
-msgid "Generate DQA Report"
-msgstr "Generate DQA Report"
-
-msgid "Export DQA Results"
-msgstr "Export DQA Results"
-
-msgid "DQA Dashboard"
-msgstr "DQA Dashboard"
-
-msgid "User Access"
-msgstr "User Access"
-
-msgid "Change Status"
-msgstr "Change Status"
-
-msgid "Mark as Active"
-msgstr "Mark as Active"
-
-msgid "Mark as Completed"
-msgstr "Mark as Completed"
-
 msgid "Mark as Draft"
 msgstr "Mark as Draft"
 
-msgid "Mark as On Hold"
-msgstr "Mark as On Hold"
-
-msgid "Load Reported Data"
-msgstr "Load Reported Data"
-
-msgid "Load from External DHIS2"
-msgstr "Load from External DHIS2"
-
-msgid "Sync Reported Dataset"
-msgstr "Sync Reported Dataset"
-
-msgid "Update Reported Data"
-msgstr "Update Reported Data"
-
-msgid "Refresh Metadata"
-msgstr "Refresh Metadata"
+msgid "Mark as Active"
+msgstr "Mark as Active"
 
 msgid "Create, configure, and manage your data quality assessments"
 msgstr "Create, configure, and manage your data quality assessments"
@@ -4466,6 +4397,12 @@ msgstr "Test SMS Integration"
 
 msgid "Error Loading Assessments"
 msgstr "Error Loading Assessments"
+
+msgid "No Assessments Found"
+msgstr "No Assessments Found"
+
+msgid "Create your first DQA assessment to get started with data quality analysis."
+msgstr "Create your first DQA assessment to get started with data quality analysis."
 
 msgid "Period & Frequency"
 msgstr "Period & Frequency"
@@ -5054,3 +4991,11 @@ msgstr "Creating SMS commands for datasets"
 
 msgid "Assessment creation completed"
 msgstr "Assessment creation completed"
+
+msgctxt "Application title"
+msgid "__MANIFEST_APP_TITLE"
+msgstr "DQA360 - Data Quality Assessment"
+
+msgctxt "Application description"
+msgid "__MANIFEST_APP_DESCRIPTION"
+msgstr "A comprehensive data quality assessment platform for DHIS2"
