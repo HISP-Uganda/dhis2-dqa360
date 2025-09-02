@@ -21,6 +21,7 @@ import { DQAUserManagement } from './components/DQAUserManagement'
 import { ReportsConfiguration } from './components/ReportsConfiguration'
 import { ChannelsProviders } from './components/ChannelsProviders'
 import DatasetsList from './components/DatasetsList'
+const DatasetDetailsLazy = React.lazy(() => import('./components/DatasetDetails'))
 import { AuditLogs } from './components/AuditLogs'
 import { ManageAssessments } from '../ManageAssessments/ManageAssessments'
 import { CreateAssessmentPage } from '../ManageAssessments/CreateAssessmentPage'
@@ -254,6 +255,7 @@ export const Administration = () => {
                             {/* Pending sections (hidden/placeholder-free as requested) */}
                             <Route path="/metadata" element={<SystemConfiguration />} />
                             <Route path="/datasets" element={<DatasetsList />} />
+                            <Route path="/datasets/:id" element={<React.Suspense fallback={<div>Loading…</div>}><DatasetDetailsLazy /></React.Suspense>} />
                             <Route path="/integrations" element={<SystemConfiguration />} />
                             <Route path="/notifications" element={<ChannelsProviders />} />
                             <Route path="/security" element={<DQAUserManagement />} />

@@ -1362,8 +1362,11 @@ const DatasetPreparationPorted = ({
                     assignedOrgUnitsByDataset={assignedOrgUnitsByDataset}
                     orgUnitMappings={orgUnitMappings}
                     assessmentName={assessmentName}
+                    assessmentId={assessmentData?.id}
                     metadataSource={assessmentData?.externalConfig?.baseUrl ? 'external' : 'local'}
                     onAllDatasetsCreated={(result) => {
+                        console.log('PreparationStep - onAllDatasetsCreated called with:', result)
+                        
                         const created =
                             result?.handoff?.createdDatasets ||
                             result?.createdDatasets ||
@@ -1383,14 +1386,26 @@ const DatasetPreparationPorted = ({
                         const smsCmds =
                             result?.handoff?.sms?.commands || result?.sms?.commands || result?.savedPayload?.sms?.commands || []
 
+                        console.log('PreparationStep - extracted data:', {
+                            created: created,
+                            createdLength: created?.length,
+                            mappings: mappings,
+                            mappingsLength: mappings?.length,
+                            smsCmds: smsCmds?.length
+                        })
+
                         if (typeof setAssessmentData === 'function') {
-                            setAssessmentData((prev) => ({
-                                ...(prev || {}),
-                                dqaDatasetsCreated: created,
-                                dataElementMappings: Array.isArray(mappings) ? mappings : Object.values(mappings || {}).flat(),
-                                orgUnitMappings: orgUnitMappings || [],
-                                sms: { ...(prev?.sms || {}), commands: smsCmds },
-                            }))
+                            setAssessmentData((prev) => {
+                                const updated = {
+                                    ...(prev || {}),
+                                    dqaDatasetsCreated: created,
+                                    dataElementMappings: Array.isArray(mappings) ? mappings : Object.values(mappings || {}).flat(),
+                                    orgUnitMappings: orgUnitMappings || [],
+                                    sms: { ...(prev?.sms || {}), commands: smsCmds },
+                                }
+                                console.log('PreparationStep - updating assessmentData:', updated)
+                                return updated
+                            })
                         }
                     }}
                 />

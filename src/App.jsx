@@ -3,6 +3,9 @@ import i18n from '@dhis2/d2-i18n'
 import { AppRouter } from './components/Router/AppRouter'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useAssessmentDataStore } from './services/assessmentDataStoreService'
+import { useDataEngine } from '@dhis2/app-runtime'
+import { NAMESPACE, PROVIDERS_KEY } from './services/notificationConfigService'
+import { setNotificationProviders } from './services/notificationService'
 // './locales' will be populated after running start or build scripts
 import './locales'
 // Global table hover styles
@@ -12,7 +15,23 @@ const MyApp = () => {
     const { initializeDataStore } = useAssessmentDataStore()
     useEffect(() => {
         // Ensure datastore namespace/index exists early to avoid 404s on first load
-        initializeDataStore().catch(() => {/* best-effort init */})
+        initializeDataStore().catch(() => {/* best-effort init */});
+
+        // Load notification providers into runtime service
+        const engine = window?.appRuntimeEngine || null
+        const loadProviders = async () => {
+            try {
+                let list = []
+                if (engine && engine.query) {
+                    const res = await engine.query({ list: { resource: `dataStore/${NAMESPACE}/${PROVIDERS_KEY}` } })
+                    list = Array.isArray(res?.list) ? res.list : (res?.list || res || [])
+                }
+                setNotificationProviders(Array.isArray(list) ? list : [])
+            } catch (_) {
+                setNotificationProviders([])
+            }
+        }
+        loadProviders()
 
         // Comprehensive error and warning suppression for development
         const originalConsoleWarn = console.warn

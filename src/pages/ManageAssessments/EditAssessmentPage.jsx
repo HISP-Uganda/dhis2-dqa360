@@ -1560,8 +1560,11 @@ export const EditAssessmentPage = () => {
                                 dataElements: { selected: selectedDataElements },
                                 orgUnits: { selected: selectedOrgUnits },
                                 orgUnitMapping: { mappings: orgUnitMappings },
-                                // Preserve existing creationPayload if it exists
-                                creationPayload: assessmentData?.creationPayload || null
+                                // Preserve existing creationPayload and created datasets if they exist
+                                creationPayload: assessmentData?.creationPayload || null,
+                                dqaDatasetsCreated: assessmentData?.dqaDatasetsCreated || [],
+                                dataElementMappings: assessmentData?.dataElementMappings || [],
+                                sms: assessmentData?.sms || {}
                             }}
                             setAssessmentData={setAssessmentData}
                             smsConfig={assessmentData?.smsConfig || {}}

@@ -1812,6 +1812,9 @@ export const CreateAssessmentPage = () => {
                             // Preserve existing creationPayload and created datasets if they exist
                             creationPayload: assessmentData?.creationPayload || null,
                             createdDatasets: assessmentData?.createdDatasets || [],
+                            dqaDatasetsCreated: assessmentData?.dqaDatasetsCreated || [],
+                            dataElementMappings: assessmentData?.dataElementMappings || [],
+                            sms: assessmentData?.sms || {},
                             localDatasets: assessmentData?.localDatasets || {}
                         }}
                         setAssessmentData={setAssessmentData}

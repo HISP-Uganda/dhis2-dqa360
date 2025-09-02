@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-31T15:28:26.795Z\n"
-"PO-Revision-Date: 2025-08-31T15:28:26.795Z\n"
+"POT-Creation-Date: 2025-09-02T11:05:45.745Z\n"
+"PO-Revision-Date: 2025-09-02T11:05:45.746Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -956,12 +956,6 @@ msgstr "Enabled"
 msgid "Last Tested"
 msgstr "Last Tested"
 
-msgid "Yes"
-msgstr "Yes"
-
-msgid "No"
-msgstr "No"
-
 msgid "Configure"
 msgstr "Configure"
 
@@ -971,17 +965,167 @@ msgstr "Edit provider"
 msgid "Select type"
 msgstr "Select type"
 
+msgid "Select environment"
+msgstr "Select environment"
+
 msgid "e.g., Twilio, SendGrid, Meta, Telegram Bot"
 msgstr "e.g., Twilio, SendGrid, Meta, Telegram Bot"
 
 msgid "Provider name"
 msgstr "Provider name"
 
-msgid "Select environment"
-msgstr "Select environment"
+msgid "SMS configuration"
+msgstr "SMS configuration"
 
-msgid "Provider-specific fields (API keys, secrets, etc.) can be added next."
-msgstr "Provider-specific fields (API keys, secrets, etc.) can be added next."
+msgid "Use DHIS2 built-in SMS Gateway"
+msgstr "Use DHIS2 built-in SMS Gateway"
+
+msgid "Generic HTTP"
+msgstr "Generic HTTP"
+
+msgid "Base URL (required)"
+msgstr "Base URL (required)"
+
+msgid "HTTP Method"
+msgstr "HTTP Method"
+
+msgid "Endpoint Path (optional)"
+msgstr "Endpoint Path (optional)"
+
+msgid "From (Sender ID/Number) (required)"
+msgstr "From (Sender ID/Number) (required)"
+
+msgid "To Parameter Name (required)"
+msgstr "To Parameter Name (required)"
+
+msgid "Message Parameter Name (required)"
+msgstr "Message Parameter Name (required)"
+
+msgid "API Key (optional)"
+msgstr "API Key (optional)"
+
+msgid "API Secret (optional)"
+msgstr "API Secret (optional)"
+
+msgid "Additional Headers (JSON) (optional)"
+msgstr "Additional Headers (JSON) (optional)"
+
+msgid "Account SID (required)"
+msgstr "Account SID (required)"
+
+msgid "Auth Token (required)"
+msgstr "Auth Token (required)"
+
+msgid "From (Sender Number) (required)"
+msgstr "From (Sender Number) (required)"
+
+msgid "Messaging Service SID (optional)"
+msgstr "Messaging Service SID (optional)"
+
+msgid "Base URL (optional)"
+msgstr "Base URL (optional)"
+
+msgid "API Key (required)"
+msgstr "API Key (required)"
+
+msgid "API Secret (required)"
+msgstr "API Secret (required)"
+
+msgid "Username (required)"
+msgstr "Username (required)"
+
+msgid "From (Sender ID/Shortcode) (optional)"
+msgstr "From (Sender ID/Shortcode) (optional)"
+
+msgid "Email configuration"
+msgstr "Email configuration"
+
+msgid "Use DHIS2 SMTP settings"
+msgstr "Use DHIS2 SMTP settings"
+
+msgid "From Email (required)"
+msgstr "From Email (required)"
+
+msgid "From Name (optional)"
+msgstr "From Name (optional)"
+
+msgid "Reply-To (optional)"
+msgstr "Reply-To (optional)"
+
+msgid "Default Subject (optional)"
+msgstr "Default Subject (optional)"
+
+msgid "SMTP settings"
+msgstr "SMTP settings"
+
+msgid "SMTP Host (required)"
+msgstr "SMTP Host (required)"
+
+msgid "SMTP Port (required)"
+msgstr "SMTP Port (required)"
+
+msgid "Use TLS/SSL"
+msgstr "Use TLS/SSL"
+
+msgid "SMTP User (required)"
+msgstr "SMTP User (required)"
+
+msgid "SMTP Password (required)"
+msgstr "SMTP Password (required)"
+
+msgid "API (alternative)"
+msgstr "API (alternative)"
+
+msgid "API Key (e.g., SendGrid) (optional)"
+msgstr "API Key (e.g., SendGrid) (optional)"
+
+msgid "Defaults (optional)"
+msgstr "Defaults (optional)"
+
+msgid "Signature (optional)"
+msgstr "Signature (optional)"
+
+msgid "WhatsApp (Cloud API)"
+msgstr "WhatsApp (Cloud API)"
+
+msgid "Phone Number ID (required)"
+msgstr "Phone Number ID (required)"
+
+msgid "Access Token (required)"
+msgstr "Access Token (required)"
+
+msgid "Business Account ID (optional)"
+msgstr "Business Account ID (optional)"
+
+msgid "API Version (optional)"
+msgstr "API Version (optional)"
+
+msgid "Default Recipient (optional)"
+msgstr "Default Recipient (optional)"
+
+msgid "Template Namespace (optional)"
+msgstr "Template Namespace (optional)"
+
+msgid "Telegram"
+msgstr "Telegram"
+
+msgid "Bot Token (required)"
+msgstr "Bot Token (required)"
+
+msgid "Default Chat ID (required)"
+msgstr "Default Chat ID (required)"
+
+msgid "Proxy URL (optional)"
+msgstr "Proxy URL (optional)"
+
+msgid "API Base URL (optional)"
+msgstr "API Base URL (optional)"
+
+msgid "Allow dynamic Chat IDs"
+msgstr "Allow dynamic Chat IDs"
+
+msgid "Test & Save Status"
+msgstr "Test & Save Status"
 
 msgid "Error loading data"
 msgstr "Error loading data"
@@ -1178,14 +1322,32 @@ msgstr "Show DataStore Debugger"
 msgid "Confirm"
 msgstr "Confirm"
 
+msgid "Failed to load dataset"
+msgstr "Failed to load dataset"
+
+msgid "Dataset not found"
+msgstr "Dataset not found"
+
+msgid "No dataset with the provided id was found."
+msgstr "No dataset with the provided id was found."
+
+msgid "Back to Datasets"
+msgstr "Back to Datasets"
+
+msgid "Organisation Units"
+msgstr "Organisation Units"
+
+msgid "Version"
+msgstr "Version"
+
+msgid "DQA360 Dataset Id"
+msgstr "DQA360 Dataset Id"
+
 msgid "Failed to load datasets"
 msgstr "Failed to load datasets"
 
 msgid "No datasets have been created via assessments yet."
 msgstr "No datasets have been created via assessments yet."
-
-msgid "Organisation Units"
-msgstr "Organisation Units"
 
 msgid "Created"
 msgstr "Created"
@@ -1473,6 +1635,123 @@ msgstr "Floor"
 msgid "Ceil"
 msgstr "Ceil"
 
+msgid "DQA Dataset Management"
+msgstr "DQA Dataset Management"
+
+msgid "DQA Dataset Attribute Code"
+msgstr "DQA Dataset Attribute Code"
+
+msgid "Custom attribute code to identify DQA-enabled datasets"
+msgstr "Custom attribute code to identify DQA-enabled datasets"
+
+msgid "DQA Assessment Attribute Code"
+msgstr "DQA Assessment Attribute Code"
+
+msgid "Custom attribute code to link datasets to specific assessments"
+msgstr "Custom attribute code to link datasets to specific assessments"
+
+msgid "Enable Dataset Auto-Discovery"
+msgstr "Enable Dataset Auto-Discovery"
+
+msgid "Automatically discover datasets with DQA attribute"
+msgstr "Automatically discover datasets with DQA attribute"
+
+msgid "Dataset Sync Interval (seconds)"
+msgstr "Dataset Sync Interval (seconds)"
+
+msgid "How often to check for dataset changes"
+msgstr "How often to check for dataset changes"
+
+msgid "Data Analysis Settings"
+msgstr "Data Analysis Settings"
+
+msgid "Default Analysis Periods"
+msgstr "Default Analysis Periods"
+
+msgid "Default number of periods to include in analysis"
+msgstr "Default number of periods to include in analysis"
+
+msgid "Include Zero Values"
+msgstr "Include Zero Values"
+
+msgid "Include zero values in statistical analysis"
+msgstr "Include zero values in statistical analysis"
+
+msgid "Outlier Detection Method"
+msgstr "Outlier Detection Method"
+
+msgid "Z-Score"
+msgstr "Z-Score"
+
+msgid "Interquartile Range"
+msgstr "Interquartile Range"
+
+msgid "Percentile"
+msgstr "Percentile"
+
+msgid "Outlier Threshold"
+msgstr "Outlier Threshold"
+
+msgid "Threshold for outlier detection (Z-score or IQR multiplier)"
+msgstr "Threshold for outlier detection (Z-score or IQR multiplier)"
+
+msgid "Data Quality Scoring Weights"
+msgstr "Data Quality Scoring Weights"
+
+msgid "Completeness Weight (%)"
+msgstr "Completeness Weight (%)"
+
+msgid "Timeliness Weight (%)"
+msgstr "Timeliness Weight (%)"
+
+msgid "Accuracy Weight (%)"
+msgstr "Accuracy Weight (%)"
+
+msgid "Consistency Weight (%)"
+msgstr "Consistency Weight (%)"
+
+msgid "Automated Actions"
+msgstr "Automated Actions"
+
+msgid "Enable Auto-Correction"
+msgstr "Enable Auto-Correction"
+
+msgid "Automatically correct data based on confidence threshold"
+msgstr "Automatically correct data based on confidence threshold"
+
+msgid "Auto-Correction Confidence Threshold (%)"
+msgstr "Auto-Correction Confidence Threshold (%)"
+
+msgid "Minimum confidence required for automatic correction"
+msgstr "Minimum confidence required for automatic correction"
+
+msgid "Enable Auto-Notifications"
+msgstr "Enable Auto-Notifications"
+
+msgid "Send notifications for data quality issues"
+msgstr "Send notifications for data quality issues"
+
+msgid "DHIS2 Integration"
+msgstr "DHIS2 Integration"
+
+msgid "Enable DHIS2 Sync"
+msgstr "Enable DHIS2 Sync"
+
+msgid "Enable synchronization with DHIS2 instance"
+msgstr "Enable synchronization with DHIS2 instance"
+
+msgid "Sync Interval (seconds)"
+msgstr "Sync Interval (seconds)"
+
+msgid "How often to sync with DHIS2"
+msgstr "How often to sync with DHIS2"
+
+msgid "Retry Attempts"
+msgstr "Retry Attempts"
+
+msgid "Number of retry attempts for failed sync"
+msgstr "Number of retry attempts for failed sync"
+
 msgid "Maximum Assessments"
 msgstr "Maximum Assessments"
 
@@ -1481,6 +1760,18 @@ msgstr "Cache Timeout (seconds)"
 
 msgid "Enable Data Caching"
 msgstr "Enable Data Caching"
+
+msgid "Data Cache Expiry (minutes)"
+msgstr "Data Cache Expiry (minutes)"
+
+msgid "How long to cache frequently accessed data"
+msgstr "How long to cache frequently accessed data"
+
+msgid "Max Concurrent Analysis"
+msgstr "Max Concurrent Analysis"
+
+msgid "Maximum number of concurrent analysis processes"
+msgstr "Maximum number of concurrent analysis processes"
 
 msgid "Security"
 msgstr "Security"
@@ -2166,6 +2457,12 @@ msgstr "Available Periods"
 
 msgid "Discrepancy"
 msgstr "Discrepancy"
+
+msgid "Yes"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
 
 msgid "Save Corrections"
 msgstr "Save Corrections"
@@ -3371,9 +3668,6 @@ msgstr "Expiry Days"
 
 msgid "Open Periods After CO End Date"
 msgstr "Open Periods After CO End Date"
-
-msgid "Version"
-msgstr "Version"
 
 msgid "Preview of elements included in this dataset"
 msgstr "Preview of elements included in this dataset"

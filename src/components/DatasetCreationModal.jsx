@@ -79,6 +79,7 @@ const DatasetCreationModal = ({
                                   isOpen,
                                   onClose,
                                   assessmentName,
+                                  assessmentId,
                                   datasets = {},
                                   dataElements = {},
                                   // legacy fallbacks:
@@ -269,6 +270,66 @@ const DatasetCreationModal = ({
     }
 
     // ---------------- Attribute ensure ----------------
+    const dqaAttributeIdsRef = useRef({ datasetId: null, assessmentId: null })
+    
+    const ensureDQAAttributes = async () => {
+        addLog('Ensuring DQA360 attributes…', 'info')
+        
+        // Ensure dataset ID attribute
+        try {
+            let existing = await findOne('attributes', {
+                code: 'dqa360_dataset_id',
+                fields: 'id,code,name,dataSetAttribute,objectTypes',
+            })
+            if (!existing?.id || (!existing.dataSetAttribute && !existing.objectTypes?.includes('DATA_SET'))) {
+                const payload = {
+                    attributes: [
+                        { 
+                            name: 'DQA360 Dataset ID', 
+                            code: 'dqa360_dataset_id', 
+                            valueType: 'TEXT', 
+                            dataSetAttribute: true,
+                            unique: false
+                        },
+                    ],
+                }
+                await de.mutate(metadataQueries.upsertMetadata, { variables: { payload } })
+                existing = await findOne('attributes', { code: 'dqa360_dataset_id', fields: 'id' })
+            }
+            dqaAttributeIdsRef.current.datasetId = existing?.id || null
+            if (existing?.id) addLog('DQA360 Dataset ID attribute ready.', 'success')
+        } catch (e) {
+            addLog(`DQA360 Dataset ID attribute failed: ${e?.message || e}`, 'warning')
+        }
+        
+        // Ensure assessment ID attribute
+        try {
+            let existing = await findOne('attributes', {
+                code: 'dqa360_assessment_id',
+                fields: 'id,code,name,dataSetAttribute,objectTypes',
+            })
+            if (!existing?.id || (!existing.dataSetAttribute && !existing.objectTypes?.includes('DATA_SET'))) {
+                const payload = {
+                    attributes: [
+                        { 
+                            name: 'DQA360 Assessment ID', 
+                            code: 'dqa360_assessment_id', 
+                            valueType: 'TEXT', 
+                            dataSetAttribute: true,
+                            unique: false
+                        },
+                    ],
+                }
+                await de.mutate(metadataQueries.upsertMetadata, { variables: { payload } })
+                existing = await findOne('attributes', { code: 'dqa360_assessment_id', fields: 'id' })
+            }
+            dqaAttributeIdsRef.current.assessmentId = existing?.id || null
+            if (existing?.id) addLog('DQA360 Assessment ID attribute ready.', 'success')
+        } catch (e) {
+            addLog(`DQA360 Assessment ID attribute failed: ${e?.message || e}`, 'warning')
+        }
+    }
+
     const ensureDatasetUIDAttribute = async () => {
         addLog('Ensuring dataset UID attribute…', 'info')
         try {
@@ -296,6 +357,40 @@ const DatasetCreationModal = ({
         } catch (e) {
             addLog(`Attribute ensure failed; continuing without (ok): ${e?.message || e}`, 'warning')
         }
+    }
+
+    // Helper function to create DQA attribute values with actual IDs
+    const createDQAAttributeValuesWithIds = (assessmentId, datasetType, suffix) => {
+        const uniqueSuffix = suffix || Date.now().toString(36).slice(-5).toUpperCase()
+        const attributes = []
+        
+        // Add dataset ID attribute if available
+        if (dqaAttributeIdsRef.current.datasetId) {
+            attributes.push({
+                attribute: { id: dqaAttributeIdsRef.current.datasetId },
+                value: `DQA360_${datasetType.toUpperCase()}_${uniqueSuffix}`
+            })
+            addLog(`DQA Dataset ID attribute: ${dqaAttributeIdsRef.current.datasetId} = DQA360_${datasetType.toUpperCase()}_${uniqueSuffix}`, 'info', datasetType)
+        } else {
+            addLog(`DQA Dataset ID attribute: not available`, 'warning', datasetType)
+        }
+        
+        // Add assessment ID attribute if available and assessmentId is provided
+        if (dqaAttributeIdsRef.current.assessmentId && assessmentId) {
+            attributes.push({
+                attribute: { id: dqaAttributeIdsRef.current.assessmentId },
+                value: assessmentId
+            })
+            addLog(`DQA Assessment ID attribute: ${dqaAttributeIdsRef.current.assessmentId} = ${assessmentId}`, 'info', datasetType)
+        } else if (dqaAttributeIdsRef.current.assessmentId && !assessmentId) {
+            addLog(`DQA Assessment ID attribute: available but no assessment ID provided`, 'warning', datasetType)
+        } else if (!dqaAttributeIdsRef.current.assessmentId && assessmentId) {
+            addLog(`DQA Assessment ID attribute: not available but assessment ID provided (${assessmentId})`, 'warning', datasetType)
+        } else {
+            addLog(`DQA Assessment ID attribute: not available and no assessment ID provided`, 'info', datasetType)
+        }
+        
+        return attributes.filter(attr => attr.value) // Only include attributes with values
     }
 
     // ----------------- Category hierarchy ensure (fullCategoryCombo) -----------------
@@ -353,8 +448,7 @@ const DatasetCreationModal = ({
 
     const ensureCategory = async (cat, optionRefs, datasetType, dataDimensionType = 'DISAGGREGATION') => {
         const name = cat?.name || cat?.displayName || cat?.shortName || cat?.code || 'Category'
-        the_cat_code:
-            const code = normCode(cat?.code || cat?.shortName || cat?.name, 'CAT')
+        const code = normCode(cat?.code || cat?.shortName || cat?.name, 'CAT')
 
         let existing = null
         existing = await findOne('categories', { code, fields: 'id,name,code,dataDimensionType' })
@@ -805,7 +899,7 @@ const DatasetCreationModal = ({
         return errors
     }
 
-    const createDataset = async (datasetType, cfg, deList, ouList) => {
+    const createDataset = async (datasetType, cfg, deList, ouList, assessmentIdToUse) => {
         const dsCC = await ensureCategoryCombo(cfg.fullCategoryCombo || cfg.categoryCombo || { id: DEFAULT_CC }, datasetType, 'ATTRIBUTE')
 
         addLog(`${s('C')} Dataset: ${cfg.name} (DEs=${deList.length}, OUs=${ouList.length})`, 'info', datasetType)
@@ -822,9 +916,15 @@ const DatasetCreationModal = ({
             categoryCombo: { id: dsCC?.id || DEFAULT_CC },
             dataSetElements: deList.map((d, i) => ({ dataElement: { id: d.id }, sortOrder: i + 1 })),
             organisationUnits: ouList.map((ou) => ({ id: ou.id })),
-            attributeValues: datasetUidAttrIdRef.current
-                ? [{ attribute: { id: datasetUidAttrIdRef.current }, value: generateUID() }]
-                : undefined,
+            attributeValues: [
+                // Existing dataset UID attribute
+                ...(datasetUidAttrIdRef.current 
+                    ? [{ attribute: { id: datasetUidAttrIdRef.current }, value: generateUID() }]
+                    : []
+                ),
+                // DQA360 attributes using actual IDs
+                ...createDQAAttributeValuesWithIds(assessmentIdToUse, datasetType, uniqueSuffix())
+            ].filter(attr => attr.value), // Only include attributes with values
             sharing: { public: (cfg?.sharingPublicAccess || 'rwrw----'), external: !!cfg?.sharingExternal },
             timelyDays: Number.isInteger(cfg?.timelyDays) ? cfg.timelyDays : 15,
             openFuturePeriods: Number.isInteger(cfg?.openFuturePeriods) ? cfg.openFuturePeriods : 0,
@@ -840,6 +940,16 @@ const DatasetCreationModal = ({
             return { id: null, payload, validationErrors }
         }
 
+        // Debug logging for payload
+        addLog(`${s('C')} Dataset: payload - name="${payload.name}", code="${payload.code}", DEs=${payload.dataSetElements?.length}, OUs=${payload.organisationUnits?.length}`, 'info', datasetType)
+        addLog(`${s('C')} Dataset: attributes - ${payload.attributeValues?.length || 0} attribute values`, 'info', datasetType)
+        if (payload.attributeValues?.length > 0) {
+            payload.attributeValues.forEach((av, idx) => {
+                addLog(`${s('C')} Dataset: attr ${idx + 1} - id=${av.attribute?.id}, value="${av.value}"`, 'info', datasetType)
+            })
+        } else {
+            addLog(`${s('C')} Dataset: no attribute values`, 'warning', datasetType)
+        }
         addLog(`${s('C')} Dataset: submit`, 'info', datasetType)
 
         let existing = null
@@ -897,17 +1007,80 @@ const DatasetCreationModal = ({
         }
 
         try {
-            await de.mutate(metadataQueries.upsertMetadata, { variables: { payload: { dataSets: [payload] } } })
-            const resolved = await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
+            const mutationResult = await de.mutate(metadataQueries.upsertMetadata, { variables: { payload: { dataSets: [payload] } } })
+            addLog(`${s('C')} Dataset: mutation completed`, 'info', datasetType)
+            
+            // Try multiple lookup strategies
+            let resolved = await findOne('dataSets', { code: payload.code, fields: 'id,name,code' })
+            if (!resolved) {
+                resolved = await findOne('dataSets', { name: payload.name, fields: 'id,name,code' })
+            }
+            if (!resolved && payload.id) {
+                resolved = await findOne('dataSets', { id: payload.id, fields: 'id,name,code' })
+            }
+            
             if (resolved?.id) {
                 addLog(`${s('C')} Dataset: created ${resolved.name} (${resolved.id})`, 'success', datasetType)
                 addLog(`${s('D')} Sharing: public=${payload.sharing.public} external=${payload.sharing.external}`, 'info', datasetType)
                 return { id: resolved.id, payload }
             }
-            addLog(`${s('C')} Dataset: created but not resolved`, 'warning', datasetType)
+            
+            // If we can't find it, try to extract ID from mutation result
+            try {
+                const importReport = mutationResult?.response?.importReport || mutationResult?.importReport
+                const typeReports = Array.isArray(importReport?.typeReports) ? importReport.typeReports : []
+                for (const tr of typeReports) {
+                    if (tr?.klass === 'org.hisp.dhis.dataset.DataSet') {
+                        const objectReports = Array.isArray(tr?.objectReports) ? tr.objectReports : []
+                        for (const or of objectReports) {
+                            if (or?.uid) {
+                                addLog(`${s('C')} Dataset: extracted ID from import report (${or.uid})`, 'info', datasetType)
+                                return { id: or.uid, payload }
+                            }
+                        }
+                    }
+                }
+            } catch (_) { /* ignore */ }
+            
+            addLog(`${s('C')} Dataset: created but not resolved - trying fallback lookup`, 'warning', datasetType)
+            // Wait a bit and try again
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            const fallback = await findOne('dataSets', { code: payload.code, fields: 'id,name,code' })
+            if (fallback?.id) {
+                addLog(`${s('C')} Dataset: resolved after delay ${fallback.name} (${fallback.id})`, 'success', datasetType)
+                return { id: fallback.id, payload }
+            }
+            
             return { id: null, payload }
         } catch (e) {
             const msg = e?.details?.message || e?.message || String(e)
+            
+            // Try to extract detailed error information from DHIS2 import report
+            try {
+                const resp = e?.details?.response || e?.details?.data || e?.data || {}
+                const report = resp?.importReport || resp?.response || resp
+                const typeReports = Array.isArray(report?.typeReports) ? report.typeReports : []
+                let errorCount = 0
+                for (const tr of typeReports) {
+                    const klass = tr?.klass || tr?.type || 'Object'
+                    const objectReports = Array.isArray(tr?.objectReports) ? tr.objectReports : []
+                    for (const or of objectReports) {
+                        const refs = or?.object ? (or.object.name || or.object.code || or.object.id) : (or?.uid || '')
+                        const errorReports = Array.isArray(or?.errorReports) ? or.errorReports : []
+                        for (const er of errorReports) {
+                            errorCount++
+                            const code = er?.errorCode || er?.code || ''
+                            const errorMsg = er?.message || er?.mainKlass || ''
+                            addLog(`${s('C')} Import error ${errorCount}: [${klass}] ${refs} - ${code} ${errorMsg}`.trim(), 'warning', datasetType)
+                        }
+                    }
+                }
+                if (!errorCount && report?.stats) {
+                    const st = report.stats
+                    addLog(`${s('C')} Import stats - created:${st.created} updated:${st.updated} deleted:${st.deleted} ignored:${st.ignored}`,'info',datasetType)
+                }
+            } catch (_) { /* ignore error parsing */ }
+            
             if (/409|conflict|already exists|duplicate/i.test(msg)) {
                 addLog(`${s('C')} Dataset: conflict → reuse`, 'info', datasetType)
                 const reuse = await findOne('dataSets', { code: payload.code, name: payload.name, fields: 'id,name,code' })
@@ -926,8 +1099,18 @@ const DatasetCreationModal = ({
                 }
             } else {
                 addLog(`${s('C')} Dataset: error ${msg}`, 'warning', datasetType)
+                
+                // Try to find existing dataset by code or name as fallback
+                try {
+                    const fallback = await findOne('dataSets', { code: payload.code, fields: 'id,name,code' }) ||
+                                   await findOne('dataSets', { name: payload.name, fields: 'id,name,code' })
+                    if (fallback?.id) {
+                        addLog(`${s('C')} Dataset: found existing fallback ${fallback.name} (${fallback.id})`, 'info', datasetType)
+                        return { id: fallback.id, payload }
+                    }
+                } catch (_) { /* ignore fallback lookup errors */ }
             }
-            return { id: null, payload }
+            return { id: null, payload, error: msg }
         }
     }
 
@@ -1051,7 +1234,19 @@ const DatasetCreationModal = ({
         }
         if (!datasetId) {
             addLog(`${s('D2')} SMS: skipped (dataset id missing)`, 'warning', datasetType)
-            return null
+            // Try to find dataset by code/name as fallback
+            try {
+                const fallbackDataset = await findOne('dataSets', { code: cfg.code, fields: 'id,name,code' }) ||
+                                       await findOne('dataSets', { name: cfg.name, fields: 'id,name,code' })
+                if (fallbackDataset?.id) {
+                    addLog(`${s('D2')} SMS: found fallback dataset ${fallbackDataset.name} (${fallbackDataset.id})`, 'info', datasetType)
+                    datasetId = fallbackDataset.id
+                } else {
+                    return null
+                }
+            } catch (_) {
+                return null
+            }
         }
 
         // 1) Ensure COCs server-side BEFORE building SMS codes
@@ -1169,7 +1364,17 @@ const DatasetCreationModal = ({
         addLog('Initializing...', 'info')
 
         try {
+            // Generate a temporary assessment ID if not provided
+            const effectiveAssessmentId = assessmentId || `temp_assessment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            const isTemporaryId = !assessmentId
+            
+            addLog(`Assessment ID: ${effectiveAssessmentId}${isTemporaryId ? ' (temporary - will be updated when assessment is saved)' : ''}`, 'info')
             await ensureDatasetUIDAttribute()
+            await ensureDQAAttributes()
+            
+            // Verify DQA attributes are available
+            addLog(`DQA Attributes Status: Dataset ID=${dqaAttributeIdsRef.current.datasetId ? 'READY' : 'MISSING'}, Assessment ID=${dqaAttributeIdsRef.current.assessmentId ? 'READY' : 'MISSING'}`, 'info')
+            
             const results = {}
 
             for (let i = 0; i < DATASET_TYPES.length; i++) {
@@ -1193,8 +1398,25 @@ const DatasetCreationModal = ({
 
                 // C. Dataset create/reuse (+ sharing)
                 setCurrentStepIdx(2)
-                const createdDs = await createDataset(type, cfg, createdDEs, localOUs)
+                addLog(`Pre-creation validation for ${type}: DEs=${createdDEs.length}, OUs=${localOUs.length}`, 'info', type)
+                if (createdDEs.length === 0) {
+                    addLog(`No data elements available for ${type} - skipping dataset creation`, 'warning', type)
+                    results[type] = { de: [], datasetId: null, payload: null }
+                    continue
+                }
+                if (localOUs.length === 0) {
+                    addLog(`No organization units available for ${type} - skipping dataset creation`, 'warning', type)
+                    results[type] = { de: createdDEs, datasetId: null, payload: null }
+                    continue
+                }
+                const createdDs = await createDataset(type, cfg, createdDEs, localOUs, effectiveAssessmentId)
                 results[type] = { de: createdDEs, datasetId: createdDs.id, payload: createdDs.payload }
+                
+                if (!createdDs.id) {
+                    addLog(`Dataset creation failed for ${type}: ${createdDs.error || 'Unknown error'}`, 'error', type)
+                } else {
+                    addLog(`Dataset created successfully for ${type}: ${createdDs.id}`, 'success', type)
+                }
 
                 // D. SMS
                 setCurrentStepIdx(3)
@@ -1208,12 +1430,15 @@ const DatasetCreationModal = ({
             }
 
             addLog('Building mapping payload…', 'info')
+            addLog(`Results summary: ${Object.keys(results).map(type => `${type}=${results[type]?.datasetId ? 'SUCCESS' : 'FAILED'}`).join(', ')}`, 'info')
             const mappingPayload = buildMappingPayload(results)
 
             const createdDatasets = DATASET_TYPES.map((t) => {
                 const result = results?.[t] || {}
                 const cfg = datasets?.[t] || {}
                 const payload = result?.payload || {}
+
+                addLog(`Dataset ${t}: id=${result?.datasetId || 'NULL'}, payload=${!!payload}, cfg=${!!cfg}`, result?.datasetId ? 'success' : 'error')
 
                 return {
                     id: result?.datasetId || null,
@@ -1251,10 +1476,16 @@ const DatasetCreationModal = ({
                 }
             })
 
+            // Filter out failed datasets (those with null IDs)
+            const successfulDatasets = createdDatasets.filter(ds => ds.id !== null)
+            const failedCount = createdDatasets.length - successfulDatasets.length
+            
+            addLog(`Dataset creation summary: ${successfulDatasets.length} successful, ${failedCount} failed`, successfulDatasets.length > 0 ? 'success' : 'error')
+
             const handoff = {
                 report: { results, startedAt: null, finishedAt: null },
                 mappingPayload,
-                createdDatasets,
+                createdDatasets: successfulDatasets,
                 elementMappings: mappingPayload?.elementsMapping || [],
                 elementMappingsFlat: (mappingPayload?.elementsMapping || []).map(m => ({
                     mappingId: m.mappingId,
@@ -1262,12 +1493,18 @@ const DatasetCreationModal = ({
                     valueType: m.valueType,
                     datasets: m.mappings.map(x => ({ type: x.dataset.type, alias: x.dataset.alias, id: x.dataset.id })),
                 })),
-                localDatasets: { createdDatasets, elementMappings: mappingPayload?.elementsMapping || [] },
+                localDatasets: { createdDatasets: successfulDatasets, elementMappings: mappingPayload?.elementsMapping || [] },
                 sms: { commands: DATASET_TYPES.map((t) => results?.[t]?.sms).filter(Boolean) },
             }
 
             setSuccess(true)
             addLog('Dataset creation process completed', 'success')
+            if (isTemporaryId) {
+                addLog(`Note: Temporary assessment ID was used (${effectiveAssessmentId}). Update datasets with real assessment ID when assessment is saved.`, 'warning')
+                // Add metadata to handoff for later updating
+                handoff.temporaryAssessmentId = effectiveAssessmentId
+                handoff.needsAssessmentIdUpdate = true
+            }
             onAllDatasetsCreated?.(handoff)
         } catch (e) {
             setError(e?.message || String(e))

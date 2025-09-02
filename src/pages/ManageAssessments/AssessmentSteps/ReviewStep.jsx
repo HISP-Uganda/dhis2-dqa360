@@ -26,11 +26,21 @@ const gatherFrom = (data) => {
     const creation = data?.creationPayload || {}
     const mp = creation?.mappingPayload || data?.mappingPayload || data?.handoff?.mappingPayload || data?.savedPayload?.mappingPayload || {}
     const elementsMapping = mp?.elementsMapping || data?.dataElementMappings || creation?.dataElementMappings || []
-    const created = creation?.localDatasets?.createdDatasets || data?.createdDatasets || []
+    // Include all known places where created datasets may be stored
+    const created =
+        creation?.localDatasets?.createdDatasets ||
+        data?.createdDatasets ||
+        data?.dqaDatasetsCreated ||
+        data?.localDatasets?.createdDatasets ||
+        data?.handoff?.createdDatasets ||
+        data?.localDatasetsMetadata?.createdDatasets ||
+        data?.creationMetadata?.createdDatasets ||
+        data?.savedPayload?.localDatasets?.createdDatasets ||
+        []
     const smsCommands =
         (data?.sms?.commands) ||
         (creation?.sms?.commands) ||
-        created.map((d) => d?.sms).filter(Boolean) ||
+        (Array.isArray(created) ? created : Object.values(created || {})).map((d) => d?.sms).filter(Boolean) ||
         []
     const selectedDatasets = Array.isArray(data?.selectedDatasets)
         ? data.selectedDatasets
@@ -105,18 +115,69 @@ const ReviewStep = ({
         selectedOrgUnits,
         selectedDataElements,
         mappingPayload,
-    } = useMemo(() => gatherFrom(assessmentData || {}), [assessmentData])
+    } = useMemo(() => {
+        const result = gatherFrom(assessmentData || {})
+        console.log('ReviewStep - gatherFrom result:', {
+            created: result.created,
+            createdLength: Array.isArray(result.created) ? result.created.length : Object.keys(result.created || {}).length,
+            assessmentDataKeys: Object.keys(assessmentData || {}),
+            dqaDatasetsCreated: assessmentData?.dqaDatasetsCreated,
+            dataElementMappings: assessmentData?.dataElementMappings
+        })
+        return result
+    }, [assessmentData])
+
+    // Normalize created datasets to an array for consistent rendering
+    const createdList = useMemo(() => (Array.isArray(created) ? created : Object.values(created || {})), [created])
 
     const engine = useDataEngine()
     const navigate = useNavigate()
 
     const isReady = useMemo(() => {
-        const has4 = ['register', 'summary', 'reported', 'corrected']
-            .every((t) => created.find((d) => d.datasetType === t && d.id))
+        const normCreated = Array.isArray(created) ? created : Object.values(created || {})
+        
+        // Check for all 4 dataset types
+        const requiredTypes = ['register', 'summary', 'reported', 'corrected']
+        const has4 = requiredTypes.every((t) => 
+            normCreated.find((d) => (String(d.datasetType || d.type || '').toLowerCase()) === t && (d.id || d.datasetId))
+        )
+        
+        // Check for element mappings
         const hasLinks = (elementsMapping || []).length > 0
+        
+        // Check for selected datasets and org units
         const dsSel = Array.isArray(selectedDatasets?.selected) ? selectedDatasets.selected : selectedDatasets
         const ouSel = Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : selectedOrgUnits
-        return !!(assessmentData?.name && (dsSel?.length || 0) > 0 && (ouSel?.length || 0) > 0 && has4 && hasLinks)
+        
+        // Check for org unit mappings
+        const hasOrgUnitMappings = (
+            Array.isArray(assessmentData?.orgUnitMapping?.mappings) && assessmentData.orgUnitMapping.mappings.length > 0
+        ) || (
+            Array.isArray(assessmentData?.orgUnitMappings) && assessmentData.orgUnitMappings.length > 0
+        )
+        
+        // Basic requirements
+        const hasName = !!assessmentData?.name
+        const hasSelectedDatasets = (dsSel?.length || 0) > 0
+        const hasSelectedOrgUnits = (ouSel?.length || 0) > 0
+        
+        // Debug logging
+        console.log('ReviewStep isReady check:', {
+            hasName,
+            hasSelectedDatasets: hasSelectedDatasets,
+            selectedDatasetsCount: dsSel?.length || 0,
+            hasSelectedOrgUnits: hasSelectedOrgUnits,
+            selectedOrgUnitsCount: ouSel?.length || 0,
+            has4DatasetsCreated: has4,
+            createdDatasetsCount: normCreated.length,
+            createdDatasetTypes: normCreated.map(d => d.datasetType || d.type),
+            hasElementMappings: hasLinks,
+            elementMappingsCount: (elementsMapping || []).length,
+            hasOrgUnitMappings,
+            orgUnitMappingsCount: assessmentData?.orgUnitMapping?.mappings?.length || assessmentData?.orgUnitMappings?.length || 0
+        })
+        
+        return !!(hasName && hasSelectedDatasets && hasSelectedOrgUnits && has4 && hasLinks && hasOrgUnitMappings)
     }, [assessmentData, created, elementsMapping, selectedDatasets, selectedOrgUnits])
 
     const rows = Array.isArray(elementsMapping) ? elementsMapping : []
@@ -128,11 +189,12 @@ const ReviewStep = ({
         const externalCfg = assessmentData?.externalConfig || assessmentData?.dhis2Config?.info || {}
         
         // Map created datasets to dqaDatasetsCreated shape (correct structure)
-        const dqaDatasetsCreated = (created || []).map(d => ({
-            id: d.id,
+        console.log('ReviewStep - buildFinalPayload createdList:', createdList)
+        const dqaDatasetsCreated = (createdList || []).map(d => ({
+            id: d.id || d.datasetId || null,
             code: d.code,
             name: d.name,
-            datasetType: d.datasetType,
+            datasetType: d.datasetType || d.type,
             alias: d.alias || d.name,
             periodType: d.periodType || 'Monthly',
             categoryCombo: d.categoryCombo,
@@ -402,7 +464,7 @@ const ReviewStep = ({
                 { label: 'Datasets Selected', value: dsSel?.length || 0 },
                 { label: 'Data Elements Selected', value: deSel?.length || 0 },
                 { label: 'Organisation Units Selected', value: ouSel?.length || 0 },
-                { label: 'DQA Datasets Created', value: `${created?.length || 0}/4` },
+                { label: 'DQA Datasets Created', value: `${createdList?.length || 0}/4` },
                 { label: 'Data Element Mappings', value: rows.length },
                 { label: 'SMS Commands', value: (smsCommands || []).length }
             ]
@@ -495,7 +557,7 @@ const ReviewStep = ({
                         <div><div style={{ color: '#666', fontSize: 12 }}>Datasets selected</div><div><strong>{dsSel?.length || 0}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Org Units</div><div><strong>{ouSel?.length || 0}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Data Elements</div><div><strong>{deSel?.length || 0}</strong></div></div>
-                        <div><div style={{ color: '#666', fontSize: 12 }}>Created Local datasets</div><div><strong>{created?.length || 0}/4</strong></div></div>
+                        <div><div style={{ color: '#666', fontSize: 12 }}>Created Local datasets</div><div><strong>{createdList?.length || 0}/4</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>Cross-dataset links</div><div><strong>{rows.length}</strong></div></div>
                         <div><div style={{ color: '#666', fontSize: 12 }}>SMS Commands</div><div><strong>{(smsCommands || []).length}</strong></div></div>
                     </div>
@@ -540,7 +602,7 @@ const ReviewStep = ({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                     <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 24, fontWeight: 'bold', color: '#28a745' }}>
-                            {created?.length || 0}/4
+                            {createdList?.length || 0}/4
                         </div>
                         <div style={{ fontSize: 12, color: '#666' }}>DQA Datasets Created</div>
                     </div>
@@ -567,11 +629,11 @@ const ReviewStep = ({
                     </div>
                 </div>
                 
-                {created && created.length > 0 && (
+                {createdList && createdList.length > 0 && (
                     <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #dee2e6' }}>
                         <h4 style={{ margin: '0 0 12px 0', color: '#495057' }}>📊 Created Dataset Links</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
-                            {created.map((dataset, index) => {
+                            {createdList.map((dataset, index) => {
                                 const baseUrl = assessmentData?.dhis2Config?.info?.baseUrl || assessmentData?.externalConfig?.baseUrl || window.location.origin
                                 const datasetUrl = `${baseUrl}/dhis-web-maintenance/#/list/dataSetSection/dataSet`
                                 const dataEntryUrl = `${baseUrl}/dhis-web-dataentry/#/datasets/${dataset.id}`
@@ -757,34 +819,71 @@ const ReviewStep = ({
 
             <h2 style={{ marginTop: 16 }}>OrgUnit Mapping</h2>
             {(() => {
-                const metaSource = (assessmentData?.metadataSource || 'local').toLowerCase()
-                if (metaSource !== 'external') return <div style={{ padding: 8, border: '1px solid #eee' }}>N/A</div>
                 const mappings = assessmentData?.orgUnitMapping?.mappings || assessmentData?.orgUnitMappings || []
-                return mappings.length === 0 ? (
-                    <div style={{ padding: 8, border: '1px solid #eee' }}>None</div>
-                ) : (
+                const metaSource = (assessmentData?.metadataSource || 'local').toLowerCase()
+                
+                if (mappings.length === 0) {
+                    return (
+                        <div style={{ padding: 8, border: '1px solid #eee', color: '#666' }}>
+                            {metaSource === 'external' ? 'No mappings configured' : 'Not required for local metadata source'}
+                        </div>
+                    )
+                }
+                
+                return (
                     <div style={{ overflowX: 'auto' }}>
+                        <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+                            {mappings.length} mapping{mappings.length !== 1 ? 's' : ''} configured ({metaSource} metadata source)
+                        </div>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                             <tr>
                                 <th style={th}>Source OrgUnit</th>
                                 <th style={th}>Target OrgUnit</th>
+                                <th style={th}>Details</th>
                             </tr>
                             </thead>
                             <tbody>
                             {mappings.slice(0, 500).map((m, i) => {
-                                /** ---------- FIX: render strings, not objects ---------- */
-                                const src = m.sourceId ?? m.source ?? m.external ?? m.sourceOrgUnit ?? m.origin
-                                const tgt = m.targetId ?? m.target ?? m.local ?? m.targetOrgUnit ?? m.destination ?? m.mapped
+                                // Handle both simple and enriched mapping formats
+                                const sourceId = m.source || m.sourceId || m.external?.id
+                                const targetId = m.target || m.targetId || m.local?.id
+                                const sourceDetails = m.external || (typeof m.source === 'object' ? m.source : null)
+                                const targetDetails = m.local || (typeof m.target === 'object' ? m.target : null)
+                                
                                 return (
                                     <tr key={i}>
-                                        <td style={td}><code>{asLabel(src)}</code></td>
-                                        <td style={td}><code>{asLabel(tgt)}</code></td>
+                                        <td style={td}>
+                                            <div style={{ fontWeight: 500 }}>
+                                                {sourceDetails?.name || sourceDetails?.displayName || sourceId || '—'}
+                                            </div>
+                                            {sourceDetails?.code && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>Code: {sourceDetails.code}</div>
+                                            )}
+                                            <div style={{ fontSize: 11, color: '#888' }}>{sourceId}</div>
+                                        </td>
+                                        <td style={td}>
+                                            <div style={{ fontWeight: 500 }}>
+                                                {targetDetails?.name || targetDetails?.displayName || targetId || '—'}
+                                            </div>
+                                            {targetDetails?.code && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>Code: {targetDetails.code}</div>
+                                            )}
+                                            <div style={{ fontSize: 11, color: '#888' }}>{targetId}</div>
+                                        </td>
+                                        <td style={td}>
+                                            {sourceDetails?.level && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>Level: {sourceDetails.level}</div>
+                                            )}
+                                            {sourceDetails?.parent?.name && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>Parent: {sourceDetails.parent.name}</div>
+                                            )}
+                                        </td>
                                     </tr>
                                 )
                             })}
                             {mappings.length > 500 && (
-                                <tr><td style={td} colSpan={2}>… {mappings.length - 500} more</td></tr>
+                                <tr><td style={td} colSpan={3}>… {mappings.length - 500} more</td></tr>
                             )}
                             </tbody>
                         </table>
@@ -792,38 +891,111 @@ const ReviewStep = ({
                 )
             })()}
 
-            <h2 style={{ marginTop: 16 }}>Created Local Datasets ({created?.length || 0})</h2>
-            {(!created || created.length === 0) ? (
+            <h2 style={{ marginTop: 16 }}>Created Local Datasets ({createdList?.length || 0})</h2>
+            {(!createdList || createdList.length === 0) ? (
                 <div style={{ padding: 8, border: '1px solid #eee' }}>No created datasets</div>
             ) : (
                 <div style={{ overflowX: 'auto' }}>
+                    <div style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+                        Complete dataset objects with full metadata and configuration
+                    </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                         <tr>
                             <th style={th}>Type</th>
-                            <th style={th}>Name</th>
-                            <th style={th}>Code</th>
-                            <th style={th}>UID</th>
-                            <th style={th}>Elements</th>
-                            <th style={th}>Org Units</th>
-                            <th style={th}>Period</th>
-                            <th style={th}>Status</th>
+                            <th style={th}>Dataset Details</th>
+                            <th style={th}>Configuration</th>
+                            <th style={th}>Elements & Org Units</th>
+                            <th style={th}>Status & Metadata</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {(created || []).map((d, i) => (
-                            <tr key={i}>
-                                <td style={td}>{prettyType(d.datasetType)}</td>
-                                <td style={td}>{d.name}</td>
-                                <td style={td}><code>{d.code}</code></td>
-                                <td style={td}><code>{d.id || '—'}</code></td>
-                                {/* ---------- FIX: ensure counts, not arrays/objects ---------- */}
-                                <td style={td}>{d.elementsCount ?? asCount(d.dataElements) ?? asCount(d.elements)}</td>
-                                <td style={td}>{d.orgUnitsCount ?? asCount(d.orgUnits)}</td>
-                                <td style={td}>{d.periodType || 'Monthly'}</td>
-                                <td style={td}>{d.status === 'completed' ? '✅' : '❌'}</td>
-                            </tr>
-                        ))}
+                        {(createdList || []).map((d, i) => {
+                            // Extract full dataset information
+                            const datasetInfo = d.info || d
+                            const elementsCount = d.elementsCount ?? asCount(d.dataElements) ?? asCount(d.elements) ?? asCount(datasetInfo.dataElements)
+                            const orgUnitsCount = d.orgUnitsCount ?? asCount(d.orgUnits) ?? asCount(datasetInfo.orgUnits)
+                            
+                            return (
+                                <tr key={i}>
+                                    <td style={td}>
+                                        <div style={{ fontWeight: 600, color: '#1976d2' }}>
+                                            {prettyType(d.datasetType || d.type)}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                                            {d.alias || d.formName || 'Default'}
+                                        </div>
+                                    </td>
+                                    <td style={td}>
+                                        <div style={{ fontWeight: 500 }}>{datasetInfo.name || d.name}</div>
+                                        <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                                            Code: <code>{datasetInfo.code || d.code}</code>
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>
+                                            UID: <code>{datasetInfo.id || d.id || d.datasetId || '—'}</code>
+                                        </div>
+                                        {(datasetInfo.description || d.description) && (
+                                            <div style={{ fontSize: 11, color: '#666', marginTop: 2, fontStyle: 'italic' }}>
+                                                {datasetInfo.description || d.description}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td style={td}>
+                                        <div style={{ fontSize: 12 }}>
+                                            <div><strong>Period:</strong> {datasetInfo.periodType || d.periodType || 'Monthly'}</div>
+                                            <div><strong>Form:</strong> {datasetInfo.formType || d.formType || 'DEFAULT'}</div>
+                                            {(datasetInfo.timelyDays ?? d.timelyDays) && (
+                                                <div><strong>Timely Days:</strong> {datasetInfo.timelyDays ?? d.timelyDays}</div>
+                                            )}
+                                            {(datasetInfo.expiryDays ?? d.expiryDays) && (
+                                                <div><strong>Expiry Days:</strong> {datasetInfo.expiryDays ?? d.expiryDays}</div>
+                                            )}
+                                            {(datasetInfo.categoryCombo || d.categoryCombo) && (
+                                                <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                                                    Category: {typeof (datasetInfo.categoryCombo || d.categoryCombo) === 'object' 
+                                                        ? (datasetInfo.categoryCombo || d.categoryCombo).name 
+                                                        : (datasetInfo.categoryCombo || d.categoryCombo)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td style={td}>
+                                        <div style={{ fontSize: 12 }}>
+                                            <div><strong>Data Elements:</strong> {elementsCount}</div>
+                                            <div><strong>Org Units:</strong> {orgUnitsCount}</div>
+                                            {(datasetInfo.aggregationType || d.aggregationType) && (
+                                                <div><strong>Aggregation:</strong> {datasetInfo.aggregationType || d.aggregationType}</div>
+                                            )}
+                                            {d.sms && Object.keys(d.sms).length > 0 && (
+                                                <div style={{ color: '#1976d2', fontSize: 11, marginTop: 2 }}>
+                                                    📱 SMS Configured
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td style={td}>
+                                        <div style={{ fontSize: 12 }}>
+                                            <div style={{ marginBottom: 4 }}>
+                                                {(d.status === 'completed' || datasetInfo.created) ? '✅ Created' : '❌ Pending'}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: '#666' }}>
+                                                Version: {datasetInfo.version ?? d.version ?? 1}
+                                            </div>
+                                            {(datasetInfo.created || d.created) && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>
+                                                    Created: {new Date(datasetInfo.created || d.created).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                            {(datasetInfo.sharing || d.sharing) && (
+                                                <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                                                    Sharing: {(datasetInfo.sharing || d.sharing).publicAccess || 'rw------'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            )
+                        })}
                         </tbody>
                     </table>
                 </div>
@@ -987,6 +1159,42 @@ const ReviewStep = ({
                     </AlertBar>
                 </div>
             )}
+
+            {/* Assessment Readiness Status */}
+            <div style={{ marginTop: 24, padding: 16, border: '1px solid #e0e0e0', borderRadius: 4, backgroundColor: '#f9f9f9' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 14, fontWeight: 600 }}>Assessment Completion Status</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 8, fontSize: 13 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{!!assessmentData?.name ? '✅' : '❌'}</span>
+                        <span>Assessment Name: {assessmentData?.name || 'Missing'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{(Array.isArray(selectedDatasets?.selected) ? selectedDatasets.selected : selectedDatasets)?.length > 0 ? '✅' : '❌'}</span>
+                        <span>Selected Datasets: {(Array.isArray(selectedDatasets?.selected) ? selectedDatasets.selected : selectedDatasets)?.length || 0}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{(Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : selectedOrgUnits)?.length > 0 ? '✅' : '❌'}</span>
+                        <span>Selected Org Units: {(Array.isArray(selectedOrgUnits?.selected) ? selectedOrgUnits.selected : selectedOrgUnits)?.length || 0}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{createdList?.length >= 4 ? '✅' : '❌'}</span>
+                        <span>Datasets Created: {createdList?.length || 0}/4 types</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{(elementsMapping || []).length > 0 ? '✅' : '❌'}</span>
+                        <span>Element Mappings: {(elementsMapping || []).length}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{(assessmentData?.orgUnitMapping?.mappings?.length || assessmentData?.orgUnitMappings?.length || 0) > 0 ? '✅' : '❌'}</span>
+                        <span>Org Unit Mappings: {assessmentData?.orgUnitMapping?.mappings?.length || assessmentData?.orgUnitMappings?.length || 0}</span>
+                    </div>
+                </div>
+                {!isReady && (
+                    <div style={{ marginTop: 12, padding: 8, backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: 4, fontSize: 12 }}>
+                        <strong>⚠️ Assessment not ready:</strong> Please complete all required steps before saving.
+                    </div>
+                )}
+            </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 24, flexWrap: 'wrap' }}>
                 {onBack && (

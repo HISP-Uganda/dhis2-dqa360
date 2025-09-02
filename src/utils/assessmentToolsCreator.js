@@ -672,11 +672,12 @@ const createMinimalCategoryCombo = async (dataEngine, onProgress = null) => {
  * @param {Object} config.selectedDataSet - Selected source dataset
  * @param {Array} config.dataElements - Selected data elements
  * @param {Array} config.orgUnits - Selected organisation units
+ * @param {Object} config.assessmentData - Assessment data for linking datasets
  * @param {Function} config.onProgress - Progress callback function
  * @returns {Promise<Object>} Result object with success status and created datasets
  */
 export const createAssessmentTools = async (config) => {
-    const { dhis2Config, dataEngine, selectedDataSet, dataElements, orgUnits, onProgress } = config
+    const { dhis2Config, dataEngine, selectedDataSet, dataElements, orgUnits, assessmentData, onProgress } = config
 
     // Validate prerequisites
     if (!dataEngine) {
@@ -763,6 +764,7 @@ export const createAssessmentTools = async (config) => {
                     orgUnits: validOrgUnits,
                     dhis2Config,
                     dataEngine,
+                    assessmentData,
                     onProgress: (progressInfo) => {
                         // Enhanced progress callback that includes tool context
                         if (onProgress) {
@@ -853,7 +855,7 @@ export const createAssessmentTools = async (config) => {
 /**
  * Create a single dataset for an assessment tool with progress tracking
  */
-const createSingleDataset = async ({ toolConfig, selectedDataSet, dataElements, orgUnits, dhis2Config, dataEngine, onProgress = null }) => {
+const createSingleDataset = async ({ toolConfig, selectedDataSet, dataElements, orgUnits, dhis2Config, dataEngine, assessmentData, onProgress = null }) => {
     try {
         // Generate unique identifiers
         const timestamp = Date.now().toString().slice(-6)
@@ -942,7 +944,18 @@ const createSingleDataset = async ({ toolConfig, selectedDataSet, dataElements, 
             openFuturePeriods: 0,
             timelyDays: 15,
             publicAccess: 'r-------',
-            externalAccess: false
+            externalAccess: false,
+            // Add DQA360 attributes to link dataset to assessment
+            attributeValues: [
+                {
+                    value: `DQA360_${toolConfig.suffix}_${Date.now()}`, // Unique DQA dataset identifier
+                    attribute: { code: 'dqa360_dataset_id' } // This should come from system config
+                },
+                {
+                    value: assessmentData?.id || '', // Link to assessment ID
+                    attribute: { code: 'dqa360_assessment_id' } // This should come from system config
+                }
+            ].filter(attr => attr.value) // Only include attributes with values
         }
 
         console.log(`Creating dataset: ${dataSetName} with ${verifiedDataElements.length} data elements`)
