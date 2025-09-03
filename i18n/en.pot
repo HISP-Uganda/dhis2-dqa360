@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-09-02T17:35:45.622Z\n"
-"PO-Revision-Date: 2025-09-02T17:35:45.623Z\n"
+"POT-Creation-Date: 2025-09-03T06:14:01.659Z\n"
+"PO-Revision-Date: 2025-09-03T06:14:01.660Z\n"
 
 msgid "DHIS2 Connection Required"
 msgstr "DHIS2 Connection Required"
@@ -920,212 +920,83 @@ msgstr "Details"
 msgid "Actor"
 msgstr "Actor"
 
-msgid "Healthy"
-msgstr "Healthy"
+msgid "Are you sure you want to delete this channel?"
+msgstr "Are you sure you want to delete this channel?"
 
-msgid "Unhealthy"
-msgstr "Unhealthy"
+msgid "Notification Channels & Providers"
+msgstr "Notification Channels & Providers"
 
-msgid "Not tested"
-msgstr "Not tested"
+msgid "Add Channel"
+msgstr "Add Channel"
 
-msgid "Configure SMS/Email/WhatsApp/Telegram providers and view health status"
-msgstr "Configure SMS/Email/WhatsApp/Telegram providers and view health status"
+msgid "Total Channels"
+msgstr "Total Channels"
 
-msgid "Add provider"
-msgstr "Add provider"
+msgid "Active Channels"
+msgstr "Active Channels"
 
-msgid "No providers configured yet."
-msgstr "No providers configured yet."
+msgid "Messages Sent"
+msgstr "Messages Sent"
 
-msgid "Add your first provider"
-msgstr "Add your first provider"
+msgid "Providers"
+msgstr "Providers"
+
+msgid "Channel"
+msgstr "Channel"
 
 msgid "Type"
 msgstr "Type"
 
-msgid "Provider"
-msgstr "Provider"
+msgid "Last Used"
+msgstr "Last Used"
 
-msgid "Environment"
-msgstr "Environment"
+msgid "Never"
+msgstr "Never"
 
-msgid "Enabled"
-msgstr "Enabled"
+msgid "Disable"
+msgstr "Disable"
 
-msgid "Last Tested"
-msgstr "Last Tested"
+msgid "Enable"
+msgstr "Enable"
 
-msgid "Configure"
-msgstr "Configure"
+msgid "Edit Channel"
+msgstr "Edit Channel"
 
-msgid "Edit provider"
-msgstr "Edit provider"
+msgid "Add New Channel"
+msgstr "Add New Channel"
 
-msgid "Select type"
-msgstr "Select type"
+msgid "Channel Name"
+msgstr "Channel Name"
 
-msgid "Select environment"
-msgstr "Select environment"
+msgid "Enter channel name"
+msgstr "Enter channel name"
 
-msgid "e.g., Twilio, SendGrid, Meta, Telegram Bot"
-msgstr "e.g., Twilio, SendGrid, Meta, Telegram Bot"
+msgid "Channel Type"
+msgstr "Channel Type"
 
-msgid "Provider name"
-msgstr "Provider name"
-
-msgid "SMS configuration"
-msgstr "SMS configuration"
-
-msgid "Use DHIS2 built-in SMS Gateway"
-msgstr "Use DHIS2 built-in SMS Gateway"
-
-msgid "Generic HTTP"
-msgstr "Generic HTTP"
-
-msgid "Base URL (required)"
-msgstr "Base URL (required)"
-
-msgid "HTTP Method"
-msgstr "HTTP Method"
-
-msgid "Endpoint Path (optional)"
-msgstr "Endpoint Path (optional)"
-
-msgid "From (Sender ID/Number) (required)"
-msgstr "From (Sender ID/Number) (required)"
-
-msgid "To Parameter Name (required)"
-msgstr "To Parameter Name (required)"
-
-msgid "Message Parameter Name (required)"
-msgstr "Message Parameter Name (required)"
-
-msgid "API Key (optional)"
-msgstr "API Key (optional)"
-
-msgid "API Secret (optional)"
-msgstr "API Secret (optional)"
-
-msgid "Additional Headers (JSON) (optional)"
-msgstr "Additional Headers (JSON) (optional)"
-
-msgid "Account SID (required)"
-msgstr "Account SID (required)"
-
-msgid "Auth Token (required)"
-msgstr "Auth Token (required)"
-
-msgid "From (Sender Number) (required)"
-msgstr "From (Sender Number) (required)"
-
-msgid "Messaging Service SID (optional)"
-msgstr "Messaging Service SID (optional)"
-
-msgid "Base URL (optional)"
-msgstr "Base URL (optional)"
-
-msgid "API Key (required)"
-msgstr "API Key (required)"
-
-msgid "API Secret (required)"
-msgstr "API Secret (required)"
-
-msgid "Username (required)"
-msgstr "Username (required)"
-
-msgid "From (Sender ID/Shortcode) (optional)"
-msgstr "From (Sender ID/Shortcode) (optional)"
-
-msgid "Email configuration"
-msgstr "Email configuration"
-
-msgid "Use DHIS2 SMTP settings"
-msgstr "Use DHIS2 SMTP settings"
-
-msgid "From Email (required)"
-msgstr "From Email (required)"
-
-msgid "From Name (optional)"
-msgstr "From Name (optional)"
-
-msgid "Reply-To (optional)"
-msgstr "Reply-To (optional)"
-
-msgid "Default Subject (optional)"
-msgstr "Default Subject (optional)"
-
-msgid "SMTP settings"
-msgstr "SMTP settings"
-
-msgid "SMTP Host (required)"
-msgstr "SMTP Host (required)"
-
-msgid "SMTP Port (required)"
-msgstr "SMTP Port (required)"
-
-msgid "Use TLS/SSL"
-msgstr "Use TLS/SSL"
-
-msgid "SMTP User (required)"
-msgstr "SMTP User (required)"
-
-msgid "SMTP Password (required)"
-msgstr "SMTP Password (required)"
-
-msgid "API (alternative)"
-msgstr "API (alternative)"
-
-msgid "API Key (e.g., SendGrid) (optional)"
-msgstr "API Key (e.g., SendGrid) (optional)"
-
-msgid "Defaults (optional)"
-msgstr "Defaults (optional)"
-
-msgid "Signature (optional)"
-msgstr "Signature (optional)"
-
-msgid "WhatsApp (Cloud API)"
-msgstr "WhatsApp (Cloud API)"
-
-msgid "Phone Number ID (required)"
-msgstr "Phone Number ID (required)"
-
-msgid "Access Token (required)"
-msgstr "Access Token (required)"
-
-msgid "Business Account ID (optional)"
-msgstr "Business Account ID (optional)"
-
-msgid "API Version (optional)"
-msgstr "API Version (optional)"
-
-msgid "Default Recipient (optional)"
-msgstr "Default Recipient (optional)"
-
-msgid "Template Namespace (optional)"
-msgstr "Template Namespace (optional)"
+msgid "SMS"
+msgstr "SMS"
 
 msgid "Telegram"
 msgstr "Telegram"
 
-msgid "Bot Token (required)"
-msgstr "Bot Token (required)"
+msgid "WhatsApp"
+msgstr "WhatsApp"
 
-msgid "Default Chat ID (required)"
-msgstr "Default Chat ID (required)"
+msgid "Webhook"
+msgstr "Webhook"
 
-msgid "Proxy URL (optional)"
-msgstr "Proxy URL (optional)"
+msgid "Enter channel description"
+msgstr "Enter channel description"
 
-msgid "API Base URL (optional)"
-msgstr "API Base URL (optional)"
+msgid "Channel Active"
+msgstr "Channel Active"
 
-msgid "Allow dynamic Chat IDs"
-msgstr "Allow dynamic Chat IDs"
+msgid "Update Channel"
+msgstr "Update Channel"
 
-msgid "Test & Save Status"
-msgstr "Test & Save Status"
+msgid "Create Channel"
+msgstr "Create Channel"
 
 msgid "Error loading data"
 msgstr "Error loading data"
@@ -1343,14 +1214,81 @@ msgstr "Version"
 msgid "DQA360 Dataset Id"
 msgstr "DQA360 Dataset Id"
 
+msgid "View Details"
+msgstr "View Details"
+
+msgid "Edit in Assessment"
+msgstr "Edit in Assessment"
+
+msgid "View in DHIS2"
+msgstr "View in DHIS2"
+
+msgid "Download Configuration"
+msgstr "Download Configuration"
+
+msgid "Generate Report"
+msgstr "Generate Report"
+
+msgid "Sync with DHIS2"
+msgstr "Sync with DHIS2"
+
+msgid "Manage Sharing"
+msgstr "Manage Sharing"
+
+msgid "Delete Dataset"
+msgstr "Delete Dataset"
+
 msgid "Failed to load datasets"
 msgstr "Failed to load datasets"
 
-msgid "No datasets have been created via assessments yet."
-msgstr "No datasets have been created via assessments yet."
+msgid "No datasets linked to existing assessments found."
+msgstr "No datasets linked to existing assessments found."
+
+msgid "Create an assessment to see its datasets here."
+msgstr "Create an assessment to see its datasets here."
+
+msgid "Assessment Datasets"
+msgstr "Assessment Datasets"
+
+msgid "Datasets created and linked to existing assessments"
+msgstr "Datasets created and linked to existing assessments"
 
 msgid "Created"
 msgstr "Created"
+
+msgid "Are you sure you want to delete the dataset"
+msgstr "Are you sure you want to delete the dataset"
+
+msgid ""
+"This action cannot be undone. All data associated with this dataset will be "
+"permanently removed."
+msgstr ""
+"This action cannot be undone. All data associated with this dataset will be "
+"permanently removed."
+
+msgid "Sync Dataset with DHIS2"
+msgstr "Sync Dataset with DHIS2"
+
+msgid "Sync dataset"
+msgstr "Sync dataset"
+
+msgid "with DHIS2"
+msgstr "with DHIS2"
+
+msgid "This will update the dataset configuration and metadata from DHIS2."
+msgstr "This will update the dataset configuration and metadata from DHIS2."
+
+msgid "Sync Dataset"
+msgstr "Sync Dataset"
+
+msgid "Manage Dataset Sharing"
+msgstr "Manage Dataset Sharing"
+
+msgid "Configure sharing settings for"
+msgstr "Configure sharing settings for"
+
+msgid "Sharing configuration interface will be implemented here."
+msgstr "Sharing configuration interface will be implemented here."
 
 msgid ""
 "Start by selecting a dataset, then view its data elements, select "
@@ -1541,6 +1479,9 @@ msgstr "DQA Dimensions"
 
 msgid "Dimension"
 msgstr "Dimension"
+
+msgid "Enabled"
+msgstr "Enabled"
 
 msgid "Threshold (%)"
 msgstr "Threshold (%)"
@@ -1832,6 +1773,281 @@ msgstr ""
 "Role and permission management interface will be available in a future "
 "update. This will allow you to create custom roles, assign specific "
 "permissions, and manage user access levels."
+
+msgid "Email Configuration"
+msgstr "Email Configuration"
+
+msgid "SMTP Server"
+msgstr "SMTP Server"
+
+msgid "SMTP Port"
+msgstr "SMTP Port"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "From Email"
+msgstr "From Email"
+
+msgid "From Name"
+msgstr "From Name"
+
+msgid "Use SSL/TLS"
+msgstr "Use SSL/TLS"
+
+msgid "Email Template"
+msgstr "Email Template"
+
+msgid "SMS Configuration"
+msgstr "SMS Configuration"
+
+msgid "SMS Provider"
+msgstr "SMS Provider"
+
+msgid "Account SID"
+msgstr "Account SID"
+
+msgid "Auth Token"
+msgstr "Auth Token"
+
+msgid "From Phone Number"
+msgstr "From Phone Number"
+
+msgid "API Key"
+msgstr "API Key"
+
+msgid "API Secret"
+msgstr "API Secret"
+
+msgid "From Name/Number"
+msgstr "From Name/Number"
+
+msgid "Gateway URL"
+msgstr "Gateway URL"
+
+msgid "API Key/Token"
+msgstr "API Key/Token"
+
+msgid "SMS Template"
+msgstr "SMS Template"
+
+msgid "Enable Delivery Reports"
+msgstr "Enable Delivery Reports"
+
+msgid "Telegram Configuration"
+msgstr "Telegram Configuration"
+
+msgid "Bot Token"
+msgstr "Bot Token"
+
+msgid "Default Chat ID"
+msgstr "Default Chat ID"
+
+msgid "Chat ID Field Name"
+msgstr "Chat ID Field Name"
+
+msgid "Message Template"
+msgstr "Message Template"
+
+msgid "Enable Markdown Formatting"
+msgstr "Enable Markdown Formatting"
+
+msgid "Disable Web Page Preview"
+msgstr "Disable Web Page Preview"
+
+msgid "Enable Push Notifications"
+msgstr "Enable Push Notifications"
+
+msgid "Webhook Configuration"
+msgstr "Webhook Configuration"
+
+msgid "Webhook URL"
+msgstr "Webhook URL"
+
+msgid "HTTP Method"
+msgstr "HTTP Method"
+
+msgid "Content Type"
+msgstr "Content Type"
+
+msgid "Authorization Header"
+msgstr "Authorization Header"
+
+msgid "Custom Headers (JSON)"
+msgstr "Custom Headers (JSON)"
+
+msgid "Payload Template (JSON)"
+msgstr "Payload Template (JSON)"
+
+msgid "Timeout (seconds)"
+msgstr "Timeout (seconds)"
+
+msgid "Validate SSL Certificate"
+msgstr "Validate SSL Certificate"
+
+msgid "Retry on Failure"
+msgstr "Retry on Failure"
+
+msgid "Max Retry Attempts"
+msgstr "Max Retry Attempts"
+
+msgid "Phone Number ID"
+msgstr "Phone Number ID"
+
+msgid "WhatsApp Business Account ID"
+msgstr "WhatsApp Business Account ID"
+
+msgid "Access Token"
+msgstr "Access Token"
+
+msgid "Webhook Verify Token"
+msgstr "Webhook Verify Token"
+
+msgid "From WhatsApp Number"
+msgstr "From WhatsApp Number"
+
+msgid "Instance ID"
+msgstr "Instance ID"
+
+msgid "API Token"
+msgstr "API Token"
+
+msgid "Session Name"
+msgstr "Session Name"
+
+msgid "QR Code Webhook URL"
+msgstr "QR Code Webhook URL"
+
+msgid "Run in Headless Mode"
+msgstr "Run in Headless Mode"
+
+msgid "Client ID"
+msgstr "Client ID"
+
+msgid "Client Secret"
+msgstr "Client Secret"
+
+msgid "Instance URL"
+msgstr "Instance URL"
+
+msgid "ID Instance"
+msgstr "ID Instance"
+
+msgid "API Token Instance"
+msgstr "API Token Instance"
+
+msgid "WhatsApp Configuration"
+msgstr "WhatsApp Configuration"
+
+msgid "WhatsApp Provider"
+msgstr "WhatsApp Provider"
+
+msgid "WhatsApp Business API (Official)"
+msgstr "WhatsApp Business API (Official)"
+
+msgid "Twilio WhatsApp"
+msgstr "Twilio WhatsApp"
+
+msgid "UltraMsg (Free Tier)"
+msgstr "UltraMsg (Free Tier)"
+
+msgid "WhatsApp Web.js (Self-hosted)"
+msgstr "WhatsApp Web.js (Self-hosted)"
+
+msgid "CallMeBot (Free)"
+msgstr "CallMeBot (Free)"
+
+msgid "WhatsMate (Free Tier)"
+msgstr "WhatsMate (Free Tier)"
+
+msgid "Chat-API"
+msgstr "Chat-API"
+
+msgid "Green-API (Free Tier)"
+msgstr "Green-API (Free Tier)"
+
+msgid "Default Recipient"
+msgstr "Default Recipient"
+
+msgid "Media Support"
+msgstr "Media Support"
+
+msgid "Text Only"
+msgstr "Text Only"
+
+msgid "Text + Images"
+msgstr "Text + Images"
+
+msgid "Text + Images + Documents"
+msgstr "Text + Images + Documents"
+
+msgid "All Media Types"
+msgstr "All Media Types"
+
+msgid "Enable Read Receipts"
+msgstr "Enable Read Receipts"
+
+msgid "Enable Group Messages"
+msgstr "Enable Group Messages"
+
+msgid "Rate Limit (messages/minute)"
+msgstr "Rate Limit (messages/minute)"
+
+msgid ""
+"Official WhatsApp Business API. Requires Meta Business verification. Most "
+"reliable but requires approval."
+msgstr ""
+"Official WhatsApp Business API. Requires Meta Business verification. Most "
+"reliable but requires approval."
+
+msgid ""
+"Twilio WhatsApp API. Reliable service with good documentation. Paid service "
+"with free trial."
+msgstr ""
+"Twilio WhatsApp API. Reliable service with good documentation. Paid service "
+"with free trial."
+
+msgid ""
+"UltraMsg offers free tier with 100 messages/month. Easy setup, good for "
+"testing."
+msgstr ""
+"UltraMsg offers free tier with 100 messages/month. Easy setup, good for "
+"testing."
+
+msgid ""
+"Self-hosted solution using WhatsApp Web. Free but requires server setup and "
+"QR code scanning."
+msgstr ""
+"Self-hosted solution using WhatsApp Web. Free but requires server setup and "
+"QR code scanning."
+
+msgid ""
+"Free WhatsApp API service. Limited features but completely free. Good for "
+"basic notifications."
+msgstr ""
+"Free WhatsApp API service. Limited features but completely free. Good for "
+"basic notifications."
+
+msgid ""
+"WhatsMate offers free tier with 100 messages/month. Simple API, good for "
+"small projects."
+msgstr ""
+"WhatsMate offers free tier with 100 messages/month. Simple API, good for "
+"small projects."
+
+msgid ""
+"Chat-API provides WhatsApp integration. Paid service with various pricing "
+"tiers."
+msgstr ""
+"Chat-API provides WhatsApp integration. Paid service with various pricing "
+"tiers."
+
+msgid ""
+"Green-API offers free tier with 1000 messages/month. Russian service with "
+"good API documentation."
+msgstr ""
+"Green-API offers free tier with 1000 messages/month. Russian service with "
+"good API documentation."
 
 msgid "Dataset Preparation - Data Element Prefixing"
 msgstr "Dataset Preparation - Data Element Prefixing"
@@ -2274,9 +2490,6 @@ msgstr "Enter username"
 
 msgid "Password is required"
 msgstr "Password is required"
-
-msgid "Password"
-msgstr "Password"
 
 msgid "Enter password"
 msgstr "Enter password"
@@ -3735,9 +3948,6 @@ msgstr "SMS Command Name"
 msgid "Defaults to \"{{name}}\" if left empty"
 msgstr "Defaults to \"{{name}}\" if left empty"
 
-msgid "SMS"
-msgstr "SMS"
-
 msgid "SMS Parser"
 msgstr "SMS Parser"
 
@@ -4367,6 +4577,12 @@ msgstr "Network error. Please check your connection and try again."
 msgid "Failed to load assessments. Please try refreshing the page."
 msgstr "Failed to load assessments. Please try refreshing the page."
 
+msgid "Assessment exported successfully"
+msgstr "Assessment exported successfully"
+
+msgid "No DHIS2 datasets available to view"
+msgstr "No DHIS2 datasets available to view"
+
 msgid ""
 "Are you sure you want to delete this assessment? This action cannot be "
 "undone."
@@ -4380,14 +4596,23 @@ msgstr "Assessment deleted successfully"
 msgid "Configure Assessment"
 msgstr "Configure Assessment"
 
-msgid "View Details"
-msgstr "View Details"
+msgid "Duplicate Assessment"
+msgstr "Duplicate Assessment"
 
-msgid "Mark as Draft"
-msgstr "Mark as Draft"
+msgid "Export Assessment"
+msgstr "Export Assessment"
 
-msgid "Mark as Active"
-msgstr "Mark as Active"
+msgid "Activate Assessment"
+msgstr "Activate Assessment"
+
+msgid "Pause Assessment"
+msgstr "Pause Assessment"
+
+msgid "Reactivate Assessment"
+msgstr "Reactivate Assessment"
+
+msgid "Delete Assessment"
+msgstr "Delete Assessment"
 
 msgid "Create, configure, and manage your data quality assessments"
 msgstr "Create, configure, and manage your data quality assessments"
@@ -4415,6 +4640,12 @@ msgstr "Data Configuration"
 
 msgid "Complete Setup"
 msgstr "Complete Setup"
+
+msgid "Configure"
+msgstr "Configure"
+
+msgid "Assessment status changed to {{status}}"
+msgstr "Assessment status changed to {{status}}"
 
 msgid "Assessment Templates"
 msgstr "Assessment Templates"
@@ -4643,9 +4874,6 @@ msgstr "Create New Metadata"
 
 msgid "Create Assessment Tools"
 msgstr "Create Assessment Tools"
-
-msgid "Sync with DHIS2"
-msgstr "Sync with DHIS2"
 
 msgid "Export Metadata"
 msgstr "Export Metadata"

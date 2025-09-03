@@ -27,7 +27,10 @@ import {
     CircularLoader,
     NoticeBox,
     IconMore24,
-    IconChevronRight24
+    IconChevronRight24,
+    IconCopy24,
+    IconLaunch24,
+    IconCheckmark24
 
 } from '@dhis2/ui'
 import i18n from '@dhis2/d2-i18n'
@@ -216,7 +219,13 @@ export const ManageAssessments = () => {
                                 name: assessment.details?.name || assessment.name || 'Untitled Assessment',
                                 status: assessment.details?.status || assessment.status || 'draft',
                                 createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                                createdBy: assessment.details?.createdBy || assessment.createdBy || 'Unknown User',
+                                createdBy: assessment.details?.createdBy || 
+                                          assessment.createdBy || 
+                                          assessment.Info?.createdBy?.displayName || 
+                                          assessment.Info?.createdBy?.username || 
+                                          assessment.Info?.lastModifiedBy?.displayName || 
+                                          assessment.Info?.lastModifiedBy?.username || 
+                                          'Unknown User',
                                 dataStoreVersion: 'main'
                             }))
                         } else {
@@ -241,7 +250,13 @@ export const ManageAssessments = () => {
                     const processedAssessments = assessmentsList.map(assessment => ({
                         ...assessment,
                         createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                        createdBy: assessment.details?.createdBy || 'Unknown User',
+                        createdBy: assessment.details?.createdBy || 
+                                  assessment.createdBy || 
+                                  assessment.Info?.createdBy?.displayName || 
+                                  assessment.Info?.createdBy?.username || 
+                                  assessment.Info?.lastModifiedBy?.displayName || 
+                                  assessment.Info?.lastModifiedBy?.username || 
+                                  'Unknown User',
                         status: assessment.details?.status || 'draft',
                         name: assessment.details?.name || assessment.name || 'Untitled Assessment'
                     }))
@@ -362,7 +377,13 @@ export const ManageAssessments = () => {
                             name: assessment.details?.name || assessment.name || 'Untitled Assessment',
                             status: assessment.details?.status || assessment.status || 'draft',
                             createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                            createdBy: assessment.details?.createdBy || assessment.createdBy || 'Unknown User',
+                            createdBy: assessment.details?.createdBy || 
+                                      assessment.createdBy || 
+                                      assessment.Info?.createdBy?.displayName || 
+                                      assessment.Info?.createdBy?.username || 
+                                      assessment.Info?.lastModifiedBy?.displayName || 
+                                      assessment.Info?.lastModifiedBy?.username || 
+                                      'Unknown User',
                             dataStoreVersion: 'main'
                         }))
                     } else {
@@ -381,7 +402,13 @@ export const ManageAssessments = () => {
             const processedAssessments = assessmentsList.map(assessment => ({
                 ...assessment,
                 createdAt: assessment.details?.createdAt || assessment.createdAt || new Date().toISOString(),
-                createdBy: assessment.details?.createdBy || 'Unknown User',
+                createdBy: assessment.details?.createdBy || 
+                          assessment.createdBy || 
+                          assessment.Info?.createdBy?.displayName || 
+                          assessment.Info?.createdBy?.username || 
+                          assessment.Info?.lastModifiedBy?.displayName || 
+                          assessment.Info?.lastModifiedBy?.username || 
+                          'Unknown User',
                 status: assessment.details?.status || 'draft',
                 name: assessment.details?.name || assessment.name || 'Untitled Assessment'
             }))
@@ -796,6 +823,67 @@ export const ManageAssessments = () => {
         console.log('Download PDF report for assessment:', assessment.id)
     }
 
+    // Handle duplicate assessment
+    const handleDuplicateAssessment = (assessment) => {
+        // Navigate to create new assessment with pre-filled data
+        navigate('/administration/assessments/create', { 
+            state: { 
+                duplicateFrom: assessment,
+                mode: 'duplicate'
+            } 
+        })
+    }
+
+    // Handle export assessment
+    const handleExportAssessment = (assessment) => {
+        try {
+            // Create export data
+            const exportData = {
+                assessment: assessment,
+                exportedAt: new Date().toISOString(),
+                exportedBy: 'Current User', // TODO: Get actual user
+                version: '1.0'
+            }
+            
+            // Create and download JSON file
+            const dataStr = JSON.stringify(exportData, null, 2)
+            const dataBlob = new Blob([dataStr], { type: 'application/json' })
+            const url = URL.createObjectURL(dataBlob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `${assessment.name.replace(/[^a-zA-Z0-9]/g, '_')}_export.json`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+            
+            setSuccessMessage(i18n.t('Assessment exported successfully'))
+            setTimeout(() => setSuccessMessage(null), 3000)
+        } catch (error) {
+            console.error('Error exporting assessment:', error)
+            alert(i18n.t('Failed to export assessment: {{error}}', { error: error.message }))
+        }
+    }
+
+    // Handle view in DHIS2
+    const handleViewInDHIS2 = (assessment) => {
+        // Get the first dataset URL if available
+        const createdDatasets = assessment.dqaDatasetsCreated || []
+        if (createdDatasets.length > 0 && createdDatasets[0].datasetUrl) {
+            window.open(createdDatasets[0].datasetUrl, '_blank')
+        } else {
+            alert(i18n.t('No DHIS2 datasets available to view'))
+        }
+    }
+
+    // Handle assessment settings
+    const handleAssessmentSettings = (assessment) => {
+        setDqModals(prev => ({
+            ...prev,
+            assessmentSettings: { isOpen: true, assessment }
+        }))
+    }
+
     // Handle assessment deletion
     const handleDeleteAssessment = async (assessmentId) => {
         if (confirm(i18n.t('Are you sure you want to delete this assessment? This action cannot be undone.'))) {
@@ -853,29 +941,43 @@ export const ManageAssessments = () => {
         return true // For now, assume it's configured
     }
 
-    // Assessment Actions for each assessment - simplified and realistic
+    // Assessment Actions for each assessment - comprehensive and relevant
     const getAssessmentActions = (assessment) => {
         const datasetCount = getDatasetCount(assessment)
         const isComplete = datasetCount >= 4
         const status = getAssessmentData(assessment, 'status', 'draft')
+        const createdDatasets = assessment.dqaDatasetsCreated || []
+        const hasDHIS2Datasets = createdDatasets.length > 0 && createdDatasets.some(ds => ds.dhis2Id)
         
-        const actions = [
-            // Edit/Configure Assessment
-            {
-                label: isComplete ? i18n.t('Edit Assessment') : i18n.t('Configure Assessment'),
-                icon: <IconEdit24 />,
-                onClick: () => navigate(`/administration/assessments/edit/${assessment.id}`)
-            },
-            
-            // View Details
+        const actions = []
+
+        // Primary Actions
+        actions.push(
             {
                 label: i18n.t('View Details'),
                 icon: <IconView24 />,
                 onClick: () => handleViewAssessment(assessment)
+            },
+            {
+                label: isComplete ? i18n.t('Edit Assessment') : i18n.t('Configure Assessment'),
+                icon: <IconEdit24 />,
+                onClick: () => handleEditAssessment(assessment)
             }
-        ]
+        )
 
-        // Add DQA actions only if assessment is complete
+        // DHIS2 Integration Actions (only if datasets exist)
+        if (hasDHIS2Datasets) {
+            actions.push(
+                { type: 'divider' },
+                {
+                    label: i18n.t('View in DHIS2'),
+                    icon: <IconLaunch24 />,
+                    onClick: () => handleViewInDHIS2(assessment)
+                }
+            )
+        }
+
+        // Data Quality Actions (only if assessment is complete)
         if (isComplete) {
             actions.push(
                 { type: 'divider' },
@@ -886,27 +988,69 @@ export const ManageAssessments = () => {
                 },
                 {
                     label: i18n.t('Completeness Analysis'),
-                    icon: <IconMore24 />,
+                    icon: <IconCheckmark24 />,
                     onClick: () => openDQModal('completenessAnalysis', assessment)
                 }
             )
         }
 
-        // Add status change actions
+        // Management Actions
         actions.push(
             { type: 'divider' },
             {
-                label: status === 'active' ? i18n.t('Mark as Draft') : i18n.t('Mark as Active'),
-                icon: <IconSettings24 />,
-                onClick: () => handleStatusChange(assessment, status === 'active' ? 'draft' : 'active')
+                label: i18n.t('Duplicate Assessment'),
+                icon: <IconCopy24 />,
+                onClick: () => handleDuplicateAssessment(assessment)
+            },
+            {
+                label: i18n.t('Export Assessment'),
+                icon: <IconDownload24 />,
+                onClick: () => handleExportAssessment(assessment)
             }
         )
 
-        // Add delete action
+        // Status Management
+        if (status === 'draft') {
+            actions.push(
+                {
+                    label: i18n.t('Activate Assessment'),
+                    icon: <IconCheckmark24 />,
+                    onClick: () => handleStatusChange(assessment, 'active')
+                }
+            )
+        } else if (status === 'active') {
+            actions.push(
+                {
+                    label: i18n.t('Pause Assessment'),
+                    icon: <IconSettings24 />,
+                    onClick: () => handleStatusChange(assessment, 'draft')
+                }
+            )
+        } else if (status === 'finished') {
+            actions.push(
+                {
+                    label: i18n.t('Reactivate Assessment'),
+                    icon: <IconCheckmark24 />,
+                    onClick: () => handleStatusChange(assessment, 'active')
+                }
+            )
+        }
+
+        // Settings
         actions.push(
             { type: 'divider' },
             {
-                label: i18n.t('Delete'),
+                label: i18n.t('Assessment Settings'),
+                icon: <IconSettings24 />,
+                onClick: () => handleAssessmentSettings(assessment)
+            }
+        )
+
+        // Destructive Actions
+        actions.push(
+            { type: 'divider' },
+            {
+                label: i18n.t('Delete Assessment'),
                 icon: <IconDelete24 />,
                 destructive: true,
                 onClick: () => handleDeleteAssessment(assessment.id)
@@ -1567,12 +1711,38 @@ export const ManageAssessments = () => {
                         </Button>
                         <Button 
                             primary
-                            onClick={() => {
-                                // TODO: Implement actual status change
-                                console.log('Change status to:', statusChangeModal.newStatus, 'for assessment:', statusChangeModal.assessment?.id)
-                                setSuccessMessage(`Assessment status changed to ${statusChangeModal.newStatus}`)
-                                setTimeout(() => setSuccessMessage(null), 5000)
-                                setStatusChangeModal({ isOpen: false, assessment: null, newStatus: null })
+                            onClick={async () => {
+                                try {
+                                    const assessmentId = statusChangeModal.assessment?.id
+                                    const newStatus = statusChangeModal.newStatus
+                                    
+                                    // Update the assessment status in the datastore
+                                    const updatedAssessment = {
+                                        ...statusChangeModal.assessment,
+                                        details: {
+                                            ...statusChangeModal.assessment.details,
+                                            status: newStatus,
+                                            lastModified: new Date().toISOString()
+                                        }
+                                    }
+                                    
+                                    // Save to datastore (you'll need to implement this in your service)
+                                    // await updateAssessment(assessmentId, updatedAssessment)
+                                    
+                                    // Update local state
+                                    setAssessments(prev => prev.map(assessment => 
+                                        assessment.id === assessmentId 
+                                            ? { ...assessment, status: newStatus, details: { ...assessment.details, status: newStatus } }
+                                            : assessment
+                                    ))
+                                    
+                                    setSuccessMessage(i18n.t('Assessment status changed to {{status}}', { status: newStatus }))
+                                    setTimeout(() => setSuccessMessage(null), 5000)
+                                    setStatusChangeModal({ isOpen: false, assessment: null, newStatus: null })
+                                } catch (error) {
+                                    console.error('Error changing assessment status:', error)
+                                    alert(i18n.t('Failed to change assessment status: {{error}}', { error: error.message }))
+                                }
                             }}
                         >
                             Change Status
